@@ -51,6 +51,9 @@ import {
 } from '@/lib/remake/config'
 import type { MakeView } from '@/lib/remake/make'
 import { remakeCopy, REMAKE_LANGUAGES } from './remake-copy'
+import FanTemplate, { FAN_CARD_VIDEO, FAN_POSTER } from './FanTemplate'
+import { fanCopy } from './fan-copy'
+import { FAN_ABOUT_CENTS } from '@/lib/fan-template/recipe'
 
 const DRAFT_KEY = 'xcreate.remake-draft'
 const MAX_VIDEO_BYTES = 300_000_000
@@ -164,7 +167,7 @@ const ICONS = {
 const HeartIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6.1 4.5c2.2 0 3.6 1.2 4.4 2.4h3c.8-1.2 2.2-2.4 4.4-2.4 3.8 0 5.7 3.9 4.1 7.2C19.5 16.4 12 21 12 21z" /></svg>
 const PlayIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z" /></svg>
 
-export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRemakeId }: {
+export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRemakeId, fan = null, onFan }: {
   signedIn: boolean
   /** Opens sign-in; `next` is where to come back to. */
   onSignIn: (next?: string) => void
@@ -172,9 +175,14 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   remakeId?: string | null
   /** The read on the page changed: its id goes in the address, or none. */
   onRemakeId?: (id: string | null) => void
+  /** The 風扇變裝 template (Oct 18): 'new' for its form, a run's id to follow
+   *  it (/xcreate?fan=new, /xcreate?fan=<id>), null for 同款 itself. */
+  fan?: string | null
+  onFan?: (v: string | null) => void
 }) {
   const { lang } = useLang()
   const c = remakeCopy(lang)
+  const fc = fanCopy(lang)
   const listSep = lang === 'en' || lang === 'ko' ? ', ' : '、'
   const colon = lang === 'en' || lang === 'ko' ? ': ' : '：'
   const quote = (t: string) => lang === 'en' || lang === 'ko' ? `“${t}”` : `「${t}」`
@@ -808,6 +816,9 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     {make.status === 'failed' && <p className="xcs-film-note">{c.makeFailedNote}</p>}
   </div>
 
+  if (fan) return <FanTemplate signedIn={signedIn} onSignIn={onSignIn} runId={fan === 'new' ? null : fan}
+    onRunId={id => onFan?.(id ?? 'new')} onBack={() => onFan?.(null)} />
+
   return <section className="xcs-film xcs-remake" aria-labelledby="xcs-remake-title">
     <header className="xcs-heading">
       <h1 id="xcs-remake-title">{c.title}</h1>
@@ -869,6 +880,17 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
               </button>)}
             </div>
           </div>}
+          <div className="xcs-remake-try xcs-fan-section">
+            <p className="xcs-remake-try-head">{fc.section}<span>{fc.sectionNote}</span></p>
+            <button type="button" className="xcs-fan-card" onClick={() => onFan?.('new')}>
+              <video src={FAN_CARD_VIDEO} poster={FAN_POSTER} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+              <span className="xcs-fan-card-body">
+                <b>{fc.name}</b>
+                <span>{fc.pitch}</span>
+                <span className="xcs-fan-card-foot"><span>{fc.about(money(FAN_ABOUT_CENTS))}</span><span className="is-go">{fc.use} →</span></span>
+              </span>
+            </button>
+          </div>
         </>}
       <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/webm" hidden
         onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadAndRead(f) }} />

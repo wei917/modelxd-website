@@ -53,6 +53,16 @@ type Made = { buffer: Buffer; cost: number }
 const refused = (e: unknown) => SAFETY.test(String((e as Error)?.message ?? e))
 /** Said once every maker refused a picture: the same picture, toned down. */
 const MODEST = ' An elegant, modest fashion photo: the outfit covers the body well, nothing see-through or revealing.'
+/** A picture that has not come back by then goes to the next maker, as a
+ *  refusal does (Oct 18: one GPT Image edit hung past 4 minutes; OpenAI's
+ *  client waits 10 per try before it gives up). */
+const PICTURE_WAIT_MS = 240_000
+const TIMED_OUT = 'picture timed out'
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  return Promise.race([p, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error(`${TIMED_OUT} after ${ms / 1000}s`)), ms) })])
+    .finally(() => clearTimeout(timer))
+}
 
 /** A picture model's size for a shape: the nearest of its pixel sizes, or its
  *  largest square size with the shape as an option (Grok, Gemini). */
@@ -67,22 +77,26 @@ export function sizeFor(model: ModelInfo, aspect: Aspect): { size: string; optio
   return { size: sizes.includes('2048') ? '2048' : sizes[0] ?? '1024', options: { aspect_ratio: aspect } }
 }
 
-/** One picture on the first model that does not refuse it: the next maker
- *  gets the same words, and once all of them have refused, the last one
- *  gets the picture toned down. Any other error stops at once. */
-export async function picture(models: ModelInfo[], prompt: string, attachments: any[], aspect: Aspect, ctx: ProduceContext, quality: 'medium' | 'high', gen: typeof generateImage = generateImage): Promise<Made> {
+/** One picture on the first model that does not refuse it (or take too
+ *  long): the next maker gets the same words, and once all of them have
+ *  refused, the last one gets the picture toned down. Any other error stops
+ *  at once. */
+export async function picture(models: ModelInfo[], prompt: string, attachments: any[], aspect: Aspect, ctx: ProduceContext, quality: 'medium' | 'high', gen: typeof generateImage = generateImage, waitMs = PICTURE_WAIT_MS): Promise<Made> {
   const tries: [ModelInfo, string][] = [...models.map(m => [m, prompt] as [ModelInfo, string]), [models[models.length - 1], prompt + MODEST]]
   let last: unknown
   for (const [i, [model, words]] of tries.entries()) {
     const { size, options } = sizeFor(model, aspect)
     try {
-      const r: any = await gen(model, words, quality as any, size, attachments, null, null, { userId: ctx.userId, surface: ctx.surface } as any, options)
+      const r: any = await withTimeout(gen(model, words, quality as any, size, attachments, null, null, { userId: ctx.userId, surface: ctx.surface } as any, options), waitMs)
       if (i > 0) console.log(`[remake:produce] picture made by ${model.model_name}${words !== prompt ? ', toned down' : ''} after a refusal`)
       return { buffer: r.buffer, cost: r.cost ?? 0 }
     } catch (e) {
-      if (!refused(e)) throw e
-      console.warn(`[remake:produce] ${model.model_name} refused a picture: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
+      const slow = String((e as Error)?.message ?? '').startsWith(TIMED_OUT)
+      if (!refused(e) && !slow) throw e
+      console.warn(`[remake:produce] ${model.model_name} ${slow ? 'took too long on' : 'refused'} a picture: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
       last = e
+      // A slow maker gets no toned-down second try: the next maker goes on.
+      if (slow && i === tries.length - 2) break
     }
   }
   throw last

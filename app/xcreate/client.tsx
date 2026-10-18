@@ -1085,6 +1085,9 @@ function CreateStudio() {
   const searchFilmParam = useSearchParams()?.get('film') ?? null
   // ?remake=<id> is one kept 同款 read (Oct 17): it opens back into RemakeStudio.
   const searchRemakeParam = useSearchParams()?.get('remake') ?? null
+  // ?fan=<id> is one 風扇變裝 run and ?fan=new its form (Oct 18): the
+  // template lives in 同款's tab.
+  const searchFanParam = useSearchParams()?.get('fan') ?? null
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1665,6 +1668,8 @@ function CreateStudio() {
         if (typeof filmRef === 'string') { openFilm(filmRef); return }
         // A 同款 read (Oct 17) opens back into 同款 under its own link.
         if ((data as any).slots?.[0]?.options?.remake) { openRemake(String(idParam)); return }
+        // A 風扇變裝 run (Oct 18) opens back into the template in 同款's tab.
+        if ((data as any).slots?.[0]?.options?.fan) { openFan(String(idParam)); return }
         // Rows are born at run start, so this ?id= may name a run that is
         // still generating — resume its job (live cards + polling) instead
         // of restoring a half-written snapshot. Owner-read RLS on
@@ -3484,6 +3489,8 @@ function CreateStudio() {
   const [remakeOpen, setRemakeOpen] = useState(false)
   // A kept read is ?remake=<id> (Oct 17), set once a read is saved.
   const [remakeId, setRemakeId] = useState<string | null>(null)
+  // The 風扇變裝 template in 同款's tab: 'new' (its form) or a run's id.
+  const [fanView, setFanView] = useState<string | null>(null)
   const setFilmUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
@@ -3504,7 +3511,19 @@ function CreateStudio() {
     else url.searchParams.delete('remake')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
-  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  /** The template's address: ?fan=<id> for a run, ?fan=new for its form. */
+  const setFanUrl = (v: string | null) => {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
+    for (const k of ['id', 'job', 'film', 'remake', 'fan']) url.searchParams.delete(k)
+    if (v) url.searchParams.set('fan', v)
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }
+  const openFan = (v: string) => {
+    setFilmOpen(false); setFilmId(null)
+    setRemakeOpen(true); setRemakeId(null); setFanView(v); setFanUrl(v)
+  }
+  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFanView(null); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
   const openRemake = (id: string | null) => {
     setFilmOpen(false); setFilmId(null)
     setRemakeOpen(true); setRemakeId(id); setRemakeUrl(id)
@@ -3513,8 +3532,8 @@ function CreateStudio() {
     setFromOpen(false)
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
-    if (next === 'remake') { setRemakeOpen(true); return }
-    if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setRemakeUrl(null) }
+    if (next === 'remake') { if (fanView) { setFanView(null); setFanUrl(null) } setRemakeOpen(true); return }
+    if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setFanView(null); setRemakeUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
     if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
@@ -3608,6 +3627,10 @@ function CreateStudio() {
     setRemakeOpen(true)
     setRemakeId(searchRemakeParam.toLowerCase())
   }, [searchRemakeParam])
+  useEffect(() => {
+    if (searchFanParam !== 'new' && !(searchFanParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFanParam))) return
+    setFilmOpen(false); setRemakeOpen(true); setFanView(searchFanParam.toLowerCase())
+  }, [searchFanParam])
   useEffect(() => () => publishStudioType(null), [])
   // ?type= is a seed, consumed and stripped like ?model=.
   useEffect(() => {
@@ -4439,7 +4462,8 @@ function CreateStudio() {
               as the main grid, one output at a time. */}
           {remakeOpen ? (
             <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')}
-              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); setRemakeUrl(id) }} />
+              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); setRemakeUrl(id) }}
+              fan={fanView} onFan={v => { setFanView(v); setFanUrl(v); window.scrollTo({ top: 0 }) }} />
           ) : filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
