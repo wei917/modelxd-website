@@ -36,9 +36,10 @@ export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/pl
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
 export const HUB_GOLD: [number, number, number] = [1.2, 0.98, 0.6]
 /** The card's loop, the demo with music and its poster, in the public landing
- *  bucket: the palace demo (v3, Oct 18; the template's own job on its
- *  defaults, an AI model, five luxury outfits, runway music). */
-export const DEMO = { card: 'templates/fan-outfit-v3-card.mp4', video: 'templates/fan-outfit-v3-demo.mp4', poster: 'templates/fan-outfit-v3-poster.jpg' }
+ *  bucket: the palace demo (v4, Oct 18; the template's own job on its
+ *  defaults with the real fall, an AI model, five luxury outfits, runway
+ *  music). */
+export const DEMO = { card: 'templates/fan-outfit-v4-card.mp4', video: 'templates/fan-outfit-v4-demo.mp4', poster: 'templates/fan-outfit-v4-poster.jpg' }
 export const MIN_OUTFITS = 2
 export const MAX_OUTFITS = 5
 
