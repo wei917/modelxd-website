@@ -60,7 +60,7 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean. A bar along the top of the page picks what to make (Text, Image,
-Video, Audio, Film). You can look around without an account; signing in is
+Video, Audio, Film, 同款 / Remake). You can look around without an account; signing in is
 asked for when you make something. The From choice (text, image,
 video ...) is inside the prompt box; the model picker lists every model with
 what it can do and its list price. On the Image tab, one-tap tools (beta) do
@@ -109,6 +109,28 @@ code, adds music it makes itself, and edits one finished MP4. It takes about
 10 to 20 minutes and keeps going if you leave; the film is in your Library.
 The budget is reserved when you start; you pay what it used at list price,
 the rest comes back, and if no film comes out you pay nothing.
+
+**同款 (Remake; 做同款 in Chinese, リメイク in Japanese, 리메이크 in Korean).** The
+sixth type: make your own version of a video you saw, with the same shots
+and rhythm. Paste a YouTube or X link, or upload the video (for TikTok,
+Instagram and others, save it first and upload it). It is read into its
+shots and the materials you can swap: the people, things, places, music,
+voices and on-screen text (reading is free, 10 videos a day). Pick how long
+and from which shot, swap what you want (a description, a famous person, or
+your own photo with the person's permission), and choose the music: a new
+track in the original's style, the same tuned toward another style with
+sliders (pop, country, rock, K-pop and more, with tempo and energy), your
+own track, or none. The original plays at the top of the page while you
+choose. Making it reserves about $0.25 per second of the remake plus $1.70;
+you pay what it used at list price, the rest comes back, and nothing if no
+video comes out. Each read has its own link and stays in your Library with
+the video made from it. The original's footage, sound, music and words are
+never reused.
+
+**Templates in 同款.** 風扇變裝 (fan outfit change): add your photo and five
+outfits; you roll off a sofa, press a remote, and each pass of a ceiling fan
+changes your outfit, with a caption and music in a style you pick. About 18
+seconds and about $3 ($4 is reserved; you pay what it used).
 
 **Region editing (inpainting).** When editing an image, an "Edit region"
 button appears if a selected model supports masks (currently GPT Image 2):
