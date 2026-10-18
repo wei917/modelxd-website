@@ -43,7 +43,7 @@ export async function framesAt(ff: string, clip: string, seconds: number[]): Pro
 export async function pressTime(model: ModelInfo, ff: string, clip: string, userId: string | null, fallback: number): Promise<{ t: number; cost: number }> {
   const times = Array.from({ length: 13 }, (_, i) => Math.round((0.5 + i * 0.3) * 10) / 10)
   const frames = await framesAt(ff, clip, times)
-  const { json, cost } = await askPictures(model, `These ${frames.length} pictures are frames of one top-down clip of a woman lying on a mat, taken at these seconds, in order: ${times.join(', ')}. She picks up a small remote and presses its button once with her thumb while holding it up toward the camera. At which of these seconds is the button pressed (the remote raised highest, thumb on the button)? Return JSON only: {"t": number}`, frames, userId)
+  const { json, cost } = await askPictures(model, `These ${frames.length} pictures are frames of one top-down clip of a person lying on a mat, taken at these seconds, in order: ${times.join(', ')}. The person picks up a small remote and presses its button once with their thumb while holding it up toward the camera. At which of these seconds is the button pressed (the remote raised highest, thumb on the button)? Return JSON only: {"t": number}`, frames, userId)
   const t = Number(json?.t)
   return { t: Number.isFinite(t) && t >= 0.5 && t <= 4.5 ? t : fallback, cost }
 }
@@ -56,7 +56,7 @@ export async function pressTime(model: ModelInfo, ff: string, clip: string, user
  *  blade never shows it). */
 export async function personSpan(model: ModelInfo, pictures: Buffer[], userId: string | null): Promise<{ x0: number; x1: number; cost: number }> {
   if (!pictures.length) return { x0: 0.3, x1: 0.7, cost: 0 }
-  const { json, cost } = await askPictures(model, `These ${pictures.length} pictures are the same top-down shot of one person lying down, in different clothes. For each picture give the box around her body: head, hair, torso, legs and shoes, and arms that lie along her body; leave out an arm or hand stretched away from her body. [ymin, xmin, ymax, xmax] on a 0-1000 scale. Return JSON only: {"boxes": [[ymin, xmin, ymax, xmax], ...]}`, pictures, userId)
+  const { json, cost } = await askPictures(model, `These ${pictures.length} pictures are the same top-down shot of one person lying down, in different clothes. For each picture give the box around their body: head, hair, torso, legs and shoes, and arms that lie along the body; leave out an arm or hand stretched away from the body. [ymin, xmin, ymax, xmax] on a 0-1000 scale. Return JSON only: {"boxes": [[ymin, xmin, ymax, xmax], ...]}`, pictures, userId)
   const boxes: number[][] = (json?.boxes ?? []).filter((b: any) => Array.isArray(b) && b.length === 4 && b.every((x: any) => Number.isFinite(Number(x))))
   if (!boxes.length) return { x0: 0.3, x1: 0.7, cost }
   return { x0: Math.min(...boxes.map(b => Number(b[1]))) / 1000, x1: Math.max(...boxes.map(b => Number(b[3]))) / 1000, cost }
