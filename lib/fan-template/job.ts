@@ -277,7 +277,8 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const W = 720, H = 1280
     const [x0, x1] = job.span
     const hubX = Math.round(W * (x0 + x1) / 2)
-    const bladeWidth = Math.round(Math.max(W * 0.34, Math.min(W * 0.6, W * (x1 - x0) * 1.08)))
+    // As wide as her body and a little more, at most about t4's (340 px).
+    const bladeWidth = Math.round(Math.max(W * 0.34, Math.min(W * 0.5, W * (x1 - x0) * 1.08)))
     const takes = [openingF, ...clipF]
     const overlay = path.join(tmp, 'fan.mp4')
     await renderFanOverlay({
