@@ -49,10 +49,14 @@ export async function pressTime(model: ModelInfo, ff: string, clip: string, user
 }
 
 /** How far across the frame she lies, left to right (0-1), over the
- *  outfit pictures: the hub goes above the middle and the blade just wider. */
+ *  outfit pictures: the hub goes above the middle and the blade just wider.
+ *  An arm stretched away from her body is left out (test run, Oct 18: the
+ *  creator's last pose made the blade 58% of the frame, wider than t4's 47%
+ *  the owner liked; the change line is the blade's middle, so a narrower
+ *  blade never shows it). */
 export async function personSpan(model: ModelInfo, pictures: Buffer[], userId: string | null): Promise<{ x0: number; x1: number; cost: number }> {
   if (!pictures.length) return { x0: 0.3, x1: 0.7, cost: 0 }
-  const { json, cost } = await askPictures(model, `These ${pictures.length} pictures are the same top-down shot of one person lying down, in different clothes. For each picture give the box around the whole person (head, hair, arms, hands, clothes, shoes): [ymin, xmin, ymax, xmax] on a 0-1000 scale. Return JSON only: {"boxes": [[ymin, xmin, ymax, xmax], ...]}`, pictures, userId)
+  const { json, cost } = await askPictures(model, `These ${pictures.length} pictures are the same top-down shot of one person lying down, in different clothes. For each picture give the box around her body: head, hair, torso, legs and shoes, and arms that lie along her body; leave out an arm or hand stretched away from her body. [ymin, xmin, ymax, xmax] on a 0-1000 scale. Return JSON only: {"boxes": [[ymin, xmin, ymax, xmax], ...]}`, pictures, userId)
   const boxes: number[][] = (json?.boxes ?? []).filter((b: any) => Array.isArray(b) && b.length === 4 && b.every((x: any) => Number.isFinite(Number(x))))
   if (!boxes.length) return { x0: 0.3, x1: 0.7, cost }
   return { x0: Math.min(...boxes.map(b => Number(b[1]))) / 1000, x1: Math.max(...boxes.map(b => Number(b[3]))) / 1000, cost }
