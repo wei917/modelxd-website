@@ -8,10 +8,13 @@
 // lib/remake/make.ts) until the video is on the read's Library item. Plan:
 // docs/REMAKE-PLAN.md.
 //
-// The page is drawn around the original's cut rhythm (Oct 11): the heading
-// shows one edit twice (the original, then yours), the read shows the real
-// one as a strip with the stretch to remake framed in red, the shots run as
-// a timeline, and each material is a card from the original to yours.
+// The page is drawn around the original's cut rhythm (Oct 11): the read
+// shows the real cuts as a strip with the stretch to remake framed in red,
+// the shots run as a timeline, and each material is a card from the original
+// to yours. Once a video is read, the original plays under the heading (Oct
+// 17; owner: "remove it and add player", replacing a made-up edit drawn
+// twice): the viewer's own upload from their folder, YouTube in YouTube's
+// player, an X post in X's own embed.
 //
 // The materials (Oct 13; owner: "it should automatically break down the
 // essential materials (input images, audio...etc) for users to replace"):
@@ -67,8 +70,6 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padSta
 /** Whole seconds, for the strip's scale and the reading clock: 1:05. */
 const tick = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const pct = (n: number) => `${(n * 100).toFixed(3)}%`
-/** The heading's made-up edit, drawn twice: the original's cuts, then yours. */
-const HERO_RHYTHM = [2.6, 1, 1.8, 0.7, 1.2, 3.4, 1.4, 0.8, 2.2, 1, 1.6, 2.4, 0.6, 2.8]
 /** How tight a shot is, for the strip's shading: close-ups dark, wides light. */
 const TIGHTNESS: Record<string, number> = {
   'extreme close-up': 1, 'close-up': 0.85, insert: 0.8, 'medium close-up': 0.7,
@@ -107,6 +108,8 @@ type Picked = { url: string; name: string; file: File }
 /** A popular video to try (/api/xcreate/remake/examples). `summary` is our
  *  words; `prompt` is the author's, shown under the read of that video. */
 type Example = { url: string; handle: string; likes: number; models: string[]; prompt: string; summary: Partial<Record<Lang, string>> }
+/** X's own embed speaks these. */
+const X_LANG: Record<Lang, string> = { en: 'en', 'zh-Hant': 'zh-tw', 'zh-Hans': 'zh-cn', ja: 'ja', ko: 'ko' }
 /** An X post's id, to match an example with a read (the read's link is x.com/i/status/<id>). */
 const statusId = (url: string | null | undefined) => url?.match(/\/status(?:es)?\/(\d{5,25})/)?.[1] ?? null
 
@@ -216,6 +219,10 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   /** Bumped when a remake starts, so the page follows it. */
   const [follow, setFollow] = useState(0)
   const [makeNow, setMakeNow] = useState(0)
+  /** X's embed says how tall its card is (a message from its frame). */
+  const [xHeight, setXHeight] = useState(560)
+  /** The read whose signed links were fetched again after one failed. */
+  const refreshed = useRef<string | null>(null)
   const makeRow = useRef<string | null>(null)
   const makeRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -335,6 +342,22 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     const t = window.setInterval(() => setMakeNow(Date.now()), 1000)
     return () => window.clearInterval(t)
   }, [makeActive])
+
+  // X's embed tells its parent how tall the post is; nothing else is read from it.
+  const xId = d.result?.source.kind === 'x' ? statusId(d.result.source.url) : null
+  useEffect(() => {
+    if (!xId) return
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== 'https://platform.twitter.com') return
+      try {
+        const m = (typeof e.data === 'string' ? JSON.parse(e.data) : e.data)?.['twttr.embed']
+        const h = Number(m?.method === 'twttr.private.resize' ? m.params?.[0]?.height : NaN)
+        if (h > 100 && h < 3000) setXHeight(Math.ceil(h))
+      } catch { /* not X's message */ }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [xId])
 
   // The clock beside the reading reel: a long read takes up to two minutes.
   useEffect(() => {
@@ -497,6 +520,19 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   const setVoice = (who: string, patch: Partial<VoicePick>) =>
     setD(prev => ({ ...prev, voices: { ...prev.voices, [who]: { ...(prev.voices[who] ?? { choice: 'ai', consent: false }), ...patch } } }))
   const setTune = (patch: Partial<MusicTune>) => setD(prev => ({ ...prev, tune: { ...prev.tune, ...patch } }))
+  /** The original and the pictures are links signed for an hour, and a read
+   *  restored from the tab keeps the old ones: the first that fails fetches
+   *  the read again for fresh links (once per read). */
+  const refreshSigned = () => {
+    const id = d.rowId
+    if (!id || refreshed.current === id) return
+    refreshed.current = id
+    fetch(`/api/xcreate/remake/${id}`).then(r => r.ok ? r.json() : null).then(body => {
+      const r = body?.result as BreakdownResult | undefined
+      if (!r) return
+      setD(prev => prev.rowId === id && prev.result ? { ...prev, result: { ...prev.result, previews: r.previews ?? prev.result.previews, original: r.original } } : prev)
+    }).catch(() => { /* stays as it is */ })
+  }
   const pickFile = (key: string, file: File | undefined) => {
     if (!file) return
     setFiles(prev => {
@@ -510,7 +546,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   // people, then things, places, sound and text, and the one-shot extras
   // last so a crowd of faces does not push the rest off the row.
   type Tile = { key: string; label: string; pic: ReactNode; changed: boolean; extra?: boolean }
-  const pictureOr = (id: string, icon: ReactNode) => previews[id] ? <img src={previews[id]} alt="" /> : icon
+  const pictureOr = (id: string, icon: ReactNode) => previews[id] ? <img src={previews[id]} alt="" onError={refreshSigned} /> : icon
   const personTile = (ch: Character, extra: boolean): Tile =>
     ({ key: ch.id, label: ch.role, pic: pictureOr(ch.id, <ICONS.person />), changed: castPick(ch.id).choice !== 'keep', extra })
   const tiles: Tile[] = b ? [
@@ -531,7 +567,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
 
   /** The original's picture on a card: cut from the video, or YouTube's player at that moment, or an icon. */
   const cardPic = (key: string, id: string | null, best: number | undefined, icon: ReactNode) =>
-    id && previews[id] ? <img src={previews[id]} alt="" />
+    id && previews[id] ? <img src={previews[id]} alt="" onError={refreshSigned} />
       : ytId && best != null
         ? <button type="button" className="xcs-remake-watch" aria-label={c.watchHere} aria-expanded={peek === key}
           onClick={() => setPeek(p => p === key ? null : key)}><PlayIcon /><span>{tick(srcStart + best)}</span></button>
@@ -720,6 +756,21 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     }
   }
 
+  // The original, under the heading once a video is read: the viewer's own
+  // upload, YouTube's player, or X's own embed of the post. A read kept
+  // before Oct 17 from an upload has no player (the upload was not noted).
+  const ratio = (() => { const m = b?.aspect.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/); return m && Number(m[2]) ? Number(m[1]) / Number(m[2]) : 16 / 9 })()
+  const originalPlayer = !b || !d.result ? null
+    : d.result.original
+      ? <video src={srcStart > 0 ? `${d.result.original}#t=${srcStart}` : d.result.original} controls playsInline preload="metadata" onError={refreshSigned} />
+      : ytId
+        ? <iframe src={`https://www.youtube-nocookie.com/embed/${ytId}?start=${Math.floor(srcStart)}&playsinline=1&rel=0`}
+          title={b.title} allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+        : xId
+          ? <iframe src={`https://platform.twitter.com/embed/Tweet.html?id=${xId}&dnt=true&theme=light&lang=${X_LANG[lang]}`}
+            title={b.title} style={{ height: xHeight }} />
+          : null
+
   // The remake as it is made: the stretch's shots as a strip that fills in
   // red, step by step, then the video.
   const madeShots = shots.filter(inStretch)
@@ -754,12 +805,10 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     <header className="xcs-heading">
       <h1 id="xcs-remake-title">{c.title}</h1>
       <p>{c.subtitle}</p>
-      <div className="xcs-remake-hero" aria-hidden="true">
-        {[c.original, c.yours].map((label, row) => <div key={row} className={row ? 'is-yours' : undefined}>
-          <span>{label}</span>
-          <i>{HERO_RHYTHM.map((w, k) => <b key={k} style={{ flexGrow: w, animationDelay: row ? `${250 + k * 70}ms` : undefined }} />)}</i>
-        </div>)}
-      </div>
+      {originalPlayer && <div className={`xcs-remake-original${xId && !d.result?.original ? ' is-x' : ''}`} style={{ ['--ar' as string]: ratio }}>
+        <p className="xcs-remake-tag"><span>{c.original}</span></p>
+        <div className="xcs-remake-original-frame">{originalPlayer}</div>
+      </div>}
     </header>
 
     <div className="xcs-remake-form">

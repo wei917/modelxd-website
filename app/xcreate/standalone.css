@@ -258,21 +258,22 @@
 }
 
 /* ── 同款 (Remake), XCreate's sixth type (Oct 10): RemakeStudio.tsx. Drawn
-   around the original's cut rhythm (Oct 11): the heading shows one edit
-   twice (the original in ink, yours in red), the read shows the real one
+   around the original's cut rhythm (Oct 11): the read shows the real cuts
    as a strip with the stretch framed in red, the shots run as a timeline,
-   and each person is a card from the original to yours. X創作's palette
-   and the phone's own fonts; timecodes in the mono face. Phone first. ── */
+   and each person is a card from the original to yours. Once a video is
+   read, the original plays under the heading (Oct 17; it replaced a
+   made-up edit drawn twice, owner: "what is this section for???").
+   X創作's palette and the phone's own fonts; timecodes in the mono face.
+   Phone first. ── */
 .xcs-remake .xcs-heading { margin-bottom: 30px; }
 .xcs-remake .xcs-heading > p { font-size: 16px; line-height: 1.6; color: var(--muted2); margin: 0; }
-.xcs-remake-hero { display: grid; gap: 6px; margin-top: 22px; }
-.xcs-remake-hero > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 10px; }
-.xcs-remake-hero span { font-size: 12px; font-weight: 700; color: var(--muted2); white-space: nowrap; }
-.xcs-remake-hero .is-yours span { color: var(--red); }
-.xcs-remake-hero i { display: flex; gap: 3px; height: 14px; }
-.xcs-remake-hero b { flex: 1 1 0; min-width: 2px; border-radius: 2px; background: var(--xc-ink, #242724); }
-.xcs-remake-hero .is-yours b { background: var(--red); transform-origin: left center; animation: xcs-remake-build .5s cubic-bezier(.2, .8, .2, 1) backwards; }
-@keyframes xcs-remake-build { from { transform: scaleX(0); opacity: 0; } }
+/* The original: in its own shape (--ar, width / height), as big as fits in
+   the column and in about half the screen's height. An X post is X's own
+   card, as tall as X says it is. */
+.xcs-remake-original { display: grid; gap: 8px; margin-top: 22px; }
+.xcs-remake-original-frame { width: min(100%, calc(min(56vh, 520px) * var(--ar, 1.78))); aspect-ratio: var(--ar, 1.78); margin: 0 auto; border-radius: 14px; overflow: hidden; background: var(--xc-ink, #242724); }
+.xcs-remake-original-frame video, .xcs-remake-original-frame iframe { display: block; width: 100%; height: 100%; border: 0; object-fit: contain; }
+.xcs-remake-original.is-x .xcs-remake-original-frame { width: min(100%, 550px); aspect-ratio: auto; border-radius: 12px; background: none; }
 
 /* Step headings: a red mono number, like a slate's scene number. */
 .xcs-remake-step { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; letter-spacing: -.01em; color: var(--white); }
@@ -540,8 +541,6 @@
   .xcs-remake-tray, .xcs-remake-try-row { margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding-left: 16px; }
 }
 @media (min-width: 761px) {
-  .xcs-remake-hero > div { grid-template-columns: 76px minmax(0, 1fr); }
-  .xcs-remake-hero i { height: 16px; }
   .xcs-remake-card { padding: 24px 24px 20px; }
   .xcs-remake-title { font-size: 28px; }
   .xcs-remake-strip { height: 56px; }
@@ -552,7 +551,7 @@
   .xcs-remake-bar { bottom: 16px; margin: 0; padding: 10px 10px 10px 20px; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 32px rgba(0, 0, 0, .1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .xcs-remake-hero .is-yours b, .xcs-remake-read > *, .xcs-remake-reel i, .xcs-remake-cast.is-flash,
+  .xcs-remake-read > *, .xcs-remake-reel i, .xcs-remake-cast.is-flash,
   .xcs-remake-made-state::before, .xcs-remake-made-strip b::after { animation: none !important; }
   .xcs-remake-made-strip b { transition: none; }
   .xcs-remake-strip-sel { transition: none; }

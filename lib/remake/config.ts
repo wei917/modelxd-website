@@ -104,6 +104,10 @@ export type BreakdownResult = {
   /** The read's Library item (lib/remake/saved.ts), opened again at
    *  /xcreate?remake=<id>. Absent if saving failed. */
   id?: string
+  /** The original to play at the top of the page (Oct 17; owner: "add
+   *  player"): a link to the viewer's own upload, signed for an hour. YouTube
+   *  and X reads play in their own players from `source.url` instead. */
+  original?: string
 }
 
 /** What the user swaps. Phase 1 keeps it on the page; phase 2 sends it with
