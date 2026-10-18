@@ -15,11 +15,11 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/i18n'
 import ModeIcon from '../components/ModeIcon'
-import { STUDIO_TYPES, requestStudioType, useStudioType } from '../components/xcreate/studio-type'
+import { STUDIO_TYPES, requestStudioType, useStudioType, type StudioType } from '../components/xcreate/studio-type'
 
-export default function StudioTypeBar() {
+export default function StudioTypeBar({ initial = null }: { initial?: StudioType | null } = {}) {
   const { lang, t } = useLang()
-  const active = useStudioType()
+  const active = useStudioType(initial)
   const row = useRef<HTMLElement>(null)
   const [more, setMore] = useState({ left: false, right: false })
   // On a phone the row scrolls and the last types start past the edge: keep
