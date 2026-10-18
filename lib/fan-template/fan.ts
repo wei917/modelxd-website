@@ -35,6 +35,19 @@ export type FanOptions = {
   scale?: number
   /** Blades reshaped to one straight width (output px), just wider than the person. */
   bladeWidth: number
+  /** Hub to blade tip (output px): the blade ends inside the frame in a
+   *  rounded tip, as the reference's ceiling fan does (owner, Oct 18: the
+   *  blades were too long). It must reach past the person's feet: beyond the
+   *  tip the change of take has no blade over it (only floor there, which is
+   *  the same in every take). Unset: as long as the picture's blades. */
+  length?: number
+  /** How far the round end reaches back from the tip (px); the blade's half
+   *  width makes it a semicircle. Default 0.6 of the half width. */
+  tip?: number
+  /** The blades' material, a flat picture of it (the user's choice, owner
+   *  Oct 18), painted on the blades past the hub, its height along the blade;
+   *  the hub keeps the picture's chrome. Unset: the picture's own blades. */
+  bladeTexture?: Buffer
   warpFrom?: number; warpFull?: number
   /** When the fan starts turning (s), seconds per full turn, spin-up time constant. */
   start: number; period: number; ramp?: number
@@ -129,6 +142,19 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
     if (hRef <= 0 || hWant <= 0) return aDeg
     return blades[j] + delta * (blend * (hRef / hWant) + (1 - blend))
   }
+  const tipA = o.bladeWidth / 2, tipB = o.tip ?? tipA * 0.6
+  // The user's material: where the hub disc ends (every angle still opaque
+  // inside it), and the picture, sampled across and along the blade.
+  let hubOut = 0
+  if (o.bladeTexture) {
+    for (let r = 1; r < half; r++) {
+      let all = true
+      for (let a = 0; a < 360 && all; a += 2) all = alphaAt(half + r * Math.cos(a * Math.PI / 180), half + r * Math.sin(a * Math.PI / 180)) >= 128
+      if (!all) { hubOut = r * scale; break }
+    }
+  }
+  const material = o.bladeTexture ? await sharp(o.bladeTexture).removeAlpha().resize(256, 768, { fit: 'cover' }).raw().toBuffer({ resolveWithObject: true }) : null
+  const reach = (o.length ?? ROWS) - hubOut
   const sharpTex = new Float32Array(ROWS * COLS * 4)
   for (let r = 0; r < ROWS; r++) {
     const rr = r / scale
@@ -142,6 +168,30 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
         if (x < 0 || y < 0 || x >= FN || y >= FN || w === 0) continue
         const i = (y * FN + x) * 4, al = fan[i + 3] / 255
         R += w * fan[i] * al; G += w * fan[i + 1] * al; B += w * fan[i + 2] * al; A += w * al
+      }
+      if ((o.length || material) && A > 0) {
+        let d = 180
+        for (const b of blades) { const x = ((c / STEP - b) % 360 + 540) % 360 - 180; if (Math.abs(x) < Math.abs(d)) d = x }
+        const across = r * Math.sin(d * Math.PI / 180), along = r * Math.cos(d * Math.PI / 180)
+        // The material, past the hub (alpha stays the picture's).
+        if (material && r > hubOut) {
+          const mw = material.info.width, mh = material.info.height
+          const tx = Math.min(mw - 1, Math.max(0, Math.round((across / o.bladeWidth + 0.5) * (mw - 1))))
+          const ty = Math.min(mh - 1, Math.max(0, Math.round((along - hubOut) / reach * (mh - 1))))
+          const q = (ty * mw + tx) * 3
+          R = material.data[q] * A; G = material.data[q + 1] * A; B = material.data[q + 2] * A
+        }
+        // The tip: the blade ends `length` along the nearest blade's centre
+        // line in a half-ellipse `tip` px long (a paddle's round end; owner,
+        // Oct 18: "rounder, not so square"), with a one-pixel soft edge.
+        const y = along - ((o.length ?? Infinity) - tipB)
+        if (y > 0) {
+          const u = Math.abs(across)
+          const f = (u / tipA) ** 2 + (y / tipB) ** 2 - 1
+          const g = Math.hypot(2 * u / (tipA * tipA), 2 * y / (tipB * tipB)) || 1
+          const m = Math.min(1, Math.max(0, 0.5 - f / g))
+          R *= m; G *= m; B *= m; A *= m
+        }
       }
       const p = (r * COLS + c) * 4
       sharpTex[p] = R; sharpTex[p + 1] = G; sharpTex[p + 2] = B; sharpTex[p + 3] = A
@@ -223,7 +273,8 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
             fB += w * (tex[i00 + 2] * w00 + tex[i01 + 2] * w01 + tex[i10 + 2] * w10 + tex[i11 + 2] * w11)
           }
           if (fA > 0) {
-            const m = sheen[i], cap = 255 * fA
+            // A material keeps a third of the chrome's moving light (its own colours stay true).
+            const m = material && r > hubOut ? 1 + (sheen[i] - 1) / 3 : sheen[i], cap = 255 * fA
             R = Math.min(cap, fR * m) + (1 - fA) * R; G = Math.min(cap, fG * m) + (1 - fA) * G; B = Math.min(cap, fB * m) + (1 - fA) * B
           }
         }

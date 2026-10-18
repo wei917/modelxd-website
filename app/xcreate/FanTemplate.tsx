@@ -2,14 +2,17 @@
 // 風扇變裝 (fan outfit change), the template in 同款's tab (Oct 18; owner:
 // "the template card should be in 做同款 tab and a new section besides 影片連結
 // and popular videos"; "template needs to be more accurate"). The user gives
-// their photo, five outfits, a caption and the music; the run is the method
-// in lib/fan-template (one fixed set, our own fan), followed here until the
-// video is on its Library item. A run opens again at /xcreate?fan=<id>.
+// one front photo (the side views are drawn), 2 to 5 outfits, optionally the
+// fan's blades, the sofa and the carpet (words or a reference photo; owner:
+// "users can describe or upload reference images") and the music. No
+// captions (owner: "users can use their own app to do that"). The run is the
+// method in lib/fan-template, followed here until the video is on its Library
+// item. A run opens again at /xcreate?fan=<id>.
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/i18n'
 import { pendingAttachment, commitAttachments } from '../components/AttachmentButton'
-import { DEFAULT_OUTFITS, DEFAULT_TITLE, DEMO, FAN_ABOUT_CENTS, FAN_MUSIC_STYLES, FAN_RESERVE_CENTS, OUTFITS, type FanMusic, type FanMusicStyle } from '@/lib/fan-template/recipe'
+import { DEFAULT_OUTFITS, DEMO, FAN_MUSIC_STYLES, MAX_OUTFITS, MIN_OUTFITS, fanQuote, type FanMusic, type FanMusicStyle, type FanScene } from '@/lib/fan-template/recipe'
 import type { FanView } from '@/lib/fan-template/job'
 import { fanCopy } from './fan-copy'
 
@@ -20,8 +23,13 @@ export const FAN_CARD_VIDEO = `${LANDING}/${DEMO.card}`
 export const FAN_POSTER = `${LANDING}/${DEMO.poster}`
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
 const tick = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+const PHOTO_TYPES = 'image/jpeg,image/png,image/webp'
 
-type Draft = { outfits: string[]; title: string; music: FanMusic['choice']; style: FanMusicStyle; consent: boolean }
+type SceneKey = 'blade' | 'sofa' | 'carpet'
+const SCENE: SceneKey[] = ['blade', 'sofa', 'carpet']
+/** An outfit row; the id keeps its photo with it when rows come and go. */
+type Row = { id: number; text: string }
+type Draft = { rows: Row[]; scene: Record<SceneKey, string>; music: FanMusic['choice']; style: FanMusicStyle; consent: boolean }
 type Picked = { url: string; name: string; file: File }
 
 export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack }: {
@@ -35,19 +43,25 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
   const { lang } = useLang()
   const c = fanCopy(lang)
   const [d, setD] = useState<Draft>(() => {
-    const base: Draft = { outfits: DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en, title: DEFAULT_TITLE[lang] ?? DEFAULT_TITLE.en, music: 'style', style: 'pop', consent: false }
+    const base: Draft = { rows: (DEFAULT_OUTFITS[lang] ?? DEFAULT_OUTFITS.en).map((text, id) => ({ id, text })), scene: { blade: '', sofa: '', carpet: '' }, music: 'style', style: 'pop', consent: false }
     if (typeof window === 'undefined') return base
     try {
       const saved = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null')
-      if (saved && typeof saved === 'object') return {
-        ...base, ...saved,
-        outfits: Array.from({ length: OUTFITS }, (_, i) => typeof saved.outfits?.[i] === 'string' ? saved.outfits[i] : base.outfits[i]),
-        consent: false,
+      if (saved && typeof saved === 'object') {
+        const texts: string[] | null = Array.isArray(saved.outfits) ? saved.outfits.filter((t: unknown) => typeof t === 'string').slice(0, MAX_OUTFITS) : null
+        return {
+          ...base,
+          ...(texts && texts.length >= MIN_OUTFITS ? { rows: texts.map((text, id) => ({ id, text })) } : {}),
+          scene: { blade: String(saved.scene?.blade ?? ''), sofa: String(saved.scene?.sofa ?? ''), carpet: String(saved.scene?.carpet ?? '') },
+          ...(['style', 'mine', 'none'].includes(saved.music) ? { music: saved.music } : {}),
+          ...(FAN_MUSIC_STYLES.includes(saved.style) ? { style: saved.style } : {}),
+        }
       }
     } catch { /* storage unavailable */ }
     return base
   })
   const set = (patch: Partial<Draft>) => setD(prev => ({ ...prev, ...patch }))
+  const nextId = useRef(Math.max(...d.rows.map(r => r.id)) + 1)
   const [files, setFiles] = useState<Record<string, Picked>>({})
   const [view, setView] = useState<FanView | null>(null)
   const [missing, setMissing] = useState(false)
@@ -58,7 +72,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
 
   useEffect(() => {
     // The photos are never kept; the words and picks follow the tab.
-    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ outfits: d.outfits, title: d.title, music: d.music, style: d.style })) } catch { /* storage unavailable */ }
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ outfits: d.rows.map(r => r.text), scene: d.scene, music: d.music, style: d.style })) } catch { /* storage unavailable */ }
   }, [d])
 
   // Follow a run: the first look even in a background tab, then only while
@@ -107,6 +121,13 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
     setFiles(prev => { if (prev[key]) URL.revokeObjectURL(prev[key].url); return { ...prev, [key]: { url: URL.createObjectURL(file), name: file.name, file } } })
   }
   const unpick = (key: string) => setFiles(prev => { if (prev[key]) URL.revokeObjectURL(prev[key].url); const next = { ...prev }; delete next[key]; return next })
+  const addRow = () => { if (d.rows.length < MAX_OUTFITS) set({ rows: [...d.rows, { id: nextId.current++, text: '' }] }) }
+  const removeRow = (id: number) => { if (d.rows.length > MIN_OUTFITS) { unpick(`o${id}`); set({ rows: d.rows.filter(r => r.id !== id) }) } }
+
+  // What the run will be: the parts of the scene the user filled in, its
+  // price and length (lib/fan-template/recipe.ts fanQuote).
+  const scene: FanScene = Object.fromEntries(SCENE.filter(k => d.scene[k].trim() || files[`s-${k}`]).map(k => [k, { text: d.scene[k].trim() }]))
+  const quote = fanQuote(d.rows.length, scene)
 
   const start = async () => {
     if (starting) return
@@ -114,7 +135,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
     const errs = c.errors
     if (!files.front) { setError({ text: errs.missing_photo, topUp: false }); return }
     if (!d.consent) { setError({ text: errs.consent, topUp: false }); return }
-    if (d.outfits.some(o => !o.trim())) { setError({ text: errs.missing_outfit, topUp: false }); return }
+    if (d.rows.some(r => !r.text.trim())) { setError({ text: errs.missing_outfit, topUp: false }); return }
     if (d.music === 'mine' && !files.track) { setError({ text: errs.no_track, topUp: false }); return }
     setStarting(true); setError(null)
     try {
@@ -127,8 +148,9 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
       const res = await fetch('/api/xcreate/remake/fan', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          front: at.front, side: at.side, consent: true, title: d.title, language: lang, cardTitle: c.name,
-          outfits: d.outfits.map((text, i) => ({ text, ...(at[`o${i}`] ? { photo: at[`o${i}`] } : {}) })),
+          front: at.front, consent: true, language: lang, cardTitle: c.name,
+          outfits: d.rows.map(r => ({ text: r.text, ...(at[`o${r.id}`] ? { photo: at[`o${r.id}`] } : {}) })),
+          scene: Object.fromEntries(SCENE.map(k => [k, { text: d.scene[k], ...(at[`s-${k}`] ? { photo: at[`s-${k}`] } : {}) }])),
           music: { choice: d.music, style: d.style, ...(at.track ? { track: at.track } : {}) },
         }),
       })
@@ -136,7 +158,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
       const body = await res.json().catch(() => ({}))
       if (!res.ok || typeof body?.id !== 'string') {
         const code = String(body?.code ?? '')
-        if (code === 'insufficient_credits') setError({ text: c.insufficient(money(Number(body?.requiredCents) || FAN_RESERVE_CENTS), money(Number(body?.balanceCents) || 0)), topUp: true })
+        if (code === 'insufficient_credits') setError({ text: c.insufficient(money(Number(body?.requiredCents) || quote.reserveCents), money(Number(body?.balanceCents) || 0)), topUp: true })
         else setError({ text: (errs as Record<string, string>)[code] || errs.start_failed, topUp: false })
         return
       }
@@ -150,11 +172,18 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
     }
   }
 
-  const photoTile = (key: string, label: string, accept = 'image/jpeg,image/png,image/webp') =>
+  const photoTile = (key: string, label: string) =>
     <label className={`xcs-fan-photo${files[key] ? ' is-on' : ''}`}>
       <span className="xcs-remake-photo-tile">{files[key] ? <img src={files[key].url} alt="" /> : '+'}</span>
       <span>{label}</span>
-      <input type="file" accept={accept} hidden onChange={e => { pick(key, e.target.files?.[0]); e.target.value = '' }} />
+      <input type="file" accept={PHOTO_TYPES} hidden onChange={e => { pick(key, e.target.files?.[0]); e.target.value = '' }} />
+    </label>
+  /** A row's picture: the place for a photo first, the words beside it. */
+  const rowPhoto = (key: string, label: string) => files[key]
+    ? <span className="xcs-fan-rowpic"><img src={files[key].url} alt="" /><button type="button" aria-label={c.outfitPhotoClear} onClick={() => unpick(key)}>×</button></span>
+    : <label className="xcs-fan-rowpic is-empty" title={label}>
+      <span aria-hidden="true">+</span><span className="xcs-fan-sr">{label}</span>
+      <input type="file" accept={PHOTO_TYPES} hidden onChange={e => { pick(key, e.target.files?.[0]); e.target.value = '' }} />
     </label>
 
   const header = <>
@@ -197,11 +226,8 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
 
     <section className="xcs-remake-sec">
       <h2 className="xcs-remake-step"><b aria-hidden="true">01</b>{c.photosLabel}</h2>
-      <div className="xcs-fan-photos">
-        {photoTile('front', c.front)}
-        {photoTile('side', c.side)}
-      </div>
-      <p className="xcs-film-note">{c.sideNote}</p>
+      <div className="xcs-fan-photos">{photoTile('front', c.front)}</div>
+      <p className="xcs-film-note">{c.frontNote}</p>
       <label className="xcs-remake-consent">
         <input type="checkbox" checked={d.consent} onChange={e => set({ consent: e.target.checked })} />
         <span>{c.consent}</span>
@@ -210,22 +236,29 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
 
     <section className="xcs-remake-sec">
       <h2 className="xcs-remake-step"><b aria-hidden="true">02</b>{c.outfitsLabel}</h2>
-      <ol className="xcs-fan-outfits">
-        {d.outfits.map((text, i) => <li key={i}>
-          <span className="xcs-fan-outfit-n">{c.outfit(i + 1)}</span>
-          <input className="xcs-remake-input" value={text} maxLength={60} placeholder={c.outfitPlaceholder} aria-label={c.outfit(i + 1)}
-            onChange={e => { const v = e.target.value; setD(prev => ({ ...prev, outfits: prev.outfits.map((o, k) => k === i ? v : o) })) }} />
-          {files[`o${i}`]
-            ? <span className="xcs-fan-outfit-pic"><img src={files[`o${i}`].url} alt="" /><button type="button" aria-label={c.outfitPhotoClear} onClick={() => unpick(`o${i}`)}>×</button></span>
-            : <label className="xcs-fan-outfit-add">+ {c.outfitPhoto}<input type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => { pick(`o${i}`, e.target.files?.[0]); e.target.value = '' }} /></label>}
+      <ol className="xcs-fan-rows">
+        {d.rows.map((row, i) => <li key={row.id}>
+          <span className="xcs-fan-row-n">{c.outfit(i + 1)}</span>
+          {d.rows.length > MIN_OUTFITS && <button type="button" className="xcs-fan-row-x" aria-label={c.removeOutfit(i + 1)} onClick={() => removeRow(row.id)}>×</button>}
+          {rowPhoto(`o${row.id}`, c.outfitPhoto)}
+          <input className="xcs-remake-input" value={row.text} maxLength={60} placeholder={c.outfitPlaceholder} aria-label={c.outfit(i + 1)}
+            onChange={e => { const v = e.target.value; setD(prev => ({ ...prev, rows: prev.rows.map(r => r.id === row.id ? { ...r, text: v } : r) })) }} />
         </li>)}
       </ol>
+      {d.rows.length < MAX_OUTFITS && <button type="button" className="xcs-fan-add" onClick={addRow}>+ {c.addOutfit}</button>}
     </section>
 
     <section className="xcs-remake-sec">
-      <h2 className="xcs-remake-step"><b aria-hidden="true">03</b>{c.captionLabel}</h2>
-      <input className="xcs-remake-input" value={d.title} maxLength={30} aria-label={c.captionLabel} onChange={e => set({ title: e.target.value })} />
-      <p className="xcs-film-note">{c.captionNote}</p>
+      <h2 className="xcs-remake-step"><b aria-hidden="true">03</b>{c.sceneLabel}</h2>
+      <ul className="xcs-fan-rows">
+        {SCENE.map(k => <li key={k}>
+          <span className="xcs-fan-row-n">{c.scene[k]}</span>
+          {rowPhoto(`s-${k}`, c.scenePhoto)}
+          <input className="xcs-remake-input" value={d.scene[k]} maxLength={60} placeholder={c.scenePlaceholder[k]} aria-label={c.scene[k]}
+            onChange={e => { const v = e.target.value; setD(prev => ({ ...prev, scene: { ...prev.scene, [k]: v } })) }} />
+        </li>)}
+      </ul>
+      <p className="xcs-film-note">{c.sceneNote}</p>
     </section>
 
     <section className="xcs-remake-sec">
@@ -244,9 +277,9 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
     </section>
 
     {error && <p className="xcs-film-error" role="alert">{error.text} {error.topUp && <a href="/profile">{c.topUp}</a>}</p>}
-    <p className="xcs-film-note xcs-remake-makenote">{c.makeNote(money(FAN_RESERVE_CENTS))}</p>
+    <p className="xcs-film-note xcs-remake-makenote">{c.makeNote(money(quote.reserveCents))}</p>
     <div className="xcs-remake-bar">
-      <p className="xcs-remake-bar-sum"><b>{c.about(money(FAN_ABOUT_CENTS))}</b><span>{c.name}</span></p>
+      <p className="xcs-remake-bar-sum"><b>{c.about(money(quote.aboutCents))}</b><span>{c.name} · {c.length(quote.seconds)}</span></p>
       <button className="xcs-primary" disabled={starting} onClick={() => void start()}>{starting ? c.starting : signedIn ? c.make : c.signIn}</button>
     </div>
   </section>

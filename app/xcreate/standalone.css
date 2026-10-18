@@ -527,21 +527,29 @@
 .xcs-fan-photo { display: grid; justify-items: center; gap: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .xcs-fan-photo .xcs-remake-photo-tile { width: 88px; height: 112px; }
 .xcs-fan-photo.is-on .xcs-remake-photo-tile { border-style: solid; border-color: var(--red); }
-.xcs-fan-outfits { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.xcs-fan-outfits li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'n n' 'text pic'; gap: 6px 10px; align-items: center; }
-.xcs-fan-outfit-n { grid-area: n; font-size: 12.5px; font-weight: 700; color: var(--muted2); }
-.xcs-fan-outfits .xcs-remake-input { grid-area: text; }
-.xcs-fan-outfit-add { grid-area: pic; display: inline-flex; align-items: center; min-height: 46px; padding: 0 12px; border: 1.5px dashed var(--border2); border-radius: 10px; font-size: 12.5px; font-weight: 600; color: var(--muted2); white-space: nowrap; cursor: pointer; }
-.xcs-fan-outfit-add:hover { border-color: var(--red); color: var(--red); }
-.xcs-fan-outfit-pic { grid-area: pic; position: relative; width: 46px; height: 46px; }
-.xcs-fan-outfit-pic img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
-.xcs-fan-outfit-pic button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--xc-ink, #242724); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
+/* Outfit and scene rows (owner, Oct 18: "photo placeholder first and then
+   text box next to it"): the row's name (and its ✕ when it can go) above,
+   the photo place, then the words. */
+.xcs-fan-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.xcs-fan-rows li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; grid-template-areas: 'n n x' 'pic text text'; gap: 6px 10px; align-items: center; }
+.xcs-fan-row-n { grid-area: n; font-size: 12.5px; font-weight: 700; color: var(--muted2); }
+.xcs-fan-row-x { grid-area: x; width: 28px; height: 28px; margin: -6px -4px -6px 0; border: 0; border-radius: 50%; background: none; color: var(--muted2); font-size: 17px; line-height: 1; cursor: pointer; }
+.xcs-fan-row-x:hover { background: var(--xc-soft, #f1f2ec); color: var(--red); }
+.xcs-fan-rows .xcs-remake-input { grid-area: text; }
+.xcs-fan-rowpic { grid-area: pic; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 12px; }
+.xcs-fan-rowpic.is-empty { border: 1.5px dashed var(--border2); background: var(--xc-paper, #fff); color: var(--red); font-size: 24px; font-weight: 300; cursor: pointer; }
+.xcs-fan-rowpic.is-empty:hover { border-color: var(--red); }
+.xcs-fan-rowpic img { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+.xcs-fan-rowpic button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--xc-ink, #242724); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; }
+.xcs-fan-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.xcs-fan-add { justify-self: start; min-height: 44px; padding: 0 16px; border: 1.5px dashed var(--border2); border-radius: 12px; background: none; color: var(--muted2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.xcs-fan-add:hover { border-color: var(--red); color: var(--red); }
+/* Room between the last section and the make bar (owner, Oct 18: "more
+   space between Music row and it"). */
+.xcs-fan > .xcs-remake-makenote { margin: 48px 0 12px; }
 .xcs-fan-progress { position: relative; height: 10px; border-radius: 999px; background: var(--xc-soft, #f1f2ec); overflow: hidden; }
 .xcs-fan-progress b { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--red); transition: width .8s ease; }
 .xcs-fan-again { justify-self: center; }
-@media (max-width: 420px) {
-  .xcs-fan-outfit-add { padding: 0 10px; font-size: 12px; }
-}
 
 /* The remake as it is made (Oct 17): its state and clock, the stretch's
    shots filling in red step by step, then the video. */
