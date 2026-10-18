@@ -15,6 +15,22 @@ don't open a chat about love — you visit 月老廟. The street page lists the
 temples; each temple is one divination method with its own ink-wash cover
 (house art language: painterly, no robots, no AI-slop).
 
+## The room is in the address (`?t=`, Oct 18)
+
+Owner, after X創作's tabs went into `?type=`: "should XTell follow this
+design too?" → yes; "don't worry about old users or old ads" (old `#bazi`
+links simply open the street). A room is `?t=<room>` on the street's page
+(`/?t=bazi` on the door, `/xtell?t=bazi` on www), the form shared links
+already had, so the server draws the room at first paint (an ad's room link
+used to show the street until the page woke up) and the top bar marks it
+there too. `lib/xtell-room.ts`: `goToRoom(key | null)` opens a room or the
+street in place with a history step (Back returns to the street, as with
+the hash), and `opensInPlace()` lets a plain click on a room link (top bar,
+hero, wordmark) do that instead of reloading; Next keeps `useSearchParams`
+in step with the browser's own history calls. The street reads the room
+from `useSearchParams`; a change after the page opened is a navigation (it
+drops `?reading=` and the guide's suggestion), the first look is not.
+
 ## Two front doors (Sep 23–24)
 
 `xtell.modelxd.com` serves the same app through `lib/site.ts` + `proxy.ts`
@@ -43,14 +59,14 @@ like `.xtell-explorer-container`) and its temples are centered when they all
 fit (about 1500px wide and up), from the left with the › arrow when they do
 not: a centered row that overflows loses its first temples off the left
 edge, where no scroll reaches (owner, Oct 4). `XTellBaseProvider` (`app/components/xtell/XTellBase.tsx`)
-gives the links their base: `''` on the door (`/#bazi`), `/xtell` on www
-(`/xtell#bazi`, `templeHref`/`doorHome` in `lib/site.ts`). The door's footer
+gives the links their base: `''` on the door (`/?t=bazi`), `/xtell` on www
+(`/xtell?t=bazi`, `templeHref`/`doorHome` in `lib/site.ts`). The door's footer
 too (owner, Oct 4: "the footer is gone"), the door's colours
 (`.xtell-site.is-in-www`), www's fonts and title. Inside a temple, the
-sidebar's X先知 link goes back to the street in place (Nav.tsx: a Link push
-to the same path dropped the hash without a hashchange). Guests get the free
+sidebar's X先知 link goes back to the street in place (Nav.tsx, `goToRoom`
+in `lib/xtell-room.ts`). Guests get the free
 chart as on the door (the sidebar link is no longer protected) and sign in at
-the first question; the sign-in comes back to the temple (`/xtell#bazi`,
+the first question; the sign-in comes back to the temple (`/xtell?t=bazi`,
 AuthModal). The settings and saved visits are the X先知 tab of www's
 `/profile` (opened by `/profile#xtell-…`, the links in 今日運勢 and the
 personality card); a visit opens on `/xtell?reading=<id>`. `proxy.ts` keeps
@@ -83,7 +99,7 @@ not save it (`save()` returns null without an account, so there is no
 `readingId`). Sending a question to a teacher, or adding one, opens the
 ordinary sign-in dialog (closable; the chart and the question stay). After
 signing in the visitor comes back to the same room (the dialog keeps the
-hash), but the form starts again: details typed before are not carried
+query, `?t=`), but the form starts again: details typed before are not carried
 over, on purpose, to keep it simple.
 
 Two rooms stay sign-in first, because their free step calls a model on
@@ -677,7 +693,7 @@ room. It never computes anything personal and never sends a reading.
   action; a decline gives none; output that is not the JSON asked for is a
   502 `assistant_unreadable`, shown as a localised "please ask again".
 - **Handoff** — `lib/xtell-handoff.ts`. A click keeps `{ v, feature,
-  question, at }` in sessionStorage (30 min) and opens `#<temple>`; the room
+  question, at }` in sessionStorage (30 min) and opens `?t=<temple>`; the room
   and the mode are re-derived from the catalog, never read back. The room
   pre-fills the question (composer, or the matter for 籤, 測字 and 起卦) and
   shows it is not sent. Cleared on entering the room or leaving it. Kept in
@@ -793,7 +809,7 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
 1. **Hero** (`app/components/xtell/XTellHero.tsx`, `lib/xtell-hero.ts`). One
    temple at a time over a scenic background: its name, its lead and line
    (the existing `xtell.site.focus.<temple>.*` strings) and a real link in
-   (`/#<temple>`; the button drops a trailing gloss, 夢占い（周公解夢） →
+   (`/?t=<temple>`; the button drops a trailing gloss, 夢占い（周公解夢） →
    「夢占いへ」, so it stays one line on a phone). **Featured per market**:
    the first `HERO_SLIDES` (6) of that market's top-bar order that have art,
    except where `HERO_FEATURED` picks them by hand (Chinese, owner Oct 3:
@@ -811,7 +827,7 @@ design; built by Claude, reviewed by Codex), phone first. Top to bottom:
    zh-Hans, seven); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
    사주 월하노인 타로 점성 해몽 손자병법 (ko); tarot, astrology, dreams, BaZi,
    Yue Lao, fortune cookie (en).
-   - Turns every 7 s, display only: never the address, the hash, a form, a
+   - Turns every 7 s, display only: never the address, a form, a
      reading or a charge. Holds while a mouse is over it, keyboard focus is
      in it or the tab is hidden, and from the start under reduced motion
      (play overrides); any arrow or dot choice pauses it until play.
@@ -1701,8 +1717,8 @@ opens a dialog with a 1080×1350 picture and a link.
   time is dropped** (`dropDates`) so a teacher repeating the birth back cannot
   put it on the picture. The question and the birth form never go on it.
 - **The link**: `https://xtell.modelxd.com/?t=<temple>&ref=<code>&utm_source=share`.
-  `?t=` becomes the room's hash on arrival (a link preview can read a query,
-  not a hash); `ref` is the sharer's referral code (signed-in only, from
+  `?t=` is the room itself, as every room link is since Oct 18 (a link
+  preview can read a query, not a hash); `ref` is the sharer's referral code (signed-in only, from
   `/api/referral`), parked by Nav as any referral link is; `utm_source=share`
   is what the visit log counts. 今日運勢 and 黃曆 link to the street.
 - **Link previews**: `xtellMetadata(lang, temple)` gives `?t=` links the

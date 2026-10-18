@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
 import { useAuthModal } from '../../../lib/AuthModalContext'
 import { useLang } from '../../../lib/i18n'
@@ -14,6 +14,7 @@ import { pinnedFirst } from '../../../lib/xtell-pins'
 import { usePins } from './usePins'
 import { useXTellBase } from './XTellBase'
 import { doorHome, templeHref } from '../../../lib/site'
+import { goToRoom, opensInPlace } from '../../../lib/xtell-room'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
  *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
@@ -42,16 +43,10 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
   const { show } = useAuthModal()
   const face = useFace(user)
   const pathname = usePathname()
-  const [activeTemple, setActiveTemple] = useState<TempleKey | null>(null)
-  useEffect(() => {
-    const sync = () => {
-      const key = window.location.hash.slice(1) as TempleKey
-      setActiveTemple((pathname === '/' || pathname === '/xtell') && DISPLAY_TEMPLES.includes(key) ? key : null)
-    }
-    sync()
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
-  }, [pathname])
+  // The room you are in is ?t= on the street's page (lib/xtell-room.ts), so
+  // the server marks it too.
+  const roomParam = useSearchParams()?.get('t') ?? null
+  const activeTemple: TempleKey | null = (pathname === '/' || pathname === '/xtell') && DISPLAY_TEMPLES.includes(roomParam as TempleKey) ? roomParam as TempleKey : null
   // When the row is wider than the bar (a narrow window, a phone), an arrow
   // on the side that has more temples scrolls it, over a soft fade: without
   // one, a mouse user cannot tell the rest exist (owner, Sep 27). Swiping
@@ -91,7 +86,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
     row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
   }
   // The tab title follows the language and the place: the explorer, a
-  // temple (from the hash), the account page, the legal pages. The server's
+  // temple (?t=), the account page, the legal pages. The server's
   // metadata is already this language's explorer title (lib/xtell-meta.ts)
   // and sits in <head> before first paint (next.config htmlLimitedBots), so
   // nothing overwrites a title set here; no timed re-sets are needed.
@@ -101,8 +96,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
     const brand = t('xtell.site.brand')
     const compute = () => {
       if (pathname === '/' || pathname === '/xtell') {
-        const key = window.location.hash.slice(1) as TempleKey
-        return DISPLAY_TEMPLES.includes(key) ? `${t('xtell.site.focus.' + key + '.name')} | ${brand}` : t('xtell.site.tab')
+        return activeTemple ? `${t('xtell.site.focus.' + activeTemple + '.name')} | ${brand}` : t('xtell.site.tab')
       }
       if (pathname === '/profile') return `${t('xtell.site.account')} | ${brand}`
       if (pathname === '/terms') return `${t('xtell.site.title.terms')} | ${brand}`
@@ -110,15 +104,19 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
       if (pathname === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
       return null
     }
-    const apply = () => { const title = compute(); if (title) document.title = title }
-    apply()
-    window.addEventListener('hashchange', apply)
-    return () => window.removeEventListener('hashchange', apply)
-  }, [lang, t, pathname, embedded])
+    const title = compute()
+    if (title) document.title = title
+  }, [lang, t, pathname, embedded, activeTemple])
   const strip = (
     <div ref={wrap} className="xtell-temple-wrap">
       <nav ref={row} className="xtell-temple-nav" aria-label={t('xtell.site.navigation')}>
         {order.map((key, i) => <a key={key} href={templeHref(base, key)}
+          onClick={e => {
+            if (!opensInPlace(e, doorHome(base))) return
+            e.preventDefault()
+            goToRoom(key)
+            window.scrollTo({ top: 0, behavior: 'instant' })
+          }}
           aria-label={t('xtell.site.focus.' + key + '.name')}
           aria-current={activeTemple === key ? 'page' : undefined}
           data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
@@ -147,10 +145,10 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
       }}>{t('xtell.site.skip')}</a>
       <div className="xtell-nav-inner">
         {/* The wordmark is the way back to the street. Inside a temple it
-            clears the hash in place instead of reloading the page. */}
+            leaves the room in place instead of reloading the page. */}
         <a href={doorHome(base)} aria-label="XTell" onClick={e => {
-          const p = window.location.pathname
-          if ((p === '/' || p === '/xtell') && window.location.hash) { e.preventDefault(); window.location.hash = ''; window.scrollTo({ top: 0 }) }
+          if (!activeTemple || !opensInPlace(e, doorHome(base))) return
+          e.preventDefault(); goToRoom(null); window.scrollTo({ top: 0 })
         }}><XTellMark /></a>
         {/* Every temple, one compact row after the wordmark (owner, Sep 27).
             The avatar on the right IS the account link (owner, Sep 24). */}

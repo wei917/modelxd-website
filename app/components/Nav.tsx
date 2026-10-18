@@ -14,6 +14,7 @@ import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
 import XTellNav from './xtell/XTellNav'
 import { useFace } from '../../lib/use-face'
+import { goToRoom } from '../../lib/xtell-room'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const ALL_NAV_LINKS = [
@@ -430,13 +431,12 @@ export default function Nav() {
       show(href)
       return
     }
-    // X先知 from inside one of its temples (/xtell#bazi) goes back to the
-    // street in place, as the door's wordmark does: a Link push to the same
-    // path drops the hash without a hashchange, and the temple stayed open.
-    if (href === '/xtell' && pathname === '/xtell' && window.location.hash) {
+    // X先知 from inside one of its temples (/xtell?t=bazi) goes back to the
+    // street in place, as the door's wordmark does (lib/xtell-room.ts).
+    if (href === '/xtell' && pathname === '/xtell' && new URLSearchParams(window.location.search).has('t')) {
       e.preventDefault()
       setMenuOpen(false)
-      window.location.hash = ''
+      goToRoom(null)
       window.scrollTo({ top: 0 })
     }
   }
