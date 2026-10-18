@@ -836,7 +836,8 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
           <summary>{c.creatorPrompt} · @{readExample.handle}</summary>
           <p>{readExample.prompt}</p>
         </details>}
-        <p className="xcs-remake-left">{c.left(d.result.left)}</p>
+        {/* A kept read reopened from its link does not know today's count (-1). */}
+        {d.result.left >= 0 && <p className="xcs-remake-left">{c.left(d.result.left)}</p>}
       </article>
 
       <section className="xcs-remake-sec" aria-labelledby="xcs-remake-s2">
