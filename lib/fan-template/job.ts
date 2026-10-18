@@ -20,7 +20,7 @@ import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
 import { finishOverlay, joinOpening, personSpan, pressTime } from './cut'
 import {
-  BLADE, HOLDING, PLATE, PRESS_DEFAULT, REMOTE, ROLL, SHEET, TIMING,
+  BLADE, DEFAULT_BLADE, HOLDING, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, ROLL, SHEET, TIMING,
   bladePrompt, fanMusicPrompt, fanQuote, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
 } from './recipe'
 
@@ -295,13 +295,15 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const W = 720, H = 1280
     const [x0, x1] = job.span
     // The hub over the person; the blades are BLADE's (owner: 360 px wide,
-    // the tip at 1200 px, a round end), in the user's material if any.
+    // the tip at 1200 px, a round end), walnut with a gold hub unless the
+    // user gave their own material.
     const hubX = Math.round(W * (x0 + x1) / 2)
     const takes = [openingF, ...clipF]
     const overlay = path.join(tmp, 'fan.mp4')
     await renderFanOverlay({
       out: overlay, ffmpeg: ff, fan: await get(sb, FAN_ASSET.bucket, FAN_ASSET.path), W, H, duration: end,
-      hub: [hubX, BLADE.hubY], bladeWidth: BLADE.width, length: BLADE.length, bladeTexture: blade,
+      hub: [hubX, BLADE.hubY], bladeWidth: BLADE.width, length: BLADE.length, hubTint: HUB_GOLD,
+      bladeTexture: blade ?? await get(sb, DEFAULT_BLADE.bucket, DEFAULT_BLADE.path),
       start: fanStart, period, takes: takes.map((video, k) => ({ video, start: takeStart[k] })),
     })
     const cut = path.join(tmp, 'cut.mp4')

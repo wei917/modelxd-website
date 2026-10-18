@@ -14,18 +14,28 @@ export const service = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,
 
 export const STATUS_BUCKET = 'xcreate-user-files'
 export const B = { image: 'xcreate-ai-images', video: 'xcreate-ai-videos', audio: 'xcreate-ai-audio', userImage: 'xcreate-user-images', userAudio: 'xcreate-user-files' }
+/** Storage calls ride out a network blip: five tries over about 15 s (Oct
+ *  18: a demo run lost a paid clip to one "fetch failed" that outlasted three
+ *  tries in 2.4 s). */
+const TRIES = 5
+const pause = (attempt: number) => new Promise(r => setTimeout(r, 1000 * 2 ** (attempt - 1)))
 export async function put(sb: SupabaseClient, bucket: string, p: string, buf: Buffer, type: string) {
   for (let attempt = 1; ; attempt++) {
-    const { error } = await sb.storage.from(bucket).upload(p, buf, { contentType: type, upsert: true })
+    const { error } = await sb.storage.from(bucket).upload(p, buf, { contentType: type, upsert: true }).catch((e: Error) => ({ error: e }))
     if (!error) return p
-    if (attempt >= 3) throw new Error(`upload ${p}: ${error.message}`)
-    await new Promise(r => setTimeout(r, 800 * attempt))
+    if (attempt >= TRIES) throw new Error(`upload ${p}: ${error.message}`)
+    await pause(attempt)
   }
 }
 export async function get(sb: SupabaseClient, bucket: string, p: string): Promise<Buffer> {
-  const { data, error } = await sb.storage.from(bucket).download(p)
-  if (error || !data) throw new Error(`download ${p}: ${error?.message ?? 'missing'}`)
-  return Buffer.from(await data.arrayBuffer())
+  for (let attempt = 1; ; attempt++) {
+    const { data, error } = await sb.storage.from(bucket).download(p).catch((e: Error) => ({ data: null, error: e }))
+    if (data && !error) return Buffer.from(await data.arrayBuffer())
+    // A file that is not there will not appear by waiting.
+    const missing = !error || /not found|does not exist|404/i.test(error.message)
+    if (missing || attempt >= TRIES) throw new Error(`download ${p}: ${error?.message ?? 'missing'}`)
+    await pause(attempt)
+  }
 }
 /** A user's photo as the JPEG the picture models are told it is: upright
  *  (a phone's EXIF turn applied) and at most 2048 px. */
