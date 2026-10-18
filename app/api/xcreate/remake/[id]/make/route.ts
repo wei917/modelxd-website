@@ -124,6 +124,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const sb = service()
   const job = await loadJob(sb, user.id, id)
   if (!job) return Response.json({ job: null })
-  if (isActive(job.status) && job.leaseUntil < Date.now()) after(() => driveMake(user.id, id))
+  if (isActive(job.status) && !job.settled && job.leaseUntil < Date.now()) after(() => driveMake(user.id, id))
   return Response.json({ job: await makeView(sb, job) })
 }
