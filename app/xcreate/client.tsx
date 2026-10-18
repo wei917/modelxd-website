@@ -52,6 +52,7 @@ import { perImageRate, perSecondRate } from '../../lib/model-facts'
 import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video' | 'audio'
+const isUuid = (v: string | null): v is string => !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting' | 'workflow'
 
 // Pricing + capabilities — see docs/ai_models-schema.md.
@@ -1106,7 +1107,13 @@ function CreateStudio() {
   const [needsTopUp,     setNeedsTopUp]     = useState(false)
   const [balanceCents,   setBalanceCents]   = useState<number | null>(null)
   // The standalone site's main offering is video; open directly into it.
-  const [mode,           setMode]           = useState<Mode>('video')
+  // The address decides the first paint (Oct 18; owner: "why there is no url
+  // change when I change tab"): the tab is ?type=<tab>, and a read, a
+  // template run or a film opens on its own type, so the server draws the
+  // right tab instead of 影片 until the page wakes up.
+  const firstType: StudioType | null = searchFanParam || searchRemakeParam ? 'remake'
+    : searchFilmParam ? 'film' : isStudioType(searchTypeParam) ? searchTypeParam : null
+  const [mode,           setMode]           = useState<Mode>(firstType && firstType !== 'film' && firstType !== 'remake' ? firstType : 'video')
   const [prompt,         setPrompt]         = useState('')
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
@@ -3452,10 +3459,12 @@ function CreateStudio() {
     // Strip ?id=... from the URL so refreshing doesn't re-load the
     // run we just abandoned, and so the address bar matches the fresh
     // setup state.
-    if (typeof window !== 'undefined' && window.location.search) {
+    if (typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('type') !== mode) {
       urlClearedByCodeRef.current = true
       const url = new URL(window.location.href)
       url.search = ''
+      url.searchParams.set('type', mode)
+      typeUrlRef.current = mode
       window.history.replaceState({}, '', url.toString())
     }
   }
@@ -3483,20 +3492,21 @@ function CreateStudio() {
   // server-side and waits in the Library.
   // The fifth type, the film, has its own composer and view (FilmStudio);
   // the studio's own state waits underneath it. A film is ?film=<id>.
-  const [filmOpen, setFilmOpen] = useState(false)
-  const [filmId, setFilmId] = useState<string | null>(null)
+  const [filmOpen, setFilmOpen] = useState(firstType === 'film')
+  const [filmId, setFilmId] = useState<string | null>(() => isUuid(searchFilmParam) ? searchFilmParam.toLowerCase() : null)
   // The sixth type, 同款 (Remake, Oct 10), has its own page too (RemakeStudio).
-  const [remakeOpen, setRemakeOpen] = useState(false)
+  const [remakeOpen, setRemakeOpen] = useState(firstType === 'remake')
   // A kept read is ?remake=<id> (Oct 17), set once a read is saved.
-  const [remakeId, setRemakeId] = useState<string | null>(null)
+  const [remakeId, setRemakeId] = useState<string | null>(() => isUuid(searchRemakeParam) ? searchRemakeParam.toLowerCase() : null)
   // The 風扇變裝 template in 同款's tab: 'new' (its form) or a run's id.
-  const [fanView, setFanView] = useState<string | null>(null)
+  const [fanView, setFanView] = useState<string | null>(() => searchFanParam === 'new' ? 'new' : isUuid(searchFanParam) ? searchFanParam.toLowerCase() : null)
   const setFilmUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
     url.searchParams.delete('id')
     url.searchParams.delete('job')
     url.searchParams.delete('remake')
+    url.searchParams.delete('type')
     if (id) url.searchParams.set('film', id)
     else url.searchParams.delete('film')
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
@@ -3507,15 +3517,28 @@ function CreateStudio() {
     url.searchParams.delete('id')
     url.searchParams.delete('job')
     url.searchParams.delete('film')
+    url.searchParams.delete('type')
     if (id) url.searchParams.set('remake', id)
     else url.searchParams.delete('remake')
+    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+  }
+  /** The tab in the address: ?type=<tab>, replaced, never a Back step. A run
+   *  (?id=), a film, a read or a template run has its own link instead. */
+  const typeUrlRef = useRef<string | null>(null)
+  const setTypeUrl = (t: StudioType) => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
+    url.search = ''
+    url.searchParams.set('type', t)
+    typeUrlRef.current = t
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
   /** The template's address: ?fan=<id> for a run, ?fan=new for its form. */
   const setFanUrl = (v: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    for (const k of ['id', 'job', 'film', 'remake', 'fan']) url.searchParams.delete(k)
+    for (const k of ['id', 'job', 'film', 'remake', 'fan', 'type']) url.searchParams.delete(k)
     if (v) url.searchParams.set('fan', v)
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
@@ -3523,7 +3546,7 @@ function CreateStudio() {
     setFilmOpen(false); setFilmId(null)
     setRemakeOpen(true); setRemakeId(null); setFanView(v); setFanUrl(v)
   }
-  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFanView(null); setFilmOpen(true); setFilmId(id); setFilmUrl(id) }
+  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFanView(null); setFilmOpen(true); setFilmId(id); if (id) setFilmUrl(id); else setTypeUrl('film') }
   const openRemake = (id: string | null) => {
     setFilmOpen(false); setFilmId(null)
     setRemakeOpen(true); setRemakeId(id); setRemakeUrl(id)
@@ -3532,11 +3555,17 @@ function CreateStudio() {
     setFromOpen(false)
     if (next === 'film') { openFilm(null); return }
     if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
-    if (next === 'remake') { if (fanView) { setFanView(null); setFanUrl(null) } setRemakeOpen(true); return }
+    if (next === 'remake') {
+      if (fanView) setFanView(null)
+      setRemakeOpen(true)
+      if (remakeId) setRemakeUrl(remakeId); else setTypeUrl('remake')
+      return
+    }
     if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setFanView(null); setRemakeUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
     if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
+    setTypeUrl(next)
   }
   const switchTypeRef = useRef(switchType)
   switchTypeRef.current = switchType
@@ -3632,13 +3661,12 @@ function CreateStudio() {
     setFilmOpen(false); setRemakeOpen(true); setFanView(searchFanParam.toLowerCase())
   }, [searchFanParam])
   useEffect(() => () => publishStudioType(null), [])
-  // ?type= is a seed, consumed and stripped like ?model=.
+  // ?type= is the tab (Oct 18; it used to be a seed, stripped on load): a
+  // link or Back to another tab switches to it; the studio's own writes
+  // (typeUrlRef) do not switch again.
   useEffect(() => {
-    if (!isStudioType(searchTypeParam)) return
+    if (!isStudioType(searchTypeParam) || typeUrlRef.current === searchTypeParam) return
     switchTypeRef.current(searchTypeParam)
-    const url = new URL(window.location.href)
-    url.searchParams.delete('type')
-    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }, [searchTypeParam])
   // Old ?view= links: the Library moved to the account page; Templates lands
   // on the studio (the templates and tools were taken off it, Sep 28).
@@ -4392,7 +4420,7 @@ function CreateStudio() {
         </div>
       )}
 
-      <StudioTypeBar />
+      <StudioTypeBar initial={remakeOpen ? 'remake' : filmOpen ? 'film' : mode} />
       <div className="xduel-page">
         <div className="arena xcreate-arena xcs-studio" id="xcreate-main" tabIndex={-1}>
 
@@ -4462,8 +4490,12 @@ function CreateStudio() {
               as the main grid, one output at a time. */}
           {remakeOpen ? (
             <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')}
-              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); setRemakeUrl(id) }}
-              fan={fanView} onFan={v => { setFanView(v); setFanUrl(v); window.scrollTo({ top: 0 }) }} />
+              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); if (id) setRemakeUrl(id); else setTypeUrl('remake') }}
+              fan={fanView} onFan={v => {
+                setFanView(v)
+                if (v) setFanUrl(v); else if (remakeId) setRemakeUrl(remakeId); else setTypeUrl('remake')
+                window.scrollTo({ top: 0 })
+              }} />
           ) : filmOpen ? (
             <>
               <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}

@@ -26,11 +26,13 @@ export function publishStudioType(type: StudioType | null) {
   listeners.forEach(listener => listener())
 }
 
-export function useStudioType(): StudioType | null {
+/** `initial`: the type the studio opens on (the address says it, Oct 18), so
+ *  the bar marks it from the first paint, before the studio publishes. */
+export function useStudioType(initial: StudioType | null = null): StudioType | null {
   return useSyncExternalStore(
     listener => { listeners.add(listener); return () => { listeners.delete(listener) } },
-    () => current,
-    () => null,
+    () => current ?? initial,
+    () => initial,
   )
 }
 
