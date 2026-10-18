@@ -1,6 +1,7 @@
 // lib/remake/engine/edit.ts: 同款 phase 2, the cut. Every clip is cut to its
 // shot's length and joined with the original's transitions; the on-screen
-// text is drawn in code (bundled Noto Sans TC, so Chinese and Japanese show);
+// text is drawn in code, in the bundled font that has its letters, wrapped to
+// fit (lib/caption-text.ts);
 // the voices are laid in at their times over the clips' own sound; loudness
 // is one static gain to -16 LUFS plus a limiter (one-pass loudnorm flattens
 // quiet scenes: the boxing test's lesson).
@@ -10,6 +11,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { captionFilters, fitCaption } from '@/lib/caption-text'
 import type { Aspect } from './produce'
 import type { PlanShot } from './plan'
 
@@ -34,11 +36,10 @@ async function hasAudio(ffmpeg: string, file: string): Promise<boolean> {
   return false
 }
 
-const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\u2019").replace(/:/g, '\\:').replace(/%/g, '\\%')
-
 export async function assemble(opts: {
   ffmpeg: string
-  font: string
+  /** The page's language: which font a line of text tries first. */
+  lang: string
   aspect: Aspect
   shots: PlanShot[]
   /** One clip file per shot, in order. */
@@ -46,7 +47,7 @@ export async function assemble(opts: {
   voices: { path: string; t: number }[]
   out: string
 }): Promise<{ seconds: number }> {
-  const { ffmpeg, font, aspect, shots, clips, voices, out } = opts
+  const { ffmpeg, lang, aspect, shots, clips, voices, out } = opts
   const [W, H] = SIZE[aspect]
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'remake-edit-'))
   try {
@@ -57,11 +58,10 @@ export async function assemble(opts: {
       const s = shots[i], len = Math.max(0.1, s.t1 - s.t0)
       inputs.push('-i', clips[i])
       let v = `[${i}:v]trim=0:${len.toFixed(3)},setpts=PTS-STARTPTS,fps=30,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,format=yuv420p`
-      if (s.text.trim()) {
-        const tf = path.join(dir, `t${i}.txt`)
-        await fs.writeFile(tf, s.text.trim().slice(0, 60))
-        v += `,drawtext=fontfile='${esc(font)}':textfile='${esc(tf)}':x=(w-tw)/2:y=h-th-${Math.round(H * 0.08)}:fontsize=${Math.round(H * 0.055)}:fontcolor=white:borderw=${Math.max(2, Math.round(H * 0.005))}:bordercolor=black@0.85`
-      }
+      // The text's last line sits on 92% of the height, its first lines above.
+      const size = Math.round(H * 0.055)
+      const c = s.text.trim() ? fitCaption(s.text.trim().slice(0, 60), lang, W - 2 * Math.round(W * 0.06), size, Math.round(size * 0.6)) : null
+      if (c) v += ',' + (await captionFilters(c, dir, `t${i}`, Math.round(H * 0.92 - c.size * 0.1), 'bottom', `fontcolor=white:borderw=${Math.max(2, Math.round(H * 0.005))}:bordercolor=black@0.85`)).join(',')
       L.push(`${v}[v${i}]`)
       L.push(await hasAudio(ffmpeg, clips[i])
         ? `[${i}:a]atrim=0:${len.toFixed(3)},asetpts=PTS-STARTPTS,${AF},volume=0.7[a${i}]`

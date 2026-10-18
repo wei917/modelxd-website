@@ -288,8 +288,7 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
       start: fanStart, period, takes: takes.map((video, k) => ({ video, start: takeStart[k] })),
     })
     const cut = path.join(tmp, 'cut.mp4')
-    const font = path.join(process.cwd(), 'public/fonts/NotoSansTC-Regular.ttf')
-    await finishOverlay(ff, font, overlay, takes, bounds, takeStart, req.outfits.map(o => [req.title, o.text].filter(Boolean).join('\n')), cut)
+    await finishOverlay(ff, overlay, takes, bounds, takeStart, req.outfits.map(o => [req.title, o.text].filter(Boolean).join('\n')), req.language, cut)
     console.log(`${LOG} ${job.id} press ${job.press}s, fan ${fanStart.toFixed(2)}s, changes ${cross.map(c => c.toFixed(2)).join(' ')}, hub ${hubX}, blade ${bladeWidth}px`)
 
     // 7. the music

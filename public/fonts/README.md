@@ -15,3 +15,6 @@ This happened on 2026-09-03: two OFL fonts were vendored here for the template
 card generator, `ArchivoBlack-Regular.ttf` sorted first, and it reached
 production. Build-time fonts now live in `scripts/fonts/`, which nothing scans
 and nothing serves.
+
+Text burned into the 風扇變裝 template's and 同款's videos uses `fonts/` at the
+repo root (`lib/caption-text.ts`), not this folder (Oct 18).
