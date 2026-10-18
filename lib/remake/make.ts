@@ -6,7 +6,7 @@
 // one stopped without paying twice. A lease in the file keeps two passes from
 // working on one job at once.
 //
-// The steps, and the rules the fan video taught (Oct 16-17):
+// The steps, and the rules the first remakes taught (Oct 16-18):
 //   plan     Claude maps the original's shots onto the remake (engine/plan.ts).
 //   pictures a sheet per character; each shot's first frame from words, or, on
 //            the same set as an earlier shot, as an EDIT of that shot's end
@@ -17,9 +17,14 @@
 //            and runs free (a pinned landing made people glide, "they float").
 //   music    an original track in the read's style, tuned by the page's
 //            sliders, or the user's own track, or none.
-//   cut      when the original's changes are a ceiling fan's blade passes, our
-//            own fan does them at one steady speed (lib/remake/fan.ts);
-//            otherwise the shots are joined with the original's transitions.
+//   cut      the shots joined with the original's transitions. 同款 remakes
+//            any video and need not be exact (owner, Oct 18: "同款 doesn't
+//            need to generate exact what I want. but template needs to be more
+//            accurate"): the fan outfit change, with our own fan at one steady
+//            speed, is its own template (claude/fan-template), not a case here.
+//   refusal  a picture or clip one maker's filter refuses goes to another
+//            maker's model, and a picture all of them refuse is toned down,
+//            instead of stopping the remake (engine/produce.ts).
 //   save     the video goes on the read's Library item; the user pays what
 //            was used at list price, never more than the reserve, nothing if
 //            no video came out.
@@ -31,7 +36,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
-import { generateSpeech, streamText } from '@/lib/providers'
+import { generateSpeech } from '@/lib/providers'
 import type { ModelInfo } from '@/lib/providers/types'
 import { debitCredits, grantCredits, getUserCredits, InsufficientCreditsError, formatCents } from '@/lib/credits'
 import { ffmpegPath } from '@/lib/xcut-render'
@@ -39,9 +44,8 @@ import { planRemake } from './engine/director'
 import { sameSet, stretch, type RemakePlan, type RemakeRequest } from './engine/plan'
 import { makeSheet, makeKeyframe, makeSetKeyframe, makeClip, makeVoice, lastFrame, toAspect, type Aspect } from './engine/produce'
 import { assemble } from './engine/edit'
-import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
 import { musicPrompt, styleFromRead, SUNG_LANGUAGE } from './music'
-import { estimateRemakeCents, type Breakdown, type Shot, type CastChoice, type MusicChoice, type MusicTune, type PlaceChoice, type RemakeLook, type ThingChoice, type VoiceChoice } from './config'
+import { estimateRemakeCents, type Breakdown, type CastChoice, type MusicChoice, type MusicTune, type PlaceChoice, type RemakeLook, type ThingChoice, type VoiceChoice } from './config'
 import type { SavedRemake } from './saved'
 
 const run = promisify(execFile)
@@ -55,9 +59,11 @@ async function durationOf(ff: string, file: string): Promise<number> {
 }
 const STATUS_BUCKET = 'xcreate-user-files'
 const B = { image: 'xcreate-ai-images', video: 'xcreate-ai-videos', audio: 'xcreate-ai-audio', userImage: 'xcreate-user-images', userAudio: 'xcreate-user-files' }
-/** The tested set (fan runs t3 and t4, Oct 17): Grok draws sheets and first
- *  frames from words, GPT Image 2.5 does the same-set edits. */
-const MODELS = { director: 'claude-opus-5-5', sheet: 'grok-imagine-image-2.0', keyframe: 'grok-imagine-image-2.0', edit: 'gpt-image-2.5-sunburst', video: 'wan3.0-video', voice: 'gemini-3.8-flash-tts', music: 'music_v2_5', eyes: 'gemini-3.8-flash' }
+/** The tested set (runs t3 and t4, Oct 17): Grok draws sheets and first
+ *  frames from words, GPT Image 2.5 does the same-set edits. The backups are
+ *  other makers' models for what one refuses (Oct 18). */
+const MODELS = { director: 'claude-opus-5-5', sheet: 'grok-imagine-image-2.0', keyframe: 'grok-imagine-image-2.0', edit: 'gpt-image-2.5-sunburst', video: 'wan3.0-video', voice: 'gemini-3.8-flash-tts', music: 'music_v2_5' }
+const BACKUPS = { image: ['gemini-3.1-flash-image', 'gpt-image-2.5-sunburst'], edit: ['gemini-3.1-flash-image', 'qwen-image-3.0-pro'], video: 'happyhorse-1.1-i2v' }
 /** A drive pass gives up its lease after this long; the next pass resumes. */
 const LEASE_MS = 12 * 60_000
 
@@ -97,7 +103,6 @@ export type MakeJob = {
   spentUsd: number
   chargedCents?: number
   refundedCents?: number
-  overlay: 'fan' | null
   plan?: RemakePlan
   assets: { sheets: Record<string, string>; keys: Record<string, string>; clips: Record<string, string>; voices: Record<string, string>; music?: string; video?: string }
   /** Seconds of the finished remake. */
@@ -163,14 +168,6 @@ async function signed(sb: SupabaseClient, bucket: string, p: string, seconds = 3
   return data.signedUrl
 }
 
-/** The original's changes are a ceiling fan's blade passes (the fan trend):
- *  most cuts are wipes and the read names a fan or its blades. */
-export function fanOverlay(b: Breakdown): boolean {
-  const wipes = b.shots.slice(1).filter(s => /wipe/i.test(s.transition_in)).length
-  const mentions = /fan|blade|扇/i.test(b.shots.map(s => `${s.action} ${s.where}`).join(' ') + ` ${b.summary} ${b.hook}`)
-  return mentions && b.shots.length > 1 && wipes >= Math.ceil((b.shots.length - 1) / 2)
-}
-
 /** How many saved pieces the job will have when done (for the progress bar). */
 function totalSteps(job: MakeJob): number {
   if (!job.plan) return 1
@@ -200,34 +197,6 @@ export async function makeView(sb: SupabaseClient, job: MakeJob): Promise<MakeVi
 }
 export const isActive = (s: MakeStatus) => s !== 'done' && s !== 'failed'
 
-/** In the fan cut a take starts this long before its change (under the blade)
- *  and runs this long past the next one. */
-const LEAD = 0.6, TAIL = 0.2
-
-/** The cut's clock: where each shot starts on the remake (then its end), where
- *  each shot's take starts, and how long each clip must be. With the fan the
- *  changes come at one steady fan speed, the first where the original's first
- *  change was (the fan starts just before it), and each take covers its blade
- *  pass at both ends; otherwise the shots keep the original's lengths. */
-export function cutTiming(shots: Shot[], overlay: 'fan' | null) {
-  const lens = shots.map(s => Math.max(0.1, s.t1 - s.t0))
-  if (overlay === 'fan' && shots.length > 1) {
-    const first = shots[1].t0
-    const step = (shots[shots.length - 1].t0 - first) / Math.max(1, shots.length - 2) || lens[1]
-    const period = 3 * Math.max(1.6, step)
-    const cross = firstCrossing(period)
-    const start = Math.max(0.3, first - cross)
-    const bounds = [0, ...shots.slice(1).map((_, k) => start + cross + k * (period / 3))]
-    bounds.push(bounds[bounds.length - 1] + Math.max(1.5, lens[lens.length - 1]))
-    const takeStart = shots.map((_, k) => k === 0 ? 0 : Math.max(0, bounds[k] - LEAD))
-    const need = takeStart.map((t0, k) => bounds[k + 1] + (k < shots.length - 1 ? TAIL : 0) - t0)
-    return { bounds, takeStart, need, fan: { start, period } as { start: number; period: number } | null }
-  }
-  const bounds = [0]
-  for (const l of lens) bounds.push(bounds[bounds.length - 1] + l)
-  return { bounds, takeStart: bounds.slice(0, -1), need: lens, fan: null as { start: number; period: number } | null }
-}
-
 // ── Start ─────────────────────────────────────────────────────────────────
 
 export async function startMake(userId: string, rowId: string, request: MakeRequest): Promise<MakeJob> {
@@ -240,7 +209,6 @@ export async function startMake(userId: string, rowId: string, request: MakeRequ
   const job: MakeJob = {
     v: 1, id: crypto.randomUUID(), rowId, userId, status: 'planning', createdAt: nowIso(), updatedAt: nowIso(),
     leaseUntil: 0, leaseBy: '', request: { ...request, seconds }, reservedCents, spentUsd: 0,
-    overlay: fanOverlay(saved.breakdown) ? 'fan' : null,
     assets: { sheets: {}, keys: {}, clips: {}, voices: {} },
   }
   // The whole quote is reserved first, as every XCreate run: the wallet is the
@@ -262,7 +230,7 @@ export async function startMake(userId: string, rowId: string, request: MakeRequ
     await refund(job, reservedCents, 'could not start').catch(() => {})
     throw e
   }
-  console.log(`${LOG} ${job.id} started for ${rowId}: ${seconds}s, reserved ${reservedCents}¢, overlay ${job.overlay ?? 'none'}`)
+  console.log(`${LOG} ${job.id} started for ${rowId}: ${seconds}s, reserved ${reservedCents}¢`)
   return job
 }
 
@@ -308,12 +276,14 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
   const saved = await loadSaved(sb, job.userId, job.rowId)
   const breakdown = saved.breakdown
   const req = job.request
-  const { data: rows } = await sb.from('ai_models').select('*').in('model_name', Object.values(MODELS))
+  const { data: rows } = await sb.from('ai_models').select('*').eq('enabled', true).in('model_name', [...Object.values(MODELS), ...BACKUPS.image, ...BACKUPS.edit, BACKUPS.video])
   const model = (name: string): ModelInfo => {
     const m = (rows ?? []).find((r: any) => r.model_name === name)
     if (!m) throw new Error(`model ${name} is not in the catalog`)
     return m as ModelInfo
   }
+  /** Backups that are in the catalog and switched on; a missing one is skipped. */
+  const backups = (names: string[]) => names.map(n => (rows ?? []).find((r: any) => r.model_name === n) as ModelInfo | undefined).filter((m): m is ModelInfo => !!m)
   const spend = async (usd: number) => { job.spentUsd = Math.round((job.spentUsd + (usd || 0)) * 10000) / 10000; await saveJob(sb, job) }
   const aspect: Aspect = toAspect(breakdown.aspect)
   const ff = ffmpegPath()
@@ -326,20 +296,10 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
       const plannerReq: RemakeRequest = {
         breakdown, from: req.from, seconds: req.seconds, cast: castSwap,
         theme: thingsAndPlaces(req, breakdown, req.theme), setting: req.setting, look: req.look, language: req.language,
-        product: !!productPath(req, breakdown), aspect, overlay: job.overlay ?? undefined,
+        product: !!productPath(req, breakdown), aspect,
       }
       const r = await planRemake(plannerReq, model(MODELS.director), job.userId)
       job.plan = r.plan
-      // The overlay's shots after the opening are still by rule, and its cut
-      // carries each take's own sound and the music, never voices.
-      if (job.overlay === 'fan') {
-        const { need } = cutTiming(shots, 'fan')
-        job.plan.shots.forEach((s, i) => {
-          if (i > 0) s.still = true
-          if (need[i]) s.clip_seconds = Math.min(15, Math.max(s.clip_seconds, Math.ceil(need[i] - 0.05)))
-        })
-        job.plan.voices = []
-      }
       // The page's voice and text choices, applied by code over the plan: a
       // speaker set to none or to the user's recording gets no AI voice, and
       // a text the user wrote replaces the planner's.
@@ -353,6 +313,7 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
     const ctx: any = {
       userId: job.userId, surface: 'xcreate-remake',
       imageModel: model(MODELS.keyframe), editModel: model(MODELS.edit), videoModel: model(MODELS.video), speechModel: model(MODELS.voice),
+      imageBackups: backups(BACKUPS.image), editBackups: backups(BACKUPS.edit), videoBackup: backups([BACKUPS.video])[0],
       sign: async (buffer: Buffer, name: string) => { const p = assetPath(job, `in/${name}`); await put(sb, B.image, p, buffer, 'image/jpeg'); return signed(sb, B.image, p) },
     }
 
@@ -437,8 +398,9 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
       await spend(r.cost)
     }
 
-    // ── the cut's timing: the overlay evens the changes out to one fan speed
-    const { bounds, takeStart, fan } = cutTiming(shots, job.overlay)
+    // ── the cut's clock: the shots keep the original's lengths
+    const bounds = [0]
+    for (const s of shots) bounds.push(bounds[bounds.length - 1] + Math.max(0.1, s.t1 - s.t0))
     const total = bounds[bounds.length - 1]
 
     // ── music
@@ -478,40 +440,23 @@ async function runSteps(sb: SupabaseClient, job: MakeJob) {
       }
       const font = path.join(process.cwd(), 'public/fonts/NotoSansTC-Regular.ttf')
       const cut = path.join(tmp, 'cut.mp4')
-      if (fan) {
-        const box = await personSpan(model(MODELS.eyes), [...keyBuf.values()].slice(1, 5), job.userId)
-        await spend(box.cost)
-        const W = aspect === '9:16' || aspect === '3:4' ? 720 : 1280, H = Math.round(W * (aspect === '9:16' ? 16 / 9 : aspect === '3:4' ? 4 / 3 : aspect === '1:1' ? 1 : aspect === '4:3' ? 0.75 : 9 / 16))
-        const hubX = Math.round(W * (box.x0 + box.x1) / 2)
-        const bladeWidth = Math.round(Math.max(W * 0.34, Math.min(W * 0.6, W * (box.x1 - box.x0) * 1.08)))
-        const fanPic = await get(sb, FAN_ASSET.bucket, FAN_ASSET.path)
-        const overlay = path.join(tmp, 'fan.mp4')
-        await renderFanOverlay({
-          out: overlay, ffmpeg: ff, fan: fanPic, W, H, duration: total, hub: [hubX, -150], bladeWidth,
-          start: fan.start, period: fan.period,
-          takes: clipFiles.map((f, k) => ({ video: f, start: takeStart[k] })),
-        })
-        await finishOverlay(ff, font, overlay, clipFiles, bounds, takeStart, plan.shots.map(s => s.text), cut)
-        console.log(`${LOG} ${job.id} fan hub x ${hubX}, blade ${bladeWidth}px, start ${fan.start.toFixed(2)}s, period ${fan.period.toFixed(2)}s`)
-      } else {
-        const voices: { path: string; t: number }[] = []
-        for (const [k, v] of plan.voices.entries()) {
-          const f = path.join(tmp, `voice-${k}.mp3`)
-          await fs.writeFile(f, await get(sb, B.audio, job.assets.voices[k]))
-          voices.push({ path: f, t: v.t })
-        }
-        // The user's own recordings, each at its speaker's first line in the stretch.
-        for (const [k, [who, v]] of Object.entries(req.voices ?? {}).entries()) {
-          if (v.choice !== 'mine' || !v.recording) continue
-          const line = breakdown.lines.find(l => l.who === who && l.t >= req.from && l.t < req.from + req.seconds)
-          if (!line) continue
-          const f = path.join(tmp, `mine-voice-${k}${path.extname(v.recording).slice(0, 6) || '.bin'}`)
-          await fs.writeFile(f, await get(sb, B.userAudio, v.recording))
-          voices.push({ path: f, t: Math.round((line.t - req.from) * 10) / 10 })
-        }
-        // The stretch's own clock (0 = its start) is the remake's.
-        await assemble({ ffmpeg: ff, font, aspect, shots: plan.shots.map((s, i) => ({ ...s, t0: shots[i]?.t0 ?? s.t0, t1: shots[i]?.t1 ?? s.t1 })), clips: clipFiles, voices, out: cut })
+      const voices: { path: string; t: number }[] = []
+      for (const [k, v] of plan.voices.entries()) {
+        const f = path.join(tmp, `voice-${k}.mp3`)
+        await fs.writeFile(f, await get(sb, B.audio, job.assets.voices[k]))
+        voices.push({ path: f, t: v.t })
       }
+      // The user's own recordings, each at its speaker's first line in the stretch.
+      for (const [k, [who, v]] of Object.entries(req.voices ?? {}).entries()) {
+        if (v.choice !== 'mine' || !v.recording) continue
+        const line = breakdown.lines.find(l => l.who === who && l.t >= req.from && l.t < req.from + req.seconds)
+        if (!line) continue
+        const f = path.join(tmp, `mine-voice-${k}${path.extname(v.recording).slice(0, 6) || '.bin'}`)
+        await fs.writeFile(f, await get(sb, B.userAudio, v.recording))
+        voices.push({ path: f, t: Math.round((line.t - req.from) * 10) / 10 })
+      }
+      // The stretch's own clock (0 = its start) is the remake's.
+      await assemble({ ffmpeg: ff, font, aspect, shots: plan.shots.map((s, i) => ({ ...s, t0: shots[i]?.t0 ?? s.t0, t1: shots[i]?.t1 ?? s.t1 })), clips: clipFiles, voices, out: cut })
       let final = cut
       if (job.assets.music) {
         const m = path.join(tmp, 'music.mp3')
@@ -559,56 +504,6 @@ function thingsAndPlaces(req: MakeRequest, b: Breakdown, theme: string): string 
     if (p.choice === 'photo' && p.photo) parts.push(`Set "${x.name}" in the place in the user's photo (it is given to the picture model).`)
   }
   return [theme, ...parts].filter(Boolean).join(' ')
-}
-
-/** Where the person lies across the frame, left to right (0-1), over the
- *  given pictures: the fan's hub goes above the middle and its blade is made
- *  just wider than the widest of them. A model reads it (a model's job). */
-async function personSpan(model: ModelInfo, pictures: Buffer[], userId: string): Promise<{ x0: number; x1: number; cost: number }> {
-  if (!pictures.length) return { x0: 0.3, x1: 0.7, cost: 0 }
-  let text = '', cost = 0
-  await new Promise<void>((resolve, reject) => {
-    streamText(model, [{ role: 'user', content: `These ${pictures.length} pictures are the same top-down shot of one person lying down, in different clothes. For each picture give the box around the whole person (head, hair, arms, hands, clothes, shoes): [ymin, xmin, ymax, xmax] on a 0-1000 scale. Return JSON only: {"boxes": [[ymin, xmin, ymax, xmax], ...]}` }],
-      { onDelta: d => { text += d }, onDone: r => { cost = r.cost; resolve() }, onError: m => reject(new Error(m)) },
-      pictures.map(b => ({ buffer: b, mediaType: 'image/jpeg' }) as any), { userId, surface: 'xcreate-remake' } as any)
-  })
-  try {
-    const j = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1))
-    const boxes: number[][] = (j.boxes ?? []).filter((b: any) => Array.isArray(b) && b.length === 4)
-    if (!boxes.length) throw new Error('no boxes')
-    return { x0: Math.min(...boxes.map(b => b[1])) / 1000, x1: Math.max(...boxes.map(b => b[3])) / 1000, cost }
-  } catch { return { x0: 0.3, x1: 0.7, cost } }
-}
-
-/** The overlay's captions and sound: each take's own room sound while its
- *  outfit is on screen, joined at the changes; the shot's text drawn on top
- *  (a first line at the top, the second at the bottom), switching under the
- *  blade with half-open windows so two captions never share a frame. */
-export async function finishOverlay(ff: string, font: string, video: string, clips: string[], bounds: number[], takeStart: number[], texts: string[], out: string) {
-  const dir = path.dirname(out)
-  const inputs: string[] = []
-  const parts: string[] = []
-  for (let k = 0; k < clips.length; k++) {
-    inputs.push('-i', clips[k])
-    const len = bounds[k + 1] - bounds[k] + (k < clips.length - 1 ? TAIL : 0)
-    const from = bounds[k] - takeStart[k]
-    parts.push(`[${k}:a]atrim=${from.toFixed(2)}:${(from + len).toFixed(2)},asetpts=PTS-STARTPTS,apad=whole_dur=${len.toFixed(2)},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[a${k}]`)
-  }
-  let acc = 'a0'
-  for (let k = 1; k < clips.length; k++) { parts.push(`[${acc}][a${k}]acrossfade=d=0.2[x${k}]`); acc = `x${k}` }
-  const sound = path.join(dir, 'sound.m4a')
-  await run(ff, ['-v', 'error', '-y', ...inputs, '-filter_complex', parts.join(';'), '-map', `[${acc}]`, '-c:a', 'aac', '-b:a', '160k', sound], { maxBuffer: 32 * 1024 * 1024 })
-  const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, '\u2019').replace(/:/g, '\\:').replace(/%/g, '\\%')
-  const draws: string[] = []
-  for (let k = 0; k < texts.length; k++) {
-    const lines = String(texts[k] ?? '').split('\n').map(x => x.trim()).filter(Boolean)
-    const on = `enable='gte(t,${bounds[k].toFixed(3)})*lt(t,${bounds[k + 1].toFixed(3)})'`
-    const [top, bottom] = lines.length > 1 ? lines : [null, lines[0]]
-    if (top) { const f = path.join(dir, `cap-${k}-t.txt`); await fs.writeFile(f, top.slice(0, 40)); draws.push(`drawtext=fontfile='${esc(font)}':textfile='${esc(f)}':x=(w-tw)/2:y=150:fontsize=40:fontcolor=white:borderw=3:bordercolor=black@0.7:${on}`) }
-    if (bottom) { const f = path.join(dir, `cap-${k}-b.txt`); await fs.writeFile(f, bottom.slice(0, 40)); draws.push(`drawtext=fontfile='${esc(font)}':textfile='${esc(f)}':x=(w-tw)/2:y=h-150:fontsize=44:fontcolor=white:borderw=3:bordercolor=black@0.7:${on}`) }
-  }
-  await run(ff, ['-v', 'error', '-y', '-i', video, '-i', sound, ...(draws.length ? ['-vf', draws.join(',')] : []), '-map', '0:v', '-map', '1:a',
-    '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-movflags', '+faststart', out], { maxBuffer: 32 * 1024 * 1024 })
 }
 
 /** The music at -16 LUFS over the video's own sound, which sits 14 dB under
