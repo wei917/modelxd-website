@@ -10,11 +10,16 @@
 // and a click here asks it to switch in place, because a switch may first
 // need a fresh composer. A modified click opens the studio on that type in
 // a new tab (`/xcreate?type=`).
+//
+// Icons: the approved ModelXD media set (MediaIcon, Oct 17) for Text, Image,
+// Video and Audio, in full colour; Film has no approved icon yet and keeps
+// its line drawing.
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/i18n'
 import ModeIcon from '../components/ModeIcon'
+import MediaIcon, { hasMediaIcon } from '../components/MediaIcon'
 import { STUDIO_TYPES, requestStudioType, useStudioType, type StudioType } from '../components/xcreate/studio-type'
 
 export default function StudioTypeBar({ initial = null }: { initial?: StudioType | null } = {}) {
@@ -54,7 +59,7 @@ export default function StudioTypeBar({ initial = null }: { initial?: StudioType
             event.preventDefault()
             requestStudioType(type)
           }}>
-          <ModeIcon m={type} /><span>{t('mode.' + type)}</span>
+          {hasMediaIcon(type) ? <span className="xcs-type-icon"><MediaIcon kind={type} /></span> : <ModeIcon m={type} />}<span>{t('mode.' + type)}</span>
         </Link>)}
       </nav>
       {more.left && <button type="button" className="xcs-types-arrow is-left" tabIndex={-1} aria-hidden="true" onClick={() => scrollRow(-1)}>‹</button>}

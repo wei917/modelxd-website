@@ -51,16 +51,40 @@ const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|RESOURCE_E
 // moderated while Gemini drew it — so a slot that fails this way is worth
 // one redraw from a different provider. Same rule as ACCOUNT_LIMIT above:
 // one list, two readers.
-export const SAFETY = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged/i
+// Alibaba's content filter says neither: "DataInspectionFailed ... Input
+// data may contain inappropriate content" (Qwen Image 2.0 Pro refused a
+// Taiwan black bear in a forest on Oct 19, and the duel lost a side).
+export const SAFETY = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged|DataInspectionFailed|inappropriate content/i
 // A provider message wrapped by one of our own throw sites — e.g.
 // `Runway request failed (400): {...}` or `Runway task FAILED: SAFETY.INPUT`.
 // Never echo these to the user: they carry our endpoint/status detail and read
 // like a stack trace, and the raw form often contains a provider's internal
-// enum rather than a sentence.
-const WRAPPED  = /request failed|failed \(\d{3}\)|HTTP \d{3}|^\s*\d{3}\b|task (FAILED|CANCELED)|download failed/i
+// enum rather than a sentence. "DashScope image 400:" (what is left of an
+// Alibaba refusal before its JSON) is one too: a status code at the end.
+const WRAPPED  = /request failed|failed \(\d{3}\)|HTTP \d{3}|^\s*\d{3}\b|task (FAILED|CANCELED)|download failed|\b[45]\d{2}:?\s*$/i
 const TIMEOUT  = /timeout|timed out|deadline/i
 const TOOBIG   = /exceeds the (context window|maximum number of tokens)|input token count exceeds|context_length_exceeded|maximum context length|prompt is too long|too large|too many tokens/i
-const NOTFOUND = /not found|NOT_FOUND|does not exist|deprecated/i
+// Exported for XDuel's redraw (Oct 19): a model the provider no longer
+// serves to our key ("Qwen TTS 404: Model not exist.", qwen3-tts-instruct-
+// flash on Oct 18) fails the same way on every call, so the slot takes
+// another model. Alibaba says "not exist" without "does".
+export const NOTFOUND = /not found|NOT_FOUND|not exist|deprecated/i
+
+/** Which of the classes above a failure belongs to, for pages that say it
+ *  in the reader's language (XDuel, Oct 19). Same order as
+ *  sanitizeProviderError, so the two never disagree. */
+export type ProviderErrorKind = 'safety' | 'toobig' | 'account' | 'rate' | 'timeout' | 'missing' | 'other'
+export function providerErrorKind(raw: unknown): ProviderErrorKind {
+  const msg = raw instanceof Error ? raw.message : String(raw ?? '')
+  if (msg.includes('USERMSG:')) return 'other'
+  if (SAFETY.test(msg))   return 'safety'
+  if (TOOBIG.test(msg))   return 'toobig'
+  if (ACCOUNT.test(msg))  return 'account'
+  if (RATE.test(msg))     return 'rate'
+  if (TIMEOUT.test(msg))  return 'timeout'
+  if (NOTFOUND.test(msg)) return 'missing'
+  return 'other'
+}
 
 export function sanitizeProviderError(raw: unknown): string {
   const msg = raw instanceof Error ? raw.message : String(raw ?? '')

@@ -22,13 +22,13 @@ export default function PrivacyPage() {
       <div className="prompt-label eyebrow">Privacy</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: October 13, 2026
+        Last updated: October 17, 2026
       </p>
       <p style={S.p}>
         This policy explains what data ModelXD collects, how it is used, and the
         choices you have. It applies to modelxd.com, xtell.modelxd.com (X先知)
         and every ModelXD service, including XDuel, XCreate (X創作),
-        XDirect, XCut, XTalk, XGame, XWorld, XArch, XTell, XVote, XBoard and the API.
+        XDirect, XCut, XTalk, XGame, XWorld, XArch, XTell, XBoard and the API.
       </p>
 
       <LocaleSummary items={['legal.privacy.signin', 'legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xtell', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>3. What Is Public</h2>
       <p style={S.p}>
-        Completed XDuels are public and appear in XVote, including the prompt,
+        Completed XDuels are public and appear on XDuel for others to vote on, including the prompt,
         anything attached to it, and the models&apos; outputs. Your name, email and
         profile are never shown with a duel. Everything else is private to your
         account: your work in XCreate, XDirect, XCut, XTalk, XGame, XWorld, XArch and
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
         your account page are erased at once, and so are saved birth details when
         you delete them there. Photos added at 相學館 are never stored; the written
         description is erased with its reading. Removing an XDuel or XCreate from your profile hides it
-        everywhere, including XVote; the stored copy is erased when you delete your
+        everywhere, including XDuel's vote feed; the stored copy is erased when you delete your
         account. You can delete your entire account under Profile → Danger Zone,
         which permanently removes your account, content, uploaded files, and
         history. Aggregated, anonymous statistics (such as model vote totals) may be

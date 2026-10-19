@@ -118,6 +118,11 @@ html[lang="ja"] .nav-links a     { letter-spacing: 0.04em; }
    exact moment the user is reading the cards. Reserving the gutter up front
    costs 15px of width and removes the jump everywhere, not just here. */
 html { scroll-behavior: smooth; }
+/* Text at the size the CSS gives it on every phone: mobile Safari (in
+   landscape) and Android Chrome otherwise enlarge text on their own, so the
+   same page read larger on one phone than another (Oct 18). Pinch zoom is
+   unaffected. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
   background: var(--bg);
@@ -773,13 +778,14 @@ body {
    — most traffic is phones). */
 @media (max-width: 760px) { .app-main { padding-top: 60px; } }
 
-/* XVote duel grid. Two columns is right on a laptop, but on a phone it gave
-   each card ~190px and truncated every prompt to "Watercolor map of an
-   imaginary islan…", so drop to a single column (CC, July 26). */
-.xvote-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-@media (max-width: 640px) { .xvote-grid { grid-template-columns: 1fr; } }
+/* XDuel's vote feed grid (app/xduel/VoteFeed.tsx; XVote's until Oct 17).
+   Two columns is right on a laptop, but on a phone it gave each card ~190px
+   and truncated every prompt to "Watercolor map of an imaginary islan…", so
+   drop to a single column (CC, July 26). */
+.xduel-feed-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 640px) { .xduel-feed-grid { grid-template-columns: 1fr; } }
 
-/* Touch targets. Audited at phone width: the XVote search input was 24px
+/* Touch targets. Audited at phone width: the vote feed's search input was 24px
    tall and several controls sat around 30-36px, against Apple's 44px and
    Google's 48dp guidance. Only raised on phones so desktop spacing, which is
    mouse-driven and deliberately tight, is untouched. (CC, July 26) */
@@ -4968,3 +4974,214 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 .acct-xtell .xtell-dy-account:last-child { border-bottom: 0; padding-bottom: 0; }
 .acct-xtell .xtell-dy-title { font: 600 14px/1.5 var(--font-body), sans-serif; }
 .acct-xtell .xtell-dy-account { font-size: 13px; }
+
+/* ══ XDuel in X先知's layout and colours (owner, Oct 16: "apply the xtell
+   layout and design to XDuel ... match what XTell has and all other
+   styles"). The search bar left /xduel (Omnibox), X先知's bar carries the
+   duel types (XDuelBar), and the page takes www's /xtell palette: warm
+   paper, white boxes on its rule, sentence-case labels in
+   the body font, round buttons in XDuel's red. Scoped to .xduel-xt, since
+   XDirect also wears .xduel-page. Models A-D keep their own colours: the
+   vote buttons name the cards by them. ═══════════════════════════════════ */
+.xduel-xt {
+  --xtell-paper: #faf6f0; --xtell-ink: #302d29; --xtell-secondary: #74685f;
+  --xtell-rule: #e4d9cd; --xtell-vermilion: #d63b32; --xtell-tint: #efe5da;
+  --xtell-white: #ffffff;
+  --xtell-serif: Georgia, 'Songti TC', 'Noto Serif CJK TC', 'Yu Mincho', serif;
+  --bg: var(--xtell-paper); --surface: var(--xtell-white); --surface2: var(--xtell-tint); --card: var(--xtell-white);
+  --white: var(--xtell-ink); --muted: var(--xtell-secondary); --muted2: var(--xtell-secondary);
+  --border: var(--xtell-rule); --border2: var(--xtell-rule); --red: var(--xtell-vermilion);
+  min-height: 100vh; background: var(--xtell-paper); color: var(--xtell-ink);
+}
+@media (max-width: 760px) { .xduel-xt { min-height: calc(100vh - 60px); } }
+/* The paper reaches the bottom of the window; the bar adds no extra scroll. */
+.xduel-xt .xduel-page { min-height: 0; padding-top: 0; }
+
+/* The approved ModelXD media icons (app/components/MediaIcon.tsx): the art,
+   in full colour, contained in whatever square its consumer gives it. */
+.media-icon { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* The bar: the approved media icons where X先知 has its paintings, at the
+   same sizes (42 / 36 / 30 px wide, as .xtell-nav-icon). While a duel runs
+   the other types fade as a whole (disabled), never recoloured. */
+.xduel-bar-icon { display: block; width: 40px; height: 40px; }
+/* More room between the four types than X先知's long row has (owner,
+   Oct 18: "more space in between"). */
+.xduel-bar .xtell-temple-nav { gap: 32px; }
+@media (max-width: 1100px) { .xduel-bar .xtell-temple-nav { gap: 22px; } }
+/* Phones: spacing and icons grow with the screen (360 → 430 px) rather
+   than jumping at a breakpoint, so every phone sees the same bar. */
+@media (max-width: 700px) {
+  .xduel-bar .xtell-temple-nav { gap: clamp(10px, 4.4vw, 22px); }
+  .xduel-bar .xtell-temple-nav a { font-size: clamp(11px, 3.1vw, 13px); }
+}
+.xduel-bar a[aria-disabled] { opacity: .4; cursor: default; }
+.xduel-bar a[aria-disabled]:hover { background: none; }
+@media (max-width: 1100px) { .xduel-bar-icon { width: 34px; height: 34px; } }
+@media (max-width: 700px) { .xduel-bar-icon { width: clamp(28px, 8.4vw, 36px); height: clamp(28px, 8.4vw, 36px); } }
+
+/* Header: X先知's room header (red spaced eyebrow, serif headline). */
+.xduel-xt .arena { padding-top: 30px; }
+.xduel-xt .prompt-header { margin-bottom: 26px; }
+.xduel-xt .prompt-label { font-family: var(--font-body), sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .17em; color: var(--xtell-vermilion); margin-bottom: 10px; }
+.xduel-xt .prompt-label.eyebrow::before { content: none; }
+/* Titles in the site's own title font (Noto Sans TC in Chinese), bold, as
+   on XCreate, XBoard and XTalk; the serif was X先知's and read wrong here
+   (owner, Oct 18: "the font family is wrong"). */
+.xduel-xt .page-headline, .xduel-xt .prompt-title {
+  /* Even lines that break at the commas, never inside a word (同場, 隨機抽兩個);
+     a part too long for the line still wraps rather than overflow. */
+  text-wrap: balance; word-break: keep-all; overflow-wrap: anywhere;
+  font-family: var(--font-display), sans-serif; font-weight: 700; font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.35; letter-spacing: 0; text-transform: none; color: var(--xtell-ink);
+}
+.xduel-xt .prompt-title span { color: var(--xtell-vermilion); }
+.xduel-xt .page-headline.xduel-asked { font-size: clamp(17px, 1.7vw, 20px); font-weight: 600; line-height: 1.55; word-break: normal; }
+/* Step 1's headline sizes itself to its box: one line wherever the box holds
+   31 characters at 18 px or more (owner, Oct 19: "still too big and it
+   breaks into two lines"), at most 26 px; narrower (a phone), it breaks at
+   the commas. */
+.xduel-xt .prompt-header { container-type: inline-size; }
+.xduel-xt .prompt-header .page-headline:not(.xduel-asked) { font-size: clamp(18px, calc(100cqi / 31), 26px); }
+.xduel-xt .prompt-sub { font-family: var(--font-body), sans-serif; font-size: 15px; line-height: 1.7; letter-spacing: 0; color: var(--xtell-secondary); }
+
+/* Steps. */
+.xduel-xt .step-bar { margin-bottom: 24px; background: var(--xtell-white); border-color: var(--xtell-rule); border-radius: 7px; }
+/* Plain numbers, no circles, and a > between steps (owner, Oct 18:
+   "remove circle on step number and use > to replace -----"). The step
+   you are on is red; the ones behind you are ink; the rest are grey. */
+.xduel-xt .step-item { gap: 6px; padding: 0 24px; font-family: var(--font-body), sans-serif; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--xtell-secondary); }
+.xduel-xt .step-item.active { color: var(--xtell-vermilion); font-weight: 600; }
+.xduel-xt .step-item.done { color: var(--xtell-ink); }
+.xduel-xt .step-num,
+.xduel-xt .step-item.active .step-num,
+.xduel-xt .step-item.done .step-num { width: auto; height: auto; border: 0; border-radius: 0; background: none; color: inherit; font-size: 13px; font-weight: 700; }
+.xduel-xt .step-connector { width: auto; height: auto; padding: 0 4px; background: none; color: var(--xtell-secondary); font-size: 13px; line-height: 1; }
+.xduel-xt .step-connector.done { background: none; color: var(--xtell-ink); }
+/* More room between steps (owner, Oct 18). */
+@media (max-width: 760px) { .xduel-xt .step-item { padding: 0 14px; } .xduel-xt .step-connector { padding: 0 2px; } }
+
+/* Composer: the prompt box, the notes and buttons under it. */
+.xduel-xt .prompt-box.framed { background: var(--xtell-white); border-color: var(--xtell-rule); border-radius: 7px; }
+.xduel-xt .prompt-box.framed:focus-within { border-color: var(--xtell-vermilion); }
+.xduel-xt .prompt-counter, .xduel-xt .action-hint { font-family: var(--font-body), sans-serif; font-size: 12.5px; letter-spacing: 0; color: var(--xtell-secondary); }
+.xduel-xt .btn-battle, .xduel-xt .btn-next {
+  padding: 11px 24px; border-radius: 999px; background: var(--xtell-vermilion);
+  font-family: var(--font-body), sans-serif; font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none;
+}
+.xduel-xt .btn-battle:hover, .xduel-xt .btn-next:hover { background: var(--xtell-vermilion); filter: brightness(.94); box-shadow: none; }
+.xduel-xt .btn-secondary {
+  padding: 9px 18px; border-radius: 999px; background: var(--xtell-white); border-color: var(--xtell-rule); color: var(--xtell-ink);
+  font-family: var(--font-body), sans-serif; font-size: 13.5px; letter-spacing: 0; text-transform: none;
+}
+.xduel-xt .btn-secondary:hover { border-color: var(--xtell-vermilion); color: var(--xtell-vermilion); }
+/* A section title as X先知 writes one: body font on a rule. */
+.xduel-xt .ms-cap { padding-top: 20px; margin-bottom: 18px; border-top: 1px solid var(--xtell-rule); font-family: var(--font-body), sans-serif; font-size: 15px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--xtell-ink); }
+/* Phones: gutter and title grow with the screen (about 19 px and 22 px
+   at 360, 22 px and 26 px at 430), so a small and a large phone see the
+   same page, not two layouts (owner, Oct 18). */
+@media (max-width: 760px) {
+  .xduel-xt .arena { padding-left: clamp(16px, 5.2vw, 24px); padding-right: clamp(16px, 5.2vw, 24px); padding-top: 22px; }
+  .xduel-xt .prompt-label { font-size: 10px; }
+  .xduel-xt .page-headline, .xduel-xt .prompt-title { font-size: clamp(22px, 6vw, 28px); }
+}
+/* The five steps fit across any phone (owner, Oct 18: "step bar fits at
+   360"): each takes an equal share, number over its name, and the >
+   between them stays. No sideways scroll. */
+@media (max-width: 560px) {
+  .xduel-xt .step-bar { overflow: visible; justify-content: space-between; padding: 10px clamp(6px, 2vw, 12px); }
+  .xduel-xt .step-item { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 2px; padding: 0; text-align: center; white-space: normal; font-size: clamp(11px, 3.1vw, 13px); line-height: 1.3; }
+  .xduel-xt .step-num, .xduel-xt .step-item.active .step-num, .xduel-xt .step-item.done .step-num { font-size: clamp(11px, 3.1vw, 13px); }
+  .xduel-xt .step-connector { flex: none; padding: 0; font-size: 11px; }
+}
+
+/* The duel: white boxes on the rule, X先知's 7px corners. */
+.xduel-xt .battle-arena { border-color: var(--xtell-rule); border-radius: 7px; background: var(--xtell-white); }
+/* One box from the cards down to the vote buttons; in the second round the
+   price comparison and question sit between, so each part closes itself. */
+.xduel-xt .battle-arena:has(+ :is(.stats-row, .vote-row)) { border-radius: 7px 7px 0 0; }
+.xduel-xt .battle-card { background: var(--xtell-white); }
+.xduel-xt .battle-model-id { font-family: var(--font-display), sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0; text-transform: none; }
+.xduel-xt .battle-card-header.n3 .battle-model-id, .xduel-xt .battle-card-header.n4 .battle-model-id { font-size: 18px; }
+.xduel-xt .stats-row { border-radius: 0; border-top: 0; }
+.xduel-xt .stats-row:not(:has(+ .vote-row)) { border-radius: 0 0 7px 7px; margin-bottom: 14px; }
+.xduel-xt .stats-label { font-family: var(--font-body), sans-serif; font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--xtell-secondary); }
+/* Each stat on one line, however many cards share the row (owner, Oct 18). */
+.xduel-xt .stats-line { gap: 8px; min-width: 0; }
+.xduel-xt .stats-label, .xduel-xt .stats-value { white-space: nowrap; }
+.xduel-xt .vote-row { background: var(--xtell-white); border-radius: 0 0 7px 7px; overflow: hidden; }
+.xduel-xt :is(.xd-vs, .xd-q2) + .vote-row { border-top: 1px solid var(--xtell-rule); border-radius: 7px; }
+.xduel-xt .btn-vote { font-family: var(--font-body), sans-serif; font-size: 15px; letter-spacing: 0; text-transform: none; }
+.xduel-xt .btn-tie { font-family: var(--font-body), sans-serif; font-size: 13.5px; letter-spacing: 0; text-transform: none; }
+.xduel-xt .xd-vs { border-radius: 7px; }
+
+/* A saved duel (/xduel/<id>): its input under the headline, and the
+   loading / not-found note. */
+.xduel-input { margin-top: 14px; }
+.xduel-input img, .xduel-input video { display: block; max-width: 200px; max-height: 120px; border-radius: 7px; border: 1px solid var(--border2); cursor: zoom-in; }
+.xduel-resume { padding: 60px 0; text-align: center; color: var(--muted); font-size: 15px; }
+.xduel-resume p { margin: 0 0 18px; color: var(--white); }
+/* Out of free duels for the day (no counts are shown before that). */
+.xduel-limit { margin: -4px 0 18px; padding: 11px 14px; border: 1px solid var(--red); border-radius: 7px; background: rgba(214,59,50,.06); color: var(--red); font-size: 14px; line-height: 1.5; }
+/* The match report (MatchResult, shared with XCreate, styled inline): a
+   white card on the paper, its own title font. */
+.xduel-xt .xduel-report { --bg: var(--xtell-white); }
+/* The winner's name is the title, and model names run long ("Nano Banana 2
+   Lite - Gemini 3.1 Flash Lite Image 勝出" took three lines at 40 px): a
+   calmer size here, XCreate's report unchanged (owner, Oct 19). */
+.xduel-xt .xduel-report h2 { font-size: clamp(20px, 2.6vw, 28px) !important; font-weight: 800 !important; line-height: 1.3 !important; }
+/* The report's small print a little bigger on XDuel (owner, Oct 19:
+   "對決完成", "本局分數" and the like); the cards widen to hold it. */
+.xduel-xt .xduel-report .mr-eyebrow { font-size: 13px !important; letter-spacing: .2em !important; }
+
+.xduel-xt .xduel-report .mr-badge { font-size: 11px !important; }
+.xduel-xt .xduel-report .mr-score-label { font-size: 12px !important; letter-spacing: .12em !important; margin-top: 5px !important; }
+.xduel-xt .xduel-report .mr-name { font-size: 15px !important; }
+.xduel-xt .xduel-report .mr-maker { font-size: 11px !important; letter-spacing: .12em !important; }
+.xduel-xt .xduel-report .mr-stats { font-size: 12.5px !important; }
+.xduel-xt .xduel-report .mr-note { font-size: 12.5px !important; line-height: 1.5 !important; white-space: pre-line; }
+/* Cards line up row by row: each card is a subgrid of the row's tracks, so
+   a three-line model name in one card makes the other card's name row as
+   tall, and the scores, prices, notes and picks sit level (owner, Oct 19:
+   "two cards are not aligned"). 260 px fits most names in two lines; on a
+   phone the cards stack. */
+.xduel-xt .xduel-public { margin: -14px 0 24px; text-align: right; font-size: 12px; line-height: 1.5; color: var(--muted); }
+@media (max-width: 560px) { .xduel-xt .xduel-public { text-align: left; } }
+.xduel-xt .xduel-report .mr-cards { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(0, 260px)); justify-content: center; gap: 14px; }
+.xduel-xt .xduel-report .mr-card { width: auto !important; display: grid; grid-row: span 7; grid-template-rows: subgrid; row-gap: 0; align-content: start; }
+.xduel-xt .xduel-report .mr-foot { font-size: 10.5px !important; }
+.xduel-xt .xduel-report .mr-card > div:first-of-type { margin-top: 6px !important; } /* the score sits level with or without the winner's badge */
+.xduel-xt .xduel-report .mr-pick { font-size: 12px !important; letter-spacing: .1em !important; padding: 7px 0 !important; }
+/* A speech duel's card: the player across the card. */
+.xduel-audio { padding: 28px 20px; }
+.xduel-audio audio { display: block; width: 100%; }
+/* The vote feed under the composer (VoteFeed, in place of 熱門 since
+   Oct 17): an X先知 section title on a rule, the search as a round field
+   beside it (its own row on a phone, 16px so iOS does not zoom). */
+.xduel-feed { margin-top: 36px; }
+.xduel-feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 20px; margin-bottom: 18px; border-top: 1px solid var(--border); }
+.xduel-feed-head h2 { margin: 0; font: 500 15px var(--font-body), sans-serif; color: var(--white); }
+.xduel-feed-tools { display: flex; align-items: center; gap: 8px; flex: 0 1 400px; }
+.xduel-feed-search { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
+.xduel-feed-sort {
+  flex: none; min-height: 36px; padding: 0 30px 0 14px; border: 1px solid var(--border2); border-radius: 999px;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2374685f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: var(--white); font: 14px var(--font-body), sans-serif; appearance: none; -webkit-appearance: none; cursor: pointer; outline: none;
+}
+.xduel-feed-sort:focus { border-color: var(--red); }
+.xduel-feed-search > svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.xduel-feed-search input {
+  width: 100%; min-height: 36px; padding: 0 34px 0 36px; box-sizing: border-box;
+  border: 1px solid var(--border2); border-radius: 999px; background: var(--surface);
+  color: var(--white); font: 14px var(--font-body), sans-serif; outline: none;
+}
+.xduel-feed-search input:focus { border-color: var(--red); }
+.xduel-feed-search button {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border: 0; border-radius: 50%; padding: 0;
+  background: var(--surface2); color: var(--muted2); font-size: 14px; line-height: 1; cursor: pointer;
+}
+@media (max-width: 760px) {
+  .xduel-feed-tools { flex: 1 1 100%; }
+  .xduel-feed-search input, .xduel-feed-sort { font-size: 16px; min-height: 44px; }
+}

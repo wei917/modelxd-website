@@ -17,7 +17,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const BASE_RATING = 1000
 const BT_ITERATIONS = 50
-const MODES = ['text', 'image', 'video'] as const
+// 'audio' (Oct 19): XDuel's 語音 duels, text to speech, in a pool of their own.
+const MODES = ['text', 'image', 'video', 'audio'] as const
 // Search duels rate in their own pool (supabase/62_search_rating_pool.sql).
 // Fitted like any other mode, but deliberately NOT folded into 'all': a
 // combined score that mixes "answered from memory" with "answered after

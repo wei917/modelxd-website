@@ -46,8 +46,31 @@ judge.
 The free front door. Enter one prompt; two anonymous models answer side by
 side. You vote for the better answer, **then** the prices are revealed, then
 you vote again knowing the cost. Both votes feed the leaderboard rating.
-Free to use, with a per-mode daily quota. Supports text, image and video.
+
+Every duel is one against one: two models, never more. Once a duel's
+answers are in, the address becomes the duel's own link (`/xduel/` and an
+id): reload it to carry on where you were, or share it so others can vote
+on it blind. Free to use, up to
+10 duels a day across all types (text, image, video and speech alike). The page
+shows no counter: once the
+day's duels are used up it says so and asks you to come back tomorrow (the
+day resets at midnight UTC, 8 a.m. in Taiwan, 9 a.m. in Japan). Supports
+text, image, video and speech (語音). Pick the type (Text, Image, Video,
+Audio) in the bar across the top of the page. A speech duel: type a short
+text (up to 300 characters) and two anonymous text-to-speech models read it
+aloud; you listen, vote, see the prices per minute of speech, and vote
+again. Speech has its own leaderboard on XBoard (the Audio tab).
 No web search here by design — it is meant to be a clean like-for-like test.
+
+Under the composer, XDuel also shows other people's duels of the chosen type
+to vote on (there is no separate XVote page any more). Open one, compare two
+anonymous answers, and vote for the one you prefer; your vote feeds the same
+leaderboard. This is how the ratings get enough data to be meaningful. There
+is no reveal step on someone else's duel — you are judging the answers, not
+the names. The models really are hidden: their names and prices are not sent
+to your browser, so they cannot be found by inspecting the page. Voting
+requires being signed in. You can open any duel's shareable link and read it
+without an account, but you cannot vote on it until you sign in.
 
 If one of the drawn models is unavailable (a provider outage, or a model
 temporarily out of service), XDuel quietly draws a different one from another
@@ -298,9 +321,7 @@ Today:
   and request a role.
 - **Gomoku (五子棋)** — five in a row on a real board; every seat can be a
   human or an AI, moves are rule-checked by the engine, and each move shows
-  the model's reasoning. Gomoku also runs as a blind **game duel** on XDuel:
-  play a mystery model yourself or watch two mystery models fight, vote,
-  then see who they were and what each move cost.
+  the model's reasoning.
 - **Draw & Guess** — one secret word, drawn by two anonymous image models
   side by side. You guess against the clock with hints from a host, then
   vote the better drawing; after five rounds the artists are revealed.
@@ -331,16 +352,6 @@ calling is deliberately not supported.
 Calls bill at the model's **list price** — the same number XBoard publishes.
 Billing over it would make the leaderboard false.
 
-### XVote — `/xvote`
-Judge other people's duels. You see two anonymous answers, vote for the one
-you prefer, and your vote feeds the same leaderboard. This is how the ratings
-get enough data to be meaningful. Unlike XDuel there is no reveal step here —
-you are judging the answers, not the names.
-
-The models really are hidden: their names and prices are not sent to your
-browser until you have voted, so they cannot be found by inspecting the page.
-Voting requires being signed in. You can open any duel's shareable link and
-read it without an account, but you cannot vote on it until you sign in.
 
 ### XBoard — `/xboard`
 The leaderboard. Models ranked by **XD Score**, a Bradley-Terry rating

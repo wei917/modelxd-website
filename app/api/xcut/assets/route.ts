@@ -10,6 +10,7 @@ export const runtime = 'nodejs'
 
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { mediaFromSlots, signMany } from '@/lib/xcut-media'
+import { withModelNames } from '@/lib/model-names'
 
 const PAGE = 24
 
@@ -109,7 +110,8 @@ export async function GET(req: Request) {
     if (error) return Response.json({ error: error.message }, { status: 503 })
     total = count ?? 0
     for (const row of data ?? []) {
-      mediaFromSlots(row.slots).forEach((m, i) => items.push({
+      // The model's current catalog name, not the one saved with the duel.
+      mediaFromSlots(await withModelNames(row.slots)).forEach((m, i) => items.push({
         id: `${row.id}:${i}`, kind: m.kind, src: { bucket: m.bucket, path: m.path, mediaType: m.mediaType, duelId: row.id }, url: null,
         label: (row.prompt || '').slice(0, 80), model: m.model, cost: m.cost, createdAt: row.created_at, source,
       }))

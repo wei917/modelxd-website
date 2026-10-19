@@ -268,9 +268,17 @@ export function speechPricePerMinute(model: ModelInfo): number {
  */
 export function modePriceLabel(
   model: ModelInfo,
-  mode:  'text' | 'image' | 'video',
+  mode:  'text' | 'image' | 'video' | 'audio',
 ): { label: string; rate: number } {
   const p = pricing(model)
+  // Speech (XDuel's 語音, Oct 19): per minute, so character-billed and
+  // token-billed models compare on one footing (speechPricePerMinute).
+  if (mode === 'audio') {
+    const perMin = speechPricePerMinute(model)
+    return perMin > 0
+      ? { label: `$${parseFloat(perMin.toFixed(4))} / min`, rate: perMin }
+      : { label: '—', rate: 0 }
+  }
   if (mode === 'image') {
     const cost = calcImageCost(model)
     return cost > 0

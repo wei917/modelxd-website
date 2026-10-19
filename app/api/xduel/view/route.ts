@@ -23,6 +23,8 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
+import { signAudioSlots } from '@/lib/xduel-audio'
+import { withModelNames } from '@/lib/model-names'
 
 function serviceClient() {
   return createClient(
@@ -40,6 +42,7 @@ function redactSlots(slots: any): any[] {
     text:         s?.text ?? null,
     isImage:      s?.isImage ?? false,
     isVideo:      s?.isVideo ?? false,
+    ...(s?.isAudio ? { isAudio: true } : {}),
     responseTime: s?.responseTime ?? 0,
     searches:     s?.searches ?? 0,
   }))
@@ -83,7 +86,9 @@ export async function GET(req: Request) {
       // the page, but `vote1_model_id` would name a model outright.
       vote1:       duel.vote1 ?? null,
       vote2:       duel.vote2 ?? null,
-      slots:       revealed ? duel.slots : redactSlots(duel.slots),
+      // Speech files get a fresh link on every read (lib/xduel-audio.ts).
+      // Names are the catalog's current ones (lib/model-names.ts).
+      slots:       revealed ? await withModelNames(await signAudioSlots(duel.slots)) : redactSlots(await signAudioSlots(duel.slots)),
     },
   })
 }

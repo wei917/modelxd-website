@@ -53,7 +53,7 @@ type View = 'duel' | 'media' | 'list' | 'thumb' | 'persona' | 'xtell'
 type SectionDef = { key: SectionKey; nameKey: string; icon: string; view: View; modes?: boolean; preview: number; previewPhone: number; isPublic?: boolean }
 
 // The product rule (profile.privacy): your duels are public, they appear in
-// XVote; everything else is private.
+// XDuel's vote feed; everything else is private.
 const SECTIONS: SectionDef[] = [
   { key: 'duels',     nameKey: 'nav.xduel',    icon: 'duel',     view: 'duel',    modes: true, preview: 3, previewPhone: 1, isPublic: true },
   { key: 'xcreates',  nameKey: 'nav.xcreate',  icon: 'create',   view: 'media',   modes: true, preview: 4, previewPhone: 2 },
@@ -65,7 +65,7 @@ const SECTIONS: SectionDef[] = [
   { key: 'xtalks',    nameKey: 'nav.xtalk',    icon: 'talk',     view: 'list',    preview: 4, previewPhone: 3 },
   { key: 'xgames',    nameKey: 'nav.xgame',    icon: 'game',     view: 'list',    preview: 4, previewPhone: 3 },
   { key: 'xtell',     nameKey: 'nav.xtell',    icon: 'tell',     view: 'xtell',   preview: 4, previewPhone: 3 },
-  { key: 'votes',     nameKey: 'nav.xvote',    icon: 'vote',     view: 'list',    modes: true, preview: 4, previewPhone: 3 },
+  { key: 'votes',     nameKey: 'lib.votes',    icon: 'vote',     view: 'list',    modes: true, preview: 4, previewPhone: 3 },
 ]
 export const DEFAULT_SECTIONS: SectionKey[] = ['duels', 'xcreates']
 const PAGE = 12
@@ -434,7 +434,7 @@ function Section({ def, q, sort, loader, actions }: { def: SectionDef; q: string
           <LibIcon name={def.isPublic ? 'globe' : 'lock'} size={12} /><span className="plib-vis-word">{t(def.isPublic ? 'lib.public' : 'lib.private')}</span>
         </span>
         {/* The type filter is the site's own segmented control (.mode-seg, as on
-            X對決, XVote and XBoard), beside the badge (owner, Oct 16). */}
+            X對決 and XBoard), beside the badge (owner, Oct 16). */}
         {def.modes && (
           <span className="mode-seg plib-seg" role="group" aria-label={t('lib.type')}>
             {(['all', 'text', 'image', 'video'] as Mode[]).map(m => (

@@ -31,6 +31,7 @@ export interface MatchResultEntry {
   error?: boolean
   priceLabel?: string    // XDuel: per-unit price string
   note?: string          // XDuel: savings line under the card
+  foot?: string          // XDuel: what the savings are counted over (以 1,000 張圖片計算)
   /** Web searches this model ran. Billed per call ON TOP of tokens, so a
    *  model can lose on cost purely by having looked things up more. */
   searches?: number
@@ -85,7 +86,9 @@ export default function MatchResult({
     }}>
       {/* Banner */}
       <div style={{ textAlign: 'center', marginBottom: 18 }}>
-        <div style={{ fontFamily: 'var(--mono)', fontSize: 10.5, letterSpacing: '.35em', color: 'var(--muted)', textTransform: 'uppercase' }}>
+        {/* The class names below let a page size these without touching the
+            other users of this report (XDuel, Oct 19: "a little bit bigger"). */}
+        <div className="mr-eyebrow" style={{ fontFamily: 'var(--mono)', fontSize: 10.5, letterSpacing: '.35em', color: 'var(--muted)', textTransform: 'uppercase' }}>
           {eyebrow}
         </div>
         <h2 style={{
@@ -101,11 +104,11 @@ export default function MatchResult({
       </div>
 
       {/* Model cards */}
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'stretch' }}>
+      <div className="mr-cards" style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'stretch' }}>
         {entries.map((e, i) => {
           const mvp = !e.error && e.score === maxScore
           return (
-            <div key={i} style={{
+            <div key={i} className="mr-card" style={{
               position: 'relative', width: 200, borderRadius: 12, padding: '16px 16px 14px',
               border: `1.5px solid ${mvp ? 'var(--red)' : 'var(--border2)'}`,
               background: mvp ? 'var(--red-dim)' : 'var(--surface)',
@@ -115,7 +118,7 @@ export default function MatchResult({
               transition: `opacity .4s ease ${.12 + i * .09}s, transform .4s cubic-bezier(.2,1,.3,1) ${.12 + i * .09}s`,
             }}>
               {mvp && topBadge && (
-                <span style={{
+                <span className="mr-badge" style={{
                   position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
                   background: 'var(--red)', color: '#fff', borderRadius: 999,
                   fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.22em',
@@ -131,7 +134,7 @@ export default function MatchResult({
               }}>
                 {e.error ? t('mr.dnf') : e.score.toFixed(1)}
               </div>
-              <div style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '.2em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
+              <div className="mr-score-label" style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: '.2em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
                 {t('mr.score')}
               </div>
 
@@ -140,14 +143,14 @@ export default function MatchResult({
                     blind-phase ban only covers XDuel votes 1-2). */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                   <ProviderLogo provider={e.provider} model={e.name} size={18} />
-                  <div style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25 }}>{e.name}</div>
+                  <div className="mr-name" style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25 }}>{e.name}</div>
                 </div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.16em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
+                <div className="mr-maker" style={{ fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.16em', color: 'var(--muted)', marginTop: 3, textTransform: 'uppercase' }}>
                   {MAKER_LABELS[makerOf(e.name) ?? ''] ?? e.provider}
                 </div>
               </div>
 
-              <div style={{
+              <div className="mr-stats" style={{
                 display: 'flex', justifyContent: 'center', alignItems: 'center',
                 gap: 9, marginTop: 11, flexWrap: 'wrap',
                 fontFamily: 'var(--mono)', fontSize: 10.5, color: 'var(--muted2)',
@@ -179,13 +182,17 @@ export default function MatchResult({
                 )}
               </div>
 
-              {e.note && (
-                <div style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--muted2)', marginTop: 8, lineHeight: 1.35 }}>
-                  {e.note}
-                </div>
-              )}
+              {/* The note and foot always render, empty when absent, so a
+                  page can line cards up row by row (XDuel's subgrid). An
+                  empty one carries no margin, so other pages look the same. */}
+              {e.note
+                ? <div className="mr-note" style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--muted2)', marginTop: 8, lineHeight: 1.35 }}>{e.note}</div>
+                : <div className="mr-note" />}
+              {e.foot
+                ? <div className="mr-foot" style={{ textAlign: 'center', fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.35 }}>{e.foot}</div>
+                : <div className="mr-foot" />}
 
-              <div style={{
+              <div className="mr-pick" style={{
                 marginTop: 11, textAlign: 'center', borderRadius: 7, padding: '5px 0',
                 fontFamily: 'var(--mono)', fontSize: 9.5, letterSpacing: '.18em', textTransform: 'uppercase',
                 border: e.isPick ? 'none' : '1px dashed var(--border2)',
