@@ -48,6 +48,21 @@ export async function pressTime(model: ModelInfo, ff: string, clip: string, user
   return { t: Number.isFinite(t) && t >= 0.5 && t <= 4.5 ? t : fallback, cost }
 }
 
+/** Whether the fall rolls over (owner, Oct 18: "why she didn't roll over her
+ *  body?"; a take pinned to the same pictures slid off on its side instead).
+ *  Asked as whether the face is hidden in some frame, face down with only the
+ *  back of the head showing: asked whether her back faces the camera, the
+ *  model also said yes for a body lying on its side (tested on four takes:
+ *  only the one that slid kept its face in view in all nine frames). A check
+ *  that cannot read the answer passes, so a hiccup never costs a take. */
+export async function rolledOver(model: ModelInfo, ff: string, clip: string, userId: string | null): Promise<{ ok: boolean; cost: number }> {
+  const times = [0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2]
+  const frames = await framesAt(ff, clip, times)
+  const { json, cost } = await askPictures(model, `These ${frames.length} pictures are frames of one top-down clip, in order, at these seconds: ${times.join(', ')}. A person rolls off a sofa onto the rug. For EACH frame: can you see any part of the person's FACE (eyes, nose, mouth; a side profile counts as visible), or is the face hidden because they are face down and you see only the back of the head and hair? Return JSON only: {"face_visible": [true or false, ...]}`, frames, userId)
+  const seen: unknown[] = Array.isArray(json?.face_visible) ? json.face_visible : []
+  return { ok: seen.length !== frames.length || seen.some(v => v === false), cost }
+}
+
 /** How far across the frame she lies, left to right (0-1), over the
  *  outfit pictures: the hub goes above the middle and the blade just wider.
  *  An arm stretched away from her body is left out (test run, Oct 18: the

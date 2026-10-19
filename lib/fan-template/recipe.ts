@@ -47,10 +47,11 @@ export const END_BOX = { x: 1 / 3, y: 0.07, w: 1 / 3, h: 0.82 }
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
 export const HUB_GOLD: [number, number, number] = [1.2, 0.98, 0.6]
 /** The card's loop, the demo with music and its poster, in the public landing
- *  bucket: the palace demo (v5, Oct 18; the template's own job on its
+ *  bucket: the palace demo (v6, Oct 18; the template's own job on its
  *  defaults: the three-seat room, the ivory lace start, the pinned fall that
- *  ends in the middle, the red gown last, runway music, an AI model). */
-export const DEMO = { card: 'templates/fan-outfit-v5-card.mp4', video: 'templates/fan-outfit-v5-demo.mp4', poster: 'templates/fan-outfit-v5-poster.jpg' }
+ *  rolls over and ends in the middle, the red gown last, runway music, an AI
+ *  model). */
+export const DEMO = { card: 'templates/fan-outfit-v6-card.mp4', video: 'templates/fan-outfit-v6-demo.mp4', poster: 'templates/fan-outfit-v6-poster.jpg' }
 export const MIN_OUTFITS = 2
 export const MAX_OUTFITS = 5
 
@@ -140,15 +141,18 @@ export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their b
  *  best"): a light, lazy turn toward the sofa's edge ("I feel she used a lot
  *  of strength to start"), a fast drop at real speed, a jolt on landing,
  *  then onto the back, eyes on the camera. Seen from straight above a
- *  drop shows only as speed and impact, so the words ask for both. */
+ *  drop shows only as speed and impact, so the words ask for both. One full
+ *  roll over, the back to the camera for a moment ("why she didn't roll over
+ *  her body?": one take slid off on its side; "never lie face down" had
+ *  pushed against it), and the job checks the take (cut.ts rolledOver). */
 export function roll(scene?: FanScene) {
   return {
     seconds: 4,
     clip: `Realistic fashion video, 9:16, 4 seconds, one continuous shot starting from this picture. The camera is locked exactly overhead, looking straight down at the floor; it never moves, zooms, pans, tilts or rotates, and the sofa, the rug, the floor and the remote stay exactly where they are in the frame. No ceiling fan in the picture.
 0.0–0.8 s: the person, lying on their back at the edge of the sofa seat, lightly and lazily turns onto their side toward the right of the frame: an easy, relaxed little roll with almost no effort, as if drifting off the edge half asleep, limbs loose, no pushing and no bracing, until their weight tips over the edge.
-0.8–1.2 s: gravity takes over: they drop off the sofa, about 45 cm, at full real-time speed, not slow motion, and land hard on the rug on their shoulder and hip. The impact is visible: the whole body jolts, the hair whips up and falls back, the clothes bounce, the arms and legs flop once.
-1.2–4.0 s: they roll the rest of the way onto their back on the rug, head toward the top of the frame and feet toward the bottom, settle and lie still, eyes looking straight up into the camera, arms at their sides.
-Real weight and momentum, natural anatomy, real fabric. They never lie face down, never roll more than once, never float, glide or slide.
+0.8–1.2 s: gravity takes over: they roll OVER as they drop off the sofa, about 45 cm, at full real-time speed, not slow motion: their body keeps turning over their front, so for a moment their back faces the camera, and they land hard on the rug on their shoulder and hip. The impact is visible: the whole body jolts, the hair whips up and falls back, the clothes bounce, the arms and legs flop once.
+1.2–4.0 s: they keep rolling the same way onto their back on the rug, one full roll over in all, head toward the top of the frame and feet toward the bottom, settle and lie still, eyes looking straight up into the camera, arms at their sides.
+Real weight and momentum, natural anatomy, real fabric. One full roll over, not more; they never slide or shift sideways without turning over, never float or glide.
 They end exactly as in the last frame: on their back in the middle of the picture, centered left to right.`,
     sound: landingSound(scene),
   }
