@@ -28,18 +28,29 @@
 
 import type { MusicTarget } from '@/lib/remake/config'
 
-/** The fixed set, 1152x2048: t4's start frame repainted as a palace room
- *  (gilded Louis XV sofa, Persian silk rug, Carrara marble; owner's pick, Oct
- *  18), the rug made a true rectangle ("why the carpet is not straight?"). */
-export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace.jpg' }
+/** The fixed set, 1152x2048, EMPTY: the palace room (gilded Louis XV sofa,
+ *  Persian silk rug, Carrara marble; owner's pick, Oct 18) framed so she can
+ *  end in the middle without a zoom ("make the sofa smaller ... her final
+ *  position should be centered"): a three-seat sofa with three equal seats
+ *  ("usually 3 seats or at most 4") as a strip on the left, the rug's
+ *  medallion at the middle. Both the start and the end picture are made from
+ *  this one room, so the sofa cannot change between them (it grew a small
+ *  fourth seat when the end picture redrew it). */
+export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace3.jpg' }
+/** Where the person goes in the start and the end picture (fractions of the
+ *  picture), the same size in both: lying on the sofa, the left edge cutting
+ *  off a little of them ("it's ok to start 3/4 body"), and lying exactly in
+ *  the middle of the rug. A red box drawn there guides each edit. */
+export const START_BOX = { x: -0.08, y: 0.07, w: 1 / 3, h: 0.82 }
+export const END_BOX = { x: 1 / 3, y: 0.07, w: 1 / 3, h: 0.82 }
 /** The blades' default material (walnut, the owner's pick) and the hub's gold. */
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
 export const HUB_GOLD: [number, number, number] = [1.2, 0.98, 0.6]
 /** The card's loop, the demo with music and its poster, in the public landing
- *  bucket: the palace demo (v4, Oct 18; the template's own job on its
- *  defaults with the real fall, an AI model, five luxury outfits, runway
- *  music). */
-export const DEMO = { card: 'templates/fan-outfit-v4-card.mp4', video: 'templates/fan-outfit-v4-demo.mp4', poster: 'templates/fan-outfit-v4-poster.jpg' }
+ *  bucket: the palace demo (v5, Oct 18; the template's own job on its
+ *  defaults: the three-seat room, the ivory lace start, the pinned fall that
+ *  ends in the middle, the red gown last, runway music, an AI model). */
+export const DEMO = { card: 'templates/fan-outfit-v5-card.mp4', video: 'templates/fan-outfit-v5-demo.mp4', poster: 'templates/fan-outfit-v5-poster.jpg' }
 export const MIN_OUTFITS = 2
 export const MAX_OUTFITS = 5
 
@@ -63,14 +74,14 @@ export type FanRequest = {
 }
 
 /** What a run of n outfits costs at list price (cents), what it reserves and
- *  about how long it is. Measured on Oct 18's runs ($3.03 for five): seven
- *  pictures at ~$0.07, Wan at $0.10 a second (roll 4 s, remote 5 s, 4 s per
+ *  about how long it is. Measured on Oct 18's runs ($3.03 for five, before the
+ *  end picture): eight pictures at ~$0.07, Wan at $0.10 a second (roll 4 s, remote 5 s, 4 s per
  *  extra outfit), the music by the second; each scene picture ~$0.07. The
  *  reserve leaves room for a refusal sending a picture or clip elsewhere. */
 export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: number; reserveCents: number; seconds: number } {
   const n = Math.min(MAX_OUTFITS, Math.max(MIN_OUTFITS, outfits))
   const extras = (scene?.sofa || scene?.carpet || scene?.floor ? 1 : 0) + (scene?.blade ? 1 : 0)
-  const aboutCents = 114 + 48 * (n - 1) + 7 * extras
+  const aboutCents = 121 + 48 * (n - 1) + 7 * extras
   return { aboutCents, reserveCents: Math.ceil((aboutCents + 90) / 50) * 50, seconds: Math.round(9.2 + 3.2 * (n - 2)) }
 }
 
@@ -79,8 +90,9 @@ export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: numbe
 export const SHEET = '請以我上傳的正面照片作為唯一人物身分參考，完整保留人物的五官、臉型、膚色、髮型及個人辨識度。\n\n生成一張白色背景的寫實四格人物設定圖：左上為正面臉部近照、左下為側面臉部近照、中間為正面全身照、右邊為側面全身照。\n\n四格均為同一人物，穿著同一套簡約米白色居家服，赤腳自然站立。確保每格的樣貌、身高、體型及身材比例一致，不加入文字、配件或其他人物。'
 
 /** Step 2a (optional): the sofa, the carpet and the floor the user asked
- *  for, painted into the set; picture 1 is the set, their reference photos
- *  follow. The shapes and places stay, so the roll and the landing do too. */
+ *  for, painted into the empty set; picture 1 is the set, their reference
+ *  photos follow. The shapes and places stay, so the roll and the landing do
+ *  too. */
 export function setPrompt(scene: FanScene): string {
   let next = 2
   const changes: string[] = []
@@ -92,7 +104,7 @@ export function setPrompt(scene: FanScene): string {
   say(scene.sofa, 'the sofa\'s upholstery and color', 'sofa')
   say(scene.carpet, 'the rug on the floor becomes this carpet or rug', 'carpet or rug')
   say(scene.floor, 'the floor around the rug becomes this floor', 'floor')
-  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room${scene.floor ? '' : ' and the floor'}, the person lying on the sofa (pose, clothes, face), the small silver remote on the rug, the light and the shadows. The sofa keeps its exact outline, size, seat height and position; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
+  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room${scene.floor ? '' : ' and the floor'}, the small silver remote on the rug, the light and the shadows; the room stays empty of people. The sofa keeps its exact outline, size, seat height and position and its three equal seat cushions; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
 }
 
 /** The blades' material (optional): a flat picture of it, painted on our
@@ -103,31 +115,41 @@ export function bladePrompt(blade: FanScenePart): string {
   return `A flat, evenly lit, straight-on close-up photograph of the surface of a ceiling fan blade: ${what}. The material fills the whole picture edge to edge, its grain or pattern running from top to bottom. No blade outline, no edges, no background, no shadows, no room reflections, no objects, no text.`
 }
 
-const KEEP = '其他全部完全不變：攝影機角度、比例、構圖、光線、沙發、地毯、地板、遙控器。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。'
 const OUTFIT_PHOTO = '服裝的版型、剪裁、布料、顏色、圖案與鞋子完全照最後一張圖片，但不要用那張圖片裡的人。'
 /** The set's woman wears white sneakers, and an edit keeps them unless told
  *  (test run, Oct 18: the same sneakers under every outfit). */
 const SHOES = '鞋子也要換成搭配這套穿搭的鞋。'
 
-/** Step 2b: the user, in outfit 1, on the set's sofa edge (picture 1 is the
- *  set, picture 2 the sheet, picture 3 the outfit photo if any). */
-export function startPrompt(outfit: FanOutfit): string {
-  return `編輯第一張圖片。把躺在沙發座墊邊緣的人換成第二張人物設定圖裡的人：臉、五官、膚色、髮型、身材和性別完全照設定圖。人物的姿勢、在沙發上的位置、大小、頭朝畫面上方的方向都不變，仍然仰躺在沙發座墊靠地毯那一側的邊緣，看向鏡頭。人物穿著：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${KEEP}`
+/** Steps 2b and 2c: the user in outfit 1, put into the empty set inside the
+ *  red box: on the sofa (the start) and in the middle of the rug (the end).
+ *  Picture 1 is the set with the box, picture 2 the sheet, picture 3 the
+ *  outfit photo if any. */
+function placed(outfit: FanOutfit, where: string): string {
+  const wear = outfit.photo
+    ? 'their outfit\'s cut, fabric, color, pattern and shoes exactly as in picture 3, without the person in that picture'
+    : `${outfit.text}, with shoes to match`
+  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They are exactly as large as the box. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the small silver remote on the rug, the floor, the light. Then remove the red box completely: no red line anywhere. No ceiling fan, no text, no watermark.`
 }
+export const startPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back fully on the sofa seat, exactly inside the red box: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.')
+export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug, exactly inside the red box: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting at their sides, eyes looking straight up into the camera. The sofa is empty.')
 
-/** Step 3a, the roll: a real fall (owner, Oct 18: "make falling on the
+/** Step 3a, the roll, from the start picture to the end picture (Wan first
+ *  and last frame, so we know where she ends: "her final position should be
+ *  centered"): a real fall (owner, Oct 18: "make falling on the
  *  ground more natural ... like hitting a floor"; of three tries "B is the
- *  best"): over the sofa's edge, a fast drop at real speed, a jolt on
- *  landing, then onto the back, eyes on the camera. Seen from straight above a
+ *  best"): a light, lazy turn toward the sofa's edge ("I feel she used a lot
+ *  of strength to start"), a fast drop at real speed, a jolt on landing,
+ *  then onto the back, eyes on the camera. Seen from straight above a
  *  drop shows only as speed and impact, so the words ask for both. */
 export function roll(scene?: FanScene) {
   return {
     seconds: 4,
     clip: `Realistic fashion video, 9:16, 4 seconds, one continuous shot starting from this picture. The camera is locked exactly overhead, looking straight down at the floor; it never moves, zooms, pans, tilts or rotates, and the sofa, the rug, the floor and the remote stay exactly where they are in the frame. No ceiling fan in the picture.
-0.0–0.8 s: the person, lying on their back at the edge of the sofa seat, rolls onto their side toward the right of the frame until their weight tips over the edge.
+0.0–0.8 s: the person, lying on their back at the edge of the sofa seat, lightly and lazily turns onto their side toward the right of the frame: an easy, relaxed little roll with almost no effort, as if drifting off the edge half asleep, limbs loose, no pushing and no bracing, until their weight tips over the edge.
 0.8–1.2 s: gravity takes over: they drop off the sofa, about 45 cm, at full real-time speed, not slow motion, and land hard on the rug on their shoulder and hip. The impact is visible: the whole body jolts, the hair whips up and falls back, the clothes bounce, the arms and legs flop once.
 1.2–4.0 s: they roll the rest of the way onto their back on the rug, head toward the top of the frame and feet toward the bottom, settle and lie still, eyes looking straight up into the camera, arms at their sides.
-Real weight and momentum, natural anatomy, real fabric. They never lie face down, never roll more than once, never float, glide or slide.`,
+Real weight and momentum, natural anatomy, real fabric. They never lie face down, never roll more than once, never float, glide or slide.
+They end exactly as in the last frame: on their back in the middle of the picture, centered left to right.`,
     sound: landingSound(scene),
   }
 }
@@ -205,13 +227,16 @@ export function fanMusicPrompt(style: FanMusicStyle, seconds: number, accents: n
 }
 
 /** The page's opening outfits, in the page's language: five luxury looks
- *  (owner, Oct 18: "elegant, luxury"), long sleeves and high necks so a
- *  picture of them lying down is not refused; the page starts with all five,
- *  the user keeps 2 to 5. */
+ *  (owner, Oct 18: "elegant, luxury"; start in a dress, "not pants": the
+ *  ivory lace after the black gown was "too black"; "add one more beautiful
+ *  sexy dress as the last one"). The
+ *  first four keep long sleeves or high necks (OpenAI refuses some
+ *  lying-down dresses); the red one may be refused there and go to the next
+ *  maker. The page starts with all five, the user keeps 2 to 5. */
 export const DEFAULT_OUTFITS: Record<string, string[]> = {
-  'zh-Hant': ['象牙白絲綢襯衫配高腰寬褲與金色首飾', '黑色長袖緞面晚禮服', '香檳金亮片長袖禮服', '酒紅色絲絨高領長禮服', '白色粗花呢套裝配珍珠項鍊'],
-  'zh-Hans': ['象牙白丝绸衬衫配高腰阔腿裤与金色首饰', '黑色长袖缎面晚礼服', '香槟金亮片长袖礼服', '酒红色丝绒高领长礼服', '白色粗花呢套装配珍珠项链'],
-  en: ['Ivory silk blouse with high-waisted wide trousers and gold jewelry', 'Black long-sleeve satin evening gown', 'Champagne-gold sequin long-sleeve gown', 'Burgundy velvet high-neck gown', 'White tweed suit with a pearl necklace'],
-  ja: ['アイボリーのシルクブラウスとハイウエストのワイドパンツ、金のアクセサリー', '黒の長袖サテンのイブニングドレス', 'シャンパンゴールドのスパンコールの長袖ドレス', 'ボルドーのベルベットのハイネックドレス', '白のツイードスーツとパールのネックレス'],
-  ko: ['아이보리 실크 블라우스와 하이웨이스트 와이드 팬츠, 골드 주얼리', '블랙 롱슬리브 새틴 이브닝 드레스', '샴페인 골드 스팽글 롱슬리브 드레스', '버건디 벨벳 하이넥 드레스', '화이트 트위드 수트와 진주 목걸이'],
+  'zh-Hant': ['象牙白蕾絲長袖長禮服', '香檳金亮片長袖禮服', '酒紅色絲絨高領長禮服', '白色粗花呢套裝配珍珠項鍊', '正紅色亮片露肩高衩晚禮服'],
+  'zh-Hans': ['象牙白蕾丝长袖长礼服', '香槟金亮片长袖礼服', '酒红色丝绒高领长礼服', '白色粗花呢套装配珍珠项链', '正红色亮片露肩高开衩晚礼服'],
+  en: ['Ivory lace long-sleeve gown', 'Champagne-gold sequin long-sleeve gown', 'Burgundy velvet high-neck gown', 'White tweed suit with a pearl necklace', 'Red sequin off-shoulder gown with a high leg slit'],
+  ja: ['アイボリーのレースの長袖ロングドレス', 'シャンパンゴールドのスパンコールの長袖ドレス', 'ボルドーのベルベットのハイネックドレス', '白のツイードスーツとパールのネックレス', '赤いスパンコールのオフショルダー、ハイスリットのイブニングドレス'],
+  ko: ['아이보리 레이스 롱슬리브 드레스', '샴페인 골드 스팽글 롱슬리브 드레스', '버건디 벨벳 하이넥 드레스', '화이트 트위드 수트와 진주 목걸이', '레드 스팽글 오프숄더 하이 슬릿 이브닝 드레스'],
 }
