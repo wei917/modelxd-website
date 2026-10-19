@@ -40,18 +40,28 @@ export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/pl
 /** Where the person goes in the start and the end picture (fractions of the
  *  picture), the same size in both: lying on the sofa, the left edge cutting
  *  off a little of them ("it's ok to start 3/4 body"), and lying exactly in
- *  the middle of the rug. A red box drawn there guides each edit. */
-export const START_BOX = { x: -0.08, y: 0.07, w: 1 / 3, h: 0.82 }
-export const END_BOX = { x: 1 / 3, y: 0.07, w: 1 / 3, h: 0.82 }
+ *  the middle of the rug. A red box drawn there guides each edit, with a
+ *  circle at its top the size of a real head (owner, Oct 18: "too stretched
+ *  tall. not a normal human": a box 4.4 times as tall as wide made her 9
+ *  heads tall; words alone left her at 8.3, the circle at 7.6). */
+export const START_BOX = { x: -0.06, y: 0.15, w: 0.35, h: 0.66 }
+export const END_BOX = { x: 0.325, y: 0.15, w: 0.35, h: 0.66 }
+/** The red marks for a box on a picture w x h: the box, and the head's circle
+ *  (a seventh of the box's height plus a little for the hair). */
+export function guideMarks(b: typeof START_BOX, w: number, h: number): string {
+  const d = Math.round(b.h * h / 7.3)
+  return `<rect x="${Math.round(b.x * w)}" y="${Math.round(b.y * h)}" width="${Math.round(b.w * w)}" height="${Math.round(b.h * h)}" fill="none" stroke="red" stroke-width="8"/>` +
+    `<circle cx="${Math.round((b.x + b.w / 2) * w)}" cy="${Math.round(b.y * h + d / 2 + 6)}" r="${Math.round(d / 2)}" fill="none" stroke="red" stroke-width="6"/>`
+}
 /** The blades' default material (walnut, the owner's pick) and the hub's gold. */
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
 export const HUB_GOLD: [number, number, number] = [1.2, 0.98, 0.6]
 /** The card's loop, the demo with music and its poster, in the public landing
- *  bucket: the palace demo (v6, Oct 18; the template's own job on its
+ *  bucket: the palace demo (v7, Oct 18; the template's own job on its
  *  defaults: the three-seat room, the ivory lace start, the pinned fall that
- *  rolls over and ends in the middle, the red gown last, runway music, an AI
- *  model). */
-export const DEMO = { card: 'templates/fan-outfit-v6-card.mp4', video: 'templates/fan-outfit-v6-demo.mp4', poster: 'templates/fan-outfit-v6-poster.jpg' }
+ *  rolls over and ends in the middle, a body of real proportions, the remote
+ *  picked up where it lies, the red gown last, runway music, an AI model). */
+export const DEMO = { card: 'templates/fan-outfit-v7-card.mp4', video: 'templates/fan-outfit-v7-demo.mp4', poster: 'templates/fan-outfit-v7-poster.jpg' }
 export const MIN_OUTFITS = 2
 export const MAX_OUTFITS = 5
 
@@ -75,14 +85,15 @@ export type FanRequest = {
 }
 
 /** What a run of n outfits costs at list price (cents), what it reserves and
- *  about how long it is. Measured on Oct 18's runs ($3.03 for five, before the
- *  end picture): eight pictures at ~$0.07, Wan at $0.10 a second (roll 4 s, remote 5 s, 4 s per
- *  extra outfit), the music by the second; each scene picture ~$0.07. The
- *  reserve leaves room for a refusal sending a picture or clip elsewhere. */
+ *  about how long it is. Measured on Oct 18's runs ($3.12 for five, with a
+ *  holding picture since dropped): seven pictures at ~$0.07, Wan at $0.10 a
+ *  second (roll 4 s, remote 5 s, 4 s per extra outfit), the music by the
+ *  second; each scene picture ~$0.07. The reserve leaves room for a refusal
+ *  sending a picture or clip elsewhere. */
 export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: number; reserveCents: number; seconds: number } {
   const n = Math.min(MAX_OUTFITS, Math.max(MIN_OUTFITS, outfits))
   const extras = (scene?.sofa || scene?.carpet || scene?.floor ? 1 : 0) + (scene?.blade ? 1 : 0)
-  const aboutCents = 121 + 48 * (n - 1) + 7 * extras
+  const aboutCents = 114 + 48 * (n - 1) + 7 * extras
   return { aboutCents, reserveCents: Math.ceil((aboutCents + 90) / 50) * 50, seconds: Math.round(9.2 + 3.2 * (n - 2)) }
 }
 
@@ -129,10 +140,10 @@ function placed(outfit: FanOutfit, where: string): string {
   const wear = outfit.photo
     ? 'their outfit\'s cut, fabric, color, pattern and shoes exactly as in picture 3, without the person in that picture'
     : `${outfit.text}, with shoes to match`
-  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They are exactly as large as the box. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the small silver remote on the rug, the floor, the light. Then remove the red box completely: no red line anywhere. No ceiling fan, no text, no watermark.`
+  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. Real proportions of an average adult, as in a real photograph taken from above, not a fashion illustration and not a model with lengthened legs: the head is about one seventh of their whole length, the legs are of normal length, and with the arms lying along the body the hands reach the middle of the thighs. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the small silver remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
 }
-export const startPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back fully on the sofa seat, exactly inside the red box: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.')
-export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug, exactly inside the red box: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting at their sides, eyes looking straight up into the camera. The sofa is empty.')
+export const startPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back fully on the sofa seat: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.')
+export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting along their sides, eyes looking straight up into the camera. Their left hand (the hand on the right side of the picture) lies on the rug beside their thigh, a few centimeters from the small silver remote. The sofa is empty.')
 
 /** Step 3a, the roll, from the start picture to the end picture (Wan first
  *  and last frame, so we know where she ends: "her final position should be
@@ -167,13 +178,16 @@ function landingSound(scene?: FanScene): string {
   return `Quiet room tone; at about 1.1 s a heavy, dull, muffled thud as the body lands ${on}; then a soft rustle of fabric. No music, no singing.`
 }
 
-/** Step 3b's end frame: the remote in hand, eyes on the camera (t4). */
-export const HOLDING = 'Edit this picture. Keep everything exactly as it is: the room, the sofa, the rug, the floor, every object and where it is, the camera position and angle, the framing, the light and shadows, and the clothes, face, hair, pose and position of the person. Change only this: the left hand of the person (the hand on the right side of the frame) now holds the small silver remote, resting on the rug beside their hip, and the remote is no longer lying on the rug; their eyes look straight up into the camera. No text, no letters, no logos.'
-
-/** Step 3b, the remote (owner: "look straight to the camera"; one hand). */
+/** Step 3b, the remote (owner: "look straight to the camera"; one hand),
+ *  from the landing to the landing (first and last frame the same): she
+ *  picks it up, presses and lays it back where it lay, so only her hand can
+ *  carry it (owner, Oct 18: "the girl grab it remotely": a last frame with
+ *  the remote in her hand had it slide up to meet her, as every edit moved
+ *  the remote to the hand rather than the hand to the remote). The outfits
+ *  after it have the remote on the rug beside her hand. */
 export const REMOTE = {
   seconds: 5,
-  clip: 'Locked overhead camera, no movement, no zoom, no rotation. The person keeps their head still and their eyes looking straight up into the camera the whole time; they never look at the remote. At 0.5 s their left hand (on the right side of the frame) closes around the small silver remote lying beside it, without looking at it; at 1.5 s they raise the remote toward the camera and press the button once with their thumb; at 2.5 s they lower that hand back to the rug beside their hip, still holding the remote, and then lie still. Their other hand stays still at their side. No cuts.',
+  clip: 'Locked overhead camera, no movement, no zoom, no rotation. The person keeps their head still and their eyes looking straight up into the camera the whole time; they never look at the remote. At 0.5 s their left hand (on the right side of the frame) slides down a little along the rug to the small silver remote lying beside it and picks it up, without looking at it; at 1.5 s they raise the remote toward the camera and press the button once with their thumb; at 2.5 s they lower that hand, lay the remote back down on the rug exactly where it was, let go of it and rest the hand beside their thigh as at the start; then they lie still. The remote never slides or moves by itself, only in the hand. Their other hand stays still at their side. No cuts.',
   sound: 'Quiet room tone, a soft click of a remote button. No music, no singing.',
 }
 
@@ -190,7 +204,7 @@ export const POSES: { pose: string; clip: string }[] = [
  *  picture 3 the outfit photo if any. */
 export function outfitPrompt(n: number, outfit: FanOutfit): string {
   const p = POSES[n - 2]
-  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}小型銀色遙控器放在地毯上、人物左手（畫面右側那隻手）旁邊，不在手裡。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
+  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}小型銀色遙控器放在地毯上、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
 }
 export const stillClip = (n: number) => ({
   seconds: 4,
@@ -198,10 +212,11 @@ export const stillClip = (n: number) => ({
   sound: 'Quiet room tone and a soft steady whir in the room, faint breathing; no music, no singing.',
 })
 
-/** The cut's clock (t4's numbers): the roll's first 3 s and the remote clip
- *  from 0.4 s make the opening; the fan starts at the remote's press and a
- *  blade passes every 3.2 s; the last outfit stays 1.8 s. */
-export const TIMING = { rollEnd: 3.0, remoteFrom: 0.4, step: 3.2, tail: 1.8, lead: 0.6, overlap: 0.2 }
+/** The cut's clock (t4's numbers): the roll until she has settled (cut.ts
+ *  settledAt, never before 2.4 s; t4 cut at 3.0 s) and the remote clip from
+ *  0.4 s, faded over 0.3 s, make the opening; the fan starts at the remote's
+ *  press and a blade passes every 3.2 s; the last outfit stays 1.8 s. */
+export const TIMING = { rollMin: 2.4, remoteFrom: 0.4, blend: 0.3, step: 3.2, tail: 1.8, lead: 0.6, overlap: 0.2 }
 /** Where the press is when the eyes cannot tell (t4's: 2.2 s into the clip). */
 export const PRESS_DEFAULT = 2.2
 /** The blades: 360 px wide (owner, Oct 18: "360 px is good"), the tip 1200 px
