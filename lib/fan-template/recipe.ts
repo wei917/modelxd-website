@@ -35,8 +35,12 @@ import type { MusicTarget } from '@/lib/remake/config'
  *  ("usually 3 seats or at most 4") as a strip on the left, the rug's
  *  medallion at the middle. Both the start and the end picture are made from
  *  this one room, so the sofa cannot change between them (it grew a small
- *  fourth seat when the end picture redrew it). */
-export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace3.jpg' }
+ *  fourth seat when the end picture redrew it). The remote is a classic one,
+ *  walnut with a gold rim and gold buttons like the fan, lying right where her
+ *  left hand lands (owner, Oct 19: "the remote controller is still at the
+ *  wrong position ... should be more classic"; the silver one lay a hand's
+ *  length lower): one guided edit, only its two patches blended back. */
+export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace4.jpg' }
 /** Where the person goes in the start and the end picture (fractions of the
  *  picture), the same size in both: lying on the sofa, the left edge cutting
  *  off a little of them ("it's ok to start 3/4 body"), and lying exactly in
@@ -57,11 +61,11 @@ export function guideMarks(b: typeof START_BOX, w: number, h: number): string {
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
 export const HUB_GOLD: [number, number, number] = [1.2, 0.98, 0.6]
 /** The card's loop, the demo with music and its poster, in the public landing
- *  bucket: the palace demo (v7, Oct 18; the template's own job on its
+ *  bucket: the palace demo (v8, Oct 19; the template's own job on its
  *  defaults: the three-seat room, the ivory lace start, the pinned fall that
- *  rolls over and ends in the middle, a body of real proportions, the remote
- *  picked up where it lies, the red gown last, runway music, an AI model). */
-export const DEMO = { card: 'templates/fan-outfit-v7-card.mp4', video: 'templates/fan-outfit-v7-demo.mp4', poster: 'templates/fan-outfit-v7-poster.jpg' }
+ *  rolls over and ends in the middle, a body of real proportions, the walnut
+ *  remote at her hand, the red gown last, runway music, an AI model). */
+export const DEMO = { card: 'templates/fan-outfit-v8-card.mp4', video: 'templates/fan-outfit-v8-demo.mp4', poster: 'templates/fan-outfit-v8-poster.jpg' }
 export const MIN_OUTFITS = 2
 export const MAX_OUTFITS = 5
 
@@ -116,7 +120,7 @@ export function setPrompt(scene: FanScene): string {
   say(scene.sofa, 'the sofa\'s upholstery and color', 'sofa')
   say(scene.carpet, 'the rug on the floor becomes this carpet or rug', 'carpet or rug')
   say(scene.floor, 'the floor around the rug becomes this floor', 'floor')
-  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room${scene.floor ? '' : ' and the floor'}, the small silver remote on the rug, the light and the shadows; the room stays empty of people. The sofa keeps its exact outline, size, seat height and position and its three equal seat cushions; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
+  return `Edit picture 1. Keep everything else exactly as it is: the camera position, angle and framing, the room${scene.floor ? '' : ' and the floor'}, the walnut remote on the rug, the light and the shadows; the room stays empty of people. The sofa keeps its exact outline, size, seat height and position and its three equal seat cushions; the rug keeps its size and position, flat on the floor, a perfect rectangle with its edges parallel to the edges of the picture. Change only: ${changes.join('; ')}. No ceiling fan, no fan blades, no text, no watermark.`
 }
 
 /** The blades' material (optional): a flat picture of it, painted on our
@@ -140,10 +144,10 @@ function placed(outfit: FanOutfit, where: string): string {
   const wear = outfit.photo
     ? 'their outfit\'s cut, fabric, color, pattern and shoes exactly as in picture 3, without the person in that picture'
     : `${outfit.text}, with shoes to match`
-  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. Real proportions of an average adult, as in a real photograph taken from above, not a fashion illustration and not a model with lengthened legs: the head is about one seventh of their whole length, the legs are of normal length, and with the arms lying along the body the hands reach the middle of the thighs. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the small silver remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
+  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. Real proportions of an average adult, as in a real photograph taken from above, not a fashion illustration and not a model with lengthened legs: the head is about one seventh of their whole length, the legs are of normal length, and with the arms lying along the body the hands reach the middle of the thighs. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the walnut remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
 }
 export const startPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back fully on the sofa seat: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.')
-export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting along their sides, eyes looking straight up into the camera. Their left hand (the hand on the right side of the picture) lies on the rug beside their thigh, a few centimeters from the small silver remote. The sofa is empty.')
+export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting along their sides, eyes looking straight up into the camera. Their left hand (the hand on the right side of the picture) rests on the rug right beside the walnut remote, the fingers touching it. The sofa is empty.')
 
 /** Step 3a, the roll, from the start picture to the end picture (Wan first
  *  and last frame, so we know where she ends: "her final position should be
@@ -187,7 +191,7 @@ function landingSound(scene?: FanScene): string {
  *  after it have the remote on the rug beside her hand. */
 export const REMOTE = {
   seconds: 5,
-  clip: 'Locked overhead camera, no movement, no zoom, no rotation. The person keeps their head still and their eyes looking straight up into the camera the whole time; they never look at the remote. At 0.5 s their left hand (on the right side of the frame) slides down a little along the rug to the small silver remote lying beside it and picks it up, without looking at it; at 1.5 s they raise the remote toward the camera and press the button once with their thumb; at 2.5 s they lower that hand, lay the remote back down on the rug exactly where it was, let go of it and rest the hand beside their thigh as at the start; then they lie still. The remote never slides or moves by itself, only in the hand. Their other hand stays still at their side. No cuts.',
+  clip: 'Locked overhead camera, no movement, no zoom, no rotation. The person keeps their head still and their eyes looking straight up into the camera the whole time; they never look at the remote. At 0.5 s their left hand (on the right side of the frame), resting right beside the walnut remote, picks it up without looking at it; at 1.5 s they raise the remote toward the camera and press the button once with their thumb; at 2.5 s they lower that hand, lay the remote back down on the rug exactly where it was, let go of it and rest the hand beside it as at the start; then they lie still. The remote never slides or moves by itself, only in the hand. Their other hand stays still at their side. No cuts.',
   sound: 'Quiet room tone, a soft click of a remote button. No music, no singing.',
 }
 
@@ -204,7 +208,7 @@ export const POSES: { pose: string; clip: string }[] = [
  *  picture 3 the outfit photo if any. */
 export function outfitPrompt(n: number, outfit: FanOutfit): string {
   const p = POSES[n - 2]
-  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}小型銀色遙控器放在地毯上、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
+  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}胡桃木遙控器放在地毯上原本的位置、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
 }
 export const stillClip = (n: number) => ({
   seconds: 4,
