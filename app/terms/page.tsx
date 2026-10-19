@@ -19,13 +19,13 @@ export default function TermsPage() {
       <div className="prompt-label eyebrow">Terms</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
-        Last updated: October 13, 2026
+        Last updated: October 17, 2026
       </p>
       <p style={S.p}>
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of
         ModelXD&apos;s websites (modelxd.com and xtell.modelxd.com)
         and services, including XDuel, XCreate (X創作), XDirect, XCut, XTalk, XGame, XWorld,
-        XArch, XTell (X先知), XVote, XBoard and the API (together, the
+        XArch, XTell (X先知), XBoard and the API (together, the
         &quot;Service&quot;). By creating an account or using the Service, you agree to
         these Terms.
       </p>
@@ -37,7 +37,7 @@ export default function TermsPage() {
         (XCreate, XDirect, XCut), rooms and games (XTalk, XGame), 3D worlds and floor
         plans (XWorld, XArch), fortune-telling temples (XTell, also called X先知), and
         an API for developers. XDuel runs your task on anonymous models and reveals
-        identity and price after you vote; XVote lets the community vote on completed
+        identity and price after you vote, and lets the community vote on completed
         duels; XBoard ranks models on those votes. Model outputs are produced by
         third-party AI providers (such as OpenAI, Google, Alibaba, Anthropic, and
         others), not by ModelXD.
@@ -87,7 +87,7 @@ export default function TermsPage() {
         grant ModelXD a license to process them (including sending them to the AI
         providers that run your task) and to store the results. XDuel results are
         public: completed duels, including your prompt, anything attached to it, and
-        the model outputs, appear in XVote and may be displayed across the Service.
+        the model outputs, appear on XDuel for others to vote on and may be displayed across the Service.
         Everything else you submit is private to your account. Do not submit content
         you don&apos;t have the right to share. If you enter details about another
         person (for example a partner&apos;s birth details at 月老, someone&apos;s

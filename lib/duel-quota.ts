@@ -1,20 +1,15 @@
 // lib/duel-quota.ts
 //
-// Free XDuel daily quotas per user/mode. XDuel is on the house —
-// ModelXD pays the provider bills — so we cap usage to prevent abuse,
-// especially on video duels which run $1–2 a pop.
+// Free XDuel daily quota. XDuel is on the house — ModelXD pays the
+// provider bills — so usage is capped to prevent abuse, especially on
+// video duels which run $1–2 a pop. The allowance itself (10 a day across
+// every type, video included) is in lib/duel-allowance.ts; duel_quotas
+// keeps a counter per type (supabase/40_duel_quotas.sql).
 
 import { createClient } from '@supabase/supabase-js'
+import { duelsLeft, type DuelMode, type DuelUsed } from './duel-allowance'
 
-export type DuelMode = 'text' | 'image' | 'video'
-
-// Defaults live here, not in SQL, so tuning them is a one-line change.
-// Per-mode because video is 100× more expensive than text.
-export const DUEL_LIMITS: Record<DuelMode, number> = {
-  text:  10,
-  image:  3,
-  video:  1,
-}
+export type { DuelMode }
 
 function serviceClient() {
   return createClient(
@@ -26,20 +21,39 @@ function serviceClient() {
 
 /**
  * Atomically consume `cost` daily duel quota slots for the given mode
- * (multi-model duels cost ceil(n/2) — see app/api/xduel/route.ts).
+ * (every duel is 1v1 and costs 1 since Oct 18 — lib/duel-allowance.ts).
  * Returns the new count after increment, or -1 if the user is at/over
  * the cap (no row was modified). Throws on RPC failure.
  */
 export async function consumeDuelQuota(userId: string, mode: DuelMode, cost = 1): Promise<number> {
   const sb = serviceClient()
+  // The SQL caps one type's counter; the allowance spans all three. So the
+  // cap passed is this type's count plus what the whole day still allows.
+  // Two requests for DIFFERENT types at the same instant can each read the
+  // other's old count and both pass (one extra duel at most per race);
+  // same-type requests stay atomic in the SQL.
+  const used = await readDuelUsed(userId)
   const { data, error } = await sb.rpc('consume_duel_quota', {
     p_user_id: userId,
     p_mode:    mode,
-    p_limit:   DUEL_LIMITS[mode],
+    p_limit:   used[mode] + duelsLeft(mode, used),
     p_cost:    cost,
   })
   if (error) throw new Error(`consumeDuelQuota failed: ${error.message}`)
   return data as number
+}
+
+/** Today's (UTC) duels per type for one user; zeros when none or unreadable. */
+export async function readDuelUsed(userId: string): Promise<DuelUsed> {
+  const today = new Date().toISOString().slice(0, 10)
+  const { data, error } = await serviceClient()
+    .from('duel_quotas')
+    .select('text_used, image_used, video_used')
+    .eq('user_id', userId)
+    .eq('quota_date', today)
+    .maybeSingle()
+  if (error) console.warn(`readDuelUsed failed: ${error.message}`)
+  return { text: data?.text_used ?? 0, image: data?.image_used ?? 0, video: data?.video_used ?? 0 }
 }
 
 /**

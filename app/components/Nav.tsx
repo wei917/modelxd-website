@@ -27,7 +27,6 @@ const ALL_NAV_LINKS = [
   { href: '/xpersona',    i18n: 'nav.xpersona',    protected: true,  icon: 'persona' },
   { href: '/xtalk',       i18n: 'nav.xtalk',       protected: true,  icon: 'talk'   },
   { href: '/xgame',       i18n: 'nav.xgame',       protected: true,  icon: 'game'   },
-  { href: '/xvote',       i18n: 'nav.xvote',       protected: true,  icon: 'vote'   },
   { href: '/xboard',      i18n: 'nav.xboard',      protected: false, icon: 'board'  },
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
   // Open like xtell.modelxd.com: the free chart needs no account, sign-in

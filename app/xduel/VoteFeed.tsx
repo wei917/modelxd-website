@@ -1,27 +1,28 @@
 'use client'
-// app/vote/page.tsx
-// Vote feed with paginated grid per mode (video / image / text).
-// Features: hides voted duels, popularity sorting, search, pagination.
+// app/xduel/VoteFeed.tsx
+// Other people's duels to vote on, under XDuel's composer for the chosen
+// type. It was its own page, XVote (/xvote), which nobody used; the owner
+// folded it in here on Oct 17 in place of the 熱門 starter prompts ("remove
+// the popular section at the bottom and replace it with XVote content by
+// content type"). A card opens the duel's permalink, /xduel/<id>, where the
+// vote happens as before. Voted duels are hidden; the order is blended.
 
-import Link from 'next/link'
-import { useEffect, useState, useRef, useCallback } from 'react'
-import ModeIcon from '../components/ModeIcon'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useT } from '../../lib/i18n'
+import { useT, useLang } from '../../lib/i18n'
 import { createBrowserClient } from '@supabase/ssr'
 const createSupabaseBrowser = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!)
 
-type Mode = 'video' | 'image' | 'text'
+type Mode = 'video' | 'image' | 'text' | 'audio'
 
-/** What a voter is allowed to know. XVote has no reveal step — the models
- *  are never named here — so the feed route strips identity, price, cost and
- *  timing before they leave the server (app/api/xvote/feed/route.ts). The
- *  card drew none of them; the browser used to receive all of them. */
+/** What a voter is allowed to know. The feed has no reveal step — the
+ *  models are never named here — so the feed route strips identity, price,
+ *  cost and timing before they leave the server (app/api/xduel/feed). */
 interface SlotData {
   text: string
   isImage: boolean
   isVideo: boolean
+  isAudio?: boolean
 }
 
 interface Duel {
@@ -33,31 +34,46 @@ interface Duel {
   vote2: string | null
   community_vote_count: number
   created_at: string
+  lang?: string | null   // the starter's page language (migration 141)
 }
 
 const PAGE_SIZE = 12
 const MAX_PER_TAB = 100
 
-export default function VotePage() {
+// Two orders (owner, Oct 17: "add a sorting option dropdown"). Latest is
+// the newest two pages of duels in a fresh random order each visit, then
+// the rest as the blended draw below: new duels come first, but their
+// order says nothing about when each was made, so the feed cannot be read
+// as a count of how many duels people make ("I don't want people use the
+// 'latest' sorting to predict how many users I have"; "random 2 pages").
+// Popular is most votes first, newest first among equals.
+type FeedSort = 'latest' | 'popular'
+const LATEST_POOL = 2 * PAGE_SIZE
+
+/** Fisher-Yates, on a copy. */
+function shuffled<T>(xs: T[]): T[] {
+  const a = [...xs]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+/** The newest LATEST_POOL shuffled, then everything else blended. */
+function latestOrder(duels: Duel[]): Duel[] {
+  const byNew = [...duels].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  return [...shuffled(byNew.slice(0, LATEST_POOL)), ...blendedOrder(byNew.slice(LATEST_POOL))]
+}
+
+export default function VoteFeed({ mode }: { mode: Mode }) {
   const t = useT()
-  useRequireAuth()
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
-  const [mode, setMode] = useState<Mode>('image')
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<FeedSort>('latest')
   const [ready, setReady] = useState(false)
-  const cursorRef = useRef<HTMLDivElement>(null)
-  const ringRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const move = (e: MouseEvent) => {
-      if (cursorRef.current) { cursorRef.current.style.left = e.clientX+'px'; cursorRef.current.style.top = e.clientY+'px' }
-      if (ringRef.current)   { ringRef.current.style.left   = e.clientX+'px'; ringRef.current.style.top   = e.clientY+'px' }
-    }
-    window.addEventListener('mousemove', move)
-    return () => window.removeEventListener('mousemove', move)
-  }, [])
 
   // Load user + voted IDs
   useEffect(() => {
@@ -77,113 +93,58 @@ export default function VotePage() {
             setVotedIds(serverIds)
           }
         } catch {
-          const lsKey = `voted_duels_${uid}`
-          const lsVoted = JSON.parse(localStorage.getItem(lsKey) ?? '[]') as string[]
-          setVotedIds(new Set(lsVoted))
+          try {
+            const lsVoted = JSON.parse(localStorage.getItem(`voted_duels_${uid}`) ?? '[]') as string[]
+            setVotedIds(new Set(lsVoted))
+          } catch { /* storage blocked */ }
         }
       }
       setReady(true)
     })
   }, [])
 
-  const handleClick = (duel: Duel) => {
-    router.push(`/xduel/${duel.id}`)
-  }
-
   return (
-    <>
-      <div className="cursor" ref={cursorRef} />
-      <div className="cursor-ring" ref={ringRef} />
-
-      <div className="xduel-page">
-        <div className="arena">
-
-          {/* In-page header: "// XVOTE" eyebrow + big headline (CC, July 20). */}
-          <div className="prompt-header">
-            <Link href="/xvote" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>{t('xvote.eyebrow')}</Link>
-            <h1 className="page-headline">{t('xvote.subtitle')}</h1>
-          </div>
-
-          {/* Controls row */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', flexWrap: 'wrap', marginBottom: 32 }}>
-            {/* Mode selector */}
-            <div className="mode-seg">
-              {(['text', 'image', 'video'] as Mode[]).map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`mode-seg-btn${mode === m ? ' active' : ''}`}
-                >
-                  <ModeIcon m={m} />{t('mode.' + m)}
-                </button>
-              ))}
-            </div>
-
-            {/* Search */}
-            <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 420, display: 'flex' }}>
-              <span style={{
-                position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-                color: 'var(--muted)', fontSize: 14, pointerEvents: 'none',
-              }}>⌕</span>
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t('xvote.search')}
-                style={{
-                  width: '100%',
-                  padding: '0 16px 0 38px',
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  color: 'var(--white)',
-                  fontSize: 12,
-                  outline: 'none',
-                  fontFamily: 'var(--font-mono), monospace',
-                  letterSpacing: '0.06em',
-                  transition: 'border-color 0.2s, background 0.2s',
-                }}
-                onFocus={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.background = 'var(--bg)' }}
-                onBlur={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.background = 'var(--surface)' }}
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  aria-label="Clear search"
-                  style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    width: 20, height: 20, borderRadius: '50%',
-                    background: 'var(--border2)', color: 'var(--bg)',
-                    border: 'none', cursor: 'pointer',
-                    fontSize: 11, fontWeight: 700, lineHeight: 1,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >×</button>
-              )}
-            </div>
-          </div>
-
-          {!ready ? (
-            <div style={{ textAlign: 'center', color: 'var(--muted)', padding: 80 }}>Loading duels…</div>
-          ) : (
-            <ModeSection
-              key={mode}
-              mode={mode}
-              userId={userId}
-              votedIds={votedIds}
-              search={search}
-              onSelect={handleClick}
-            />
+    <section className="xduel-feed">
+      <div className="xduel-feed-head">
+        <h2>{t('xduel.feed.title')}</h2>
+        <div className="xduel-feed-tools">
+        <div className="xduel-feed-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('xvote.search')}
+            aria-label={t('xvote.search')}
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
           )}
-
+        </div>
+        <select className="xduel-feed-sort" value={sort} onChange={e => setSort(e.target.value as FeedSort)} aria-label={t('xduel.feed.sort')}>
+          <option value="latest">{t('xduel.feed.sort.latest')}</option>
+          <option value="popular">{t('xduel.feed.sort.popular')}</option>
+        </select>
         </div>
       </div>
-    </>
+      {!ready ? (
+        <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>{t('common.loading')}</div>
+      ) : (
+        <FeedSection
+          key={mode}
+          mode={mode}
+          userId={userId}
+          votedIds={votedIds}
+          search={search}
+          sort={sort}
+          onSelect={d => router.push(`/xduel/${d.id}`)}
+        />
+      )}
+    </section>
   )
 }
-
-/* ── Paginated mode section ──────────────────────────────────────────── */
-
 
 // ── Blended feed ranking (CC, July 25) ───────────────────────────────
 // Replaces the Recent / Popular toggle. Every duel gets a weight from
@@ -197,7 +158,7 @@ export default function VotePage() {
 //               an arbitrary "new" cutoff.
 //   popularity  log1p(votes) / log1p(maxVotes) — logarithmic so a 40-vote
 //               duel edges ahead of a 4-vote one instead of burying it.
-//   needsVotes  1 / (1 + votes) — the deliberate counterweight. XVote
+//   needsVotes  1 / (1 + votes) — the deliberate counterweight. The feed
 //               exists to COLLECT votes, and a popularity-led feed starves
 //               exactly the duels the leaderboard is waiting on. That is
 //               why models sat at "—" on XBoard with no score.
@@ -233,14 +194,15 @@ function blendedOrder(duels: Duel[]): Duel[] {
     .map(x => x.d)
 }
 
-function ModeSection({ mode, userId, votedIds, search, onSelect }: {
+function FeedSection({ mode, userId, votedIds, search, sort, onSelect }: {
   mode: Mode
   userId: string | null
   votedIds: Set<string>
   search: string
+  sort: FeedSort
   onSelect: (d: Duel) => void
 }) {
-  const t = useT()
+  const { t, lang } = useLang()
   const [duels, setDuels] = useState<Duel[]>([])
   const [page, setPage] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -250,13 +212,12 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
   // server-side offset math when rows are being filtered out.
   const fetchDuels = useCallback(async () => {
     setLoading(true)
-    // Redacted server-side. This used to be a direct `duels` select from
-    // the browser, which handed every voter the model names it was about to
-    // hide from them.
+    // Redacted server-side: a direct `duels` select from the browser would
+    // hand every voter the model names it is about to hide from them.
     try {
-      const res = await fetch(`/api/xvote/feed?mode=${mode}`)
+      const res = await fetch(`/api/xduel/feed?mode=${mode}`)
       const json = await res.json()
-      setDuels(blendedOrder((json?.duels ?? []) as Duel[]))
+      setDuels(latestOrder((json?.duels ?? []) as Duel[]))
     } catch {
       setDuels([])
     }
@@ -269,11 +230,20 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
 
   useEffect(() => { fetchDuels() }, [fetchDuels])
 
-  // Reset to page 0 when search changes
-  useEffect(() => { setPage(0) }, [search])
+  // Reset to page 0 when search or the order changes
+  useEffect(() => { setPage(0) }, [search, sort])
 
-  // Filter voted + search
-  let filtered = duels.filter(d => !votedIds.has(d.id))
+  // Filter voted + search. `duels` holds this visit's latest order, drawn
+  // once per fetch; popular reorders it by votes, and switching back
+  // restores the same draw rather than reshuffling.
+  const sorted = sort === 'popular'
+    ? [...duels].sort((a, b) => (b.community_vote_count || 0) - (a.community_vote_count || 0) || b.created_at.localeCompare(a.created_at))
+    : duels
+  // The viewer's language first (owner, Oct 19), each part in the chosen
+  // order; the rest (other languages, and duels from before migration 141)
+  // follow, so the feed never runs dry while there are few duels.
+  const ordered = [...sorted.filter(d => d.lang === lang), ...sorted.filter(d => d.lang !== lang)]
+  let filtered = ordered.filter(d => !votedIds.has(d.id))
   if (search.trim()) {
     const q = search.trim().toLowerCase()
     // Prompt only. Filtering by MODEL NAME leaked the answer by
@@ -283,8 +253,8 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
     filtered = filtered.filter(d => d.prompt.toLowerCase().includes(q))
   }
 
-  // A visit shows at most MAX_PER_TAB duels per tab (owner, Aug 22): enough
-  // to vote for a while, never a scrollable census of the archive.
+  // A visit shows at most MAX_PER_TAB duels per type (owner, Aug 22):
+  // enough to vote for a while, never a scrollable census of the archive.
   filtered = filtered.slice(0, MAX_PER_TAB)
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
@@ -298,30 +268,20 @@ function ModeSection({ mode, userId, votedIds, search, onSelect }: {
         <div style={{ color: 'var(--muted)', fontSize: 14, padding: '24px 0' }}>{t('xvote.empty')}</div>
       ) : (
         <>
-          {/* Card grid */}
-          <div className="xvote-grid">
+          <div className="xduel-feed-grid">
             {pageDuels.map(duel => (
               <DuelCard key={duel.id} duel={duel} onSelect={onSelect} />
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 8, marginTop: 20,
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20 }}>
               <PageBtn
                 label={t('xvote.prev')}
                 disabled={safePage === 0}
                 onClick={() => setPage(p => Math.max(0, p - 1))}
               />
-              <span style={{
-                fontSize: 12, color: 'var(--muted2)',
-                fontFamily: 'var(--font-mono), monospace',
-                letterSpacing: '0.06em',
-                padding: '0 8px',
-              }}>
+              <span style={{ fontSize: 13, color: 'var(--muted2)', padding: '0 8px' }}>
                 {safePage + 1} / {totalPages}
               </span>
               <PageBtn
@@ -345,13 +305,13 @@ function PageBtn({ label, disabled, onClick }: { label: string; disabled: boolea
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: '7px 16px', borderRadius: 6,
+        padding: '8px 18px', borderRadius: 999,
         border: '1px solid var(--border2)',
-        background: disabled ? 'var(--surface)' : 'var(--surface2)',
+        background: 'var(--surface)',
         color: disabled ? 'var(--muted)' : 'var(--white)',
-        fontSize: 11, fontWeight: 600, cursor: disabled ? 'default' : 'pointer',
-        fontFamily: 'var(--font-mono), monospace',
-        letterSpacing: '0.08em',
+        opacity: disabled ? 0.55 : 1,
+        fontSize: 13.5, fontWeight: 500, cursor: disabled ? 'default' : 'pointer',
+        fontFamily: 'var(--font-body), sans-serif',
         transition: 'all 0.15s',
       }}
     >
@@ -362,6 +322,13 @@ function PageBtn({ label, disabled, onClick }: { label: string; disabled: boolea
 
 function SlotPreview({ slot }: { slot: SlotData | undefined }) {
   if (!slot) return null
+  // A speech duel: a player in the card. Clicks on it stay on the player
+  // instead of opening the duel.
+  if (slot.isAudio) return (
+    <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '20px 10px 14px' }} onClick={e => e.stopPropagation()}>
+      <audio src={slot.text} controls preload="none" style={{ width: '100%' }} />
+    </div>
+  )
   if (slot.isVideo) return <VideoPreview src={slot.text} />
   if (slot.isImage) return <img src={slot.text} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
   return <TextPreview text={slot.text ?? ''} />
@@ -377,35 +344,34 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
     <div
       onClick={() => onSelect(duel)}
       style={{
-        background: 'var(--bg)',
+        background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 10,
+        borderRadius: 7,
         overflow: 'hidden',
         cursor: 'pointer',
         transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.2s',
         display: 'flex',
         flexDirection: 'column',
       }}
-      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.boxShadow = '0 6px 24px rgba(214,59,50,0.12)'; el.style.transform = 'translateY(-2px)' }}
+      onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--red)'; el.style.boxShadow = '0 10px 26px rgb(41 43 41 / 7%)'; el.style.transform = 'translateY(-2px)' }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--border)'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)' }}
     >
       {/* Prompt — large, prominent. The duel's input, if it has one, sits
           beside it: a voter judging "animate this photo" needs the photo
           (owner, Sep 14). */}
-      <div style={{ padding: '20px 20px 18px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <div style={{ padding: '18px 20px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <div style={{
           flex: 1, minWidth: 0,
-          fontSize: 17, fontWeight: 500, color: 'var(--white)', lineHeight: 1.4,
+          fontSize: 16, fontWeight: 500, color: 'var(--white)', lineHeight: 1.45,
           fontFamily: 'var(--font-body), sans-serif',
-          letterSpacing: '-0.005em',
           overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-          height: `calc(17px * 1.4 * 2)`,
+          height: `calc(16px * 1.45 * 2)`,
         }}>
           {duel.prompt}
         </div>
         {duel.input_media?.url && /^(image|video)\//.test(duel.input_media.mediaType) && (
           <div title="Original input" style={{
-            width: 48, height: 48, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
+            width: 48, height: 48, flexShrink: 0, borderRadius: 7, overflow: 'hidden',
             border: '1px solid var(--border2)', background: 'var(--surface2)',
           }}>
             {duel.input_media.mediaType.startsWith('image/')
@@ -434,26 +400,22 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
         {slots.slice(0, 4).map((slot, i) => (
           <div key={i} style={{
             overflow: 'hidden', position: 'relative', background: 'var(--surface)',
-            // 3-model duels: the odd slot spans the bottom row instead of
-            // leaving an empty cell (CC, July 19).
+            // Older 3-model duels: the odd slot spans the bottom row
+            // instead of leaving an empty cell (CC, July 19).
             gridColumn: slotCount === 3 && i === 2 ? '1 / -1' : undefined,
           }}>
             <SlotPreview slot={slot} />
             <div style={{
               position: 'absolute', top: 6, left: 6,
-              background: 'var(--bg)', color: 'var(--muted2)',
-              fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 3,
-              letterSpacing: '0.08em', fontFamily: 'var(--font-mono), monospace',
+              background: 'var(--surface)', color: 'var(--muted2)',
+              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 3,
+              fontFamily: 'var(--font-mono), monospace',
               border: '1px solid var(--border)',
             }}>
               {String.fromCharCode(65 + i)}
             </div>
           </div>
         ))}
-
-        {/* NOTE: no input thumb here (CC, July 19) — user uploads are
-            unmoderated, so they only ever display to their owner (see
-            /xduel/[id]). */}
 
         {/* VS badge */}
         <div style={{
@@ -465,38 +427,16 @@ function DuelCard({ duel, onSelect }: { duel: Duel; onSelect: (d: Duel) => void 
         }}>{slotCount <= 2 ? 'VS' : `${slotCount}-WAY`}</div>
       </div>
 
-      {/* Footer — mode + vote count + CTA */}
+      {/* Footer — the CTA only. No vote count (owner, Oct 17): "1 票" and
+          "2 票" told any visitor how few people vote; 最熱門 still sorts by
+          votes without showing them. The type is the section's. */}
       <div style={{
         padding: '11px 20px', borderTop: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'var(--surface)',
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+        background: 'var(--surface)', fontFamily: 'var(--font-body), sans-serif',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{
-            fontFamily: 'var(--font-mono), monospace',
-            fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.12em',
-            fontWeight: 700, textTransform: 'uppercase',
-          }}>
-            {duel.mode}
-          </span>
-          {duel.community_vote_count > 0 && (
-            <>
-              <span style={{ color: 'var(--border2)' }}>·</span>
-              <span style={{
-                fontFamily: 'var(--font-mono), monospace',
-                fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em',
-              }}>
-                {duel.community_vote_count === 1 ? t('xvote.vote1') : t('xvote.votes').replace('{n}', String(duel.community_vote_count))}
-              </span>
-            </>
-          )}
-        </div>
-        <span style={{
-          fontFamily: 'var(--font-mono), monospace',
-          fontSize: 10, fontWeight: 700, color: 'var(--red)',
-          letterSpacing: '0.12em',
-        }}>
-          {t('xvote.votebtn').toUpperCase()} →
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--red)' }}>
+          {t('xvote.votebtn')} →
         </span>
       </div>
     </div>
@@ -515,7 +455,7 @@ function VideoPreview({ src }: { src: string }) {
 function TextPreview({ text }: { text: string }) {
   return (
     <div style={{
-      padding: 14, fontSize: 12, color: 'var(--muted2)', lineHeight: 1.6,
+      padding: 14, fontSize: 12.5, color: 'var(--muted2)', lineHeight: 1.6,
       overflow: 'hidden', height: '100%',
       maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
     }}>

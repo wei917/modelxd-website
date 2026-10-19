@@ -189,7 +189,6 @@ export default function LoginPage() {
           <div className="auth-features">
             {[
               { icon: '⚔️', text: <><strong>XDuel</strong> · {t('auth.f.xduel')}</> },
-              { icon: '🗳️', text: <><strong>XVote</strong> · {t('auth.f.xvote')}</> },
               { icon: '✨', text: <><strong>XCreate</strong> · {t('auth.f.xcreate')}</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>

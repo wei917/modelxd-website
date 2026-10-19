@@ -7,6 +7,8 @@
 export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
+import { signAudioSlots } from '@/lib/xduel-audio'
+import { withModelNames } from '@/lib/model-names'
 
 function serviceClient() {
   return createClient(
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
   // The vote is recorded, so this viewer has earned the identities. Same
   // bargain as XDuel's own vote route: unobtainable until you have voted.
   const { data: duel } = await sb.from('duels').select('slots').eq('id', duelId).single()
-  return Response.json({ ok: true, slots: duel?.slots ?? null })
+  return Response.json({ ok: true, slots: duel?.slots ? await withModelNames(await signAudioSlots(duel.slots)) : null })
 }
 
 // GET: returns all duel IDs this user has community-voted on.

@@ -10,12 +10,15 @@ export const runtime     = 'nodejs'
 export const maxDuration = 800
 
 import { isVerifiedAccount } from '@/lib/verified-account'
+import { DUEL_MODELS } from '@/lib/duel-allowance'
 import { getModelsByMode, type ModelInfo } from '@/lib/models'
 import { allowedFor, FEATURE }            from '@/lib/model-features'
+import { isLang, savedLang, LANG_COOKIE, type Lang } from '@/lib/lang'
 import { processAttachment }              from '@/lib/attachment'
-import { sanitizeProviderError, ACCOUNT_LIMIT, SAFETY } from '@/lib/provider-errors'
+import { sanitizeProviderError, providerErrorKind, ACCOUNT_LIMIT, SAFETY, NOTFOUND } from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
 import { modePriceLabel }                 from '@/lib/providers/pricing'
+import { XDUEL_AUDIO_BUCKET }             from '@/lib/xduel-audio'
 
 const LOG = '[duel]'
 
@@ -108,6 +111,9 @@ function shuffle<T>(arr: T[]): T[] {
 type SlotOutput = {
   text: string; isImage: boolean; isVideo: boolean
   responseTime: number; cost: number; searches: number
+  // Audio duels: the speech file, signed afresh whenever the duel is served
+  // (lib/xduel-audio.ts); `text` holds a one-day link for the live page.
+  isAudio?: boolean; audio?: { bucket: string; path: string }
 }
 type SlotFailure = { failed: true; message: string; ref: string | null }
 
@@ -235,6 +241,37 @@ async function runSlot(
       controller.enqueue(sse(`done:${index}`,  { index, responseTime, cost: result.cost }))
       return { text: publicUrl, isImage: true, isVideo: false, responseTime, cost: result.cost, searches: 0 }
 
+    } else if (mode === 'audio') {
+      // 語音 (Oct 19): both models read the same text aloud at their own
+      // default voice, the way XCreate's 語音 runs (no style, no voice pick).
+      controller.enqueue(sse(`delta:${index}`, { index, isAudio: true, generating: true }))
+      const result = await providers.generateSpeech(model, prompt, { format: 'mp3' }, callContext)
+      const responseTime = Date.now() - start
+      const ext = result.mediaType.includes('wav') ? 'wav'
+        : result.mediaType.includes('flac') ? 'flac'
+        : result.mediaType.includes('opus') || result.mediaType.includes('ogg') ? 'ogg'
+        : 'mp3'
+      const { createClient } = await import('@supabase/supabase-js')
+      const sb   = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
+      // No user id in the path: the path rides inside every shared link.
+      const path = `xduel/${duelId}_slot${index}.${ext}`
+      let uploaded = false, lastErr: any = null
+      for (let attempt = 1; attempt <= 3 && !uploaded; attempt++) {
+        const { error } = await sb.storage.from(XDUEL_AUDIO_BUCKET).upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
+        if (!error) uploaded = true
+        else { lastErr = error; await new Promise(r => setTimeout(r, 500 * attempt)) }
+      }
+      if (!uploaded) throw new Error(`Upload failed: ${lastErr?.message ?? 'unknown'} [path=${path}]`)
+      const { data: signed } = await sb.storage.from(XDUEL_AUDIO_BUCKET).createSignedUrl(path, 60 * 60 * 24)
+      if (!signed?.signedUrl) throw new Error('Failed to sign the speech file')
+      providers.logMediaUrl(result.requestId, {
+        provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
+        mode: 'audio', user_id: callContext?.userId ?? null,
+      }, `${XDUEL_AUDIO_BUCKET}/${path}`)
+      controller.enqueue(sse(`delta:${index}`, { index, text: signed.signedUrl, isAudio: true }))
+      controller.enqueue(sse(`done:${index}`,  { index, responseTime, cost: result.cost }))
+      return { text: signed.signedUrl, isImage: false, isVideo: false, isAudio: true, audio: { bucket: XDUEL_AUDIO_BUCKET, path }, responseTime, cost: result.cost, searches: 0 }
+
     } else if (mode === 'video') {
       console.log(`${LOG} Slot[${index}] VIDEO START model=${model.provider}/${model.model_name}`)
       controller.enqueue(sse(`delta:${index}`, { index, isVideo: true, generating: true }))
@@ -328,7 +365,13 @@ export async function POST(req: Request) {
   }
 
 
-  const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null } = await req.json()
+  const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null, lang: bodyLang = null } = await req.json()
+  // The page language of whoever starts the duel (migration 141, owner,
+  // Oct 19: "based on users' language"): the vote feed shows a viewer the
+  // duels in their own language first. The language cookie when the page
+  // sends none; null when neither is one of the five.
+  const lang: Lang | null = isLang(bodyLang) ? bodyLang
+    : savedLang(req.headers.get('cookie')?.match(new RegExp(`(?:^|;\\s*)${LANG_COOKIE}=([^;]+)`))?.[1])
   console.log(`${LOG} POST prompt="${prompt?.slice(0,50)}" mode=${mode} count=${count}`)
 
   // Same rule as XCreate: an attached file in video/image mode is enough
@@ -346,33 +389,45 @@ export async function POST(req: Request) {
   }
 
   // Quota gate — XDuel is free for the user but ModelXD pays the bill,
-  // so each mode has its own daily cap (see DUEL_LIMITS).
+  // so each user has a daily allowance (lib/duel-allowance.ts: 10, any type).
   // Atomic check-and-increment: if the user is over their cap for this
   // mode, returns -1 and we 429 immediately. On any post-quota failure
   // below we refund the slot so the user isn't penalized.
-  if (mode !== 'text' && mode !== 'image' && mode !== 'video') {
+  if (mode !== 'text' && mode !== 'image' && mode !== 'video' && mode !== 'audio') {
     return Response.json({ error: `Invalid mode: ${mode}` }, { status: 400 })
   }
-  const { consumeDuelQuota, refundDuelQuota, DUEL_LIMITS } = await import('@/lib/duel-quota')
-  // Multi-model duels cost proportionally more (house pays per model):
-  // one slot per extra model — 2 models = 1, 3 = 2, 4 = 3 (CC, July 19).
-  const n = Math.min(Math.max(count, 2), 4)
-  const quotaCost = n - 1
+  // 語音: a short text read aloud, nothing attached (owner, Oct 19: up to
+  // 300 characters; it bounds both the cost and the listening).
+  if (mode === 'audio') {
+    if (typeof prompt === 'string' && prompt.length > 300) {
+      return Response.json({ error: 'Text too long for a speech duel (max 300 characters).' }, { status: 400 })
+    }
+    if (attachmentInput?.storagePath) {
+      return Response.json({ error: 'Speech duels take text only.' }, { status: 400 })
+    }
+  }
+  // duel_quotas keeps text / image / video counters; the allowance is their
+  // sum (lib/duel-allowance.ts), so a speech duel is counted with text.
+  const quotaMode: 'text' | 'image' | 'video' = mode === 'audio' ? 'text' : mode
+  const { consumeDuelQuota, refundDuelQuota } = await import('@/lib/duel-quota')
+  // Every duel is 1v1 and counts as one free duel (owner, Oct 18;
+  // lib/duel-allowance.ts). A `count` from an old tab is ignored.
+  const n = DUEL_MODELS
+  const quotaCost = 1
   // Paid duels were tried and removed (CC, July 19) — free quota only.
   // The XCreate studio is the paid path; the 429 message points there.
-  const usedAfter = await consumeDuelQuota(user.id, mode as 'text' | 'image' | 'video', quotaCost)
+  const usedAfter = await consumeDuelQuota(user.id, quotaMode, quotaCost)
   if (usedAfter < 0) {
     return Response.json(
       {
         error:   'daily_limit_reached',
         mode,
-        limit:   DUEL_LIMITS[mode as 'text' | 'image' | 'video'],
-        message: `You've used today's free ${mode} XDuel${DUEL_LIMITS[mode as 'text' | 'image' | 'video'] === 1 ? '' : 's'} — resets at UTC midnight. Want to keep creating? Pick your favorite models in XCreate.`,
+        message: "You've reached today's limit of free duels. Please try again tomorrow.",
       },
       { status: 429 },
     )
   }
-  const refundQuota = () => refundDuelQuota(user.id, mode as 'text' | 'image' | 'video', quotaCost).catch(() => {})
+  const refundQuota = () => refundDuelQuota(user.id, quotaMode, quotaCost).catch(() => {})
 
   // Load + pick models
   let pool: ModelInfo[]
@@ -383,6 +438,9 @@ export async function POST(req: Request) {
   // whatever getModelsByMode returned, so blocking a model from XDuel did
   // nothing at all. Same gap as Discussion's picker (known debt #2).
   pool = allowedFor(pool, FEATURE.xduel)
+  // Speech only: Lyria and ElevenLabs Music also output audio, and a song
+  // against a reading is not a fair duel.
+  if (mode === 'audio') pool = pool.filter(m => (m.modes ?? []).includes('text_to_speech'))
   if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
   // Match the pool to the attachment the user actually sent.
@@ -480,7 +538,7 @@ export async function POST(req: Request) {
       const deadlineAt = Date.now() + DUEL_BUDGET_MS
       try {
 
-      // One redraw per slot, for the two failure classes that belong to the
+      // One redraw per slot, for the failure classes that belong to the
       // PROVIDER rather than the prompt: an account-level failure (our
       // spending cap, a disabled org, a dead key) and a content-moderation
       // rejection. Moderation was left out on Aug 29 on the theory that a
@@ -489,7 +547,10 @@ export async function POST(req: Request) {
       // it, and the duel died with one side blank. The reserve comes from a
       // DIFFERENT provider for exactly this reason. An oversized prompt or
       // a timeout still fails in place — a second call would fail the same
-      // way — and a second refusal is shown, not redrawn again.
+      // way — and a second refusal is shown, not redrawn again. A model the
+      // provider says does not exist joined on Oct 19 (Alibaba stopped
+      // serving qwen3-tts-instruct-flash to our key and an audio duel died
+      // with one side blank).
       const runWithRedraw = async (i: number, drawn: ModelInfo): Promise<SlotOutput | null> => {
         let current = drawn
         for (let attempt = 0; ; attempt++) {
@@ -507,11 +568,12 @@ export async function POST(req: Request) {
           )
           if (!('failed' in r)) return r
           live = false
-          const replacement = attempt === 0 && (ACCOUNT_LIMIT.test(r.message) || SAFETY.test(r.message))
+          const replacement = attempt === 0 && (ACCOUNT_LIMIT.test(r.message) || SAFETY.test(r.message) || NOTFOUND.test(r.message))
             ? takeReplacement(current.provider)
             : null
           if (!replacement) {
-            controller.enqueue(sse(`error:${i}`, { index: i, message: sanitizeProviderError(r.message), ref: r.ref }))
+            // `kind` lets the page say it in the reader's language.
+            controller.enqueue(sse(`error:${i}`, { index: i, message: sanitizeProviderError(r.message), kind: providerErrorKind(r.message), ref: r.ref }))
             return null
           }
           // ATTRIBUTION. `slots`, `slotPrices` and the reveal are all built
@@ -546,7 +608,7 @@ export async function POST(req: Request) {
       const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       // Build price label per model (matches what the SSE meta event sends)
       const slotPrices = models.map(m => {
-        const { label, rate } = modePriceLabel(m, mode as 'text'|'image'|'video')
+        const { label, rate } = modePriceLabel(m, mode as 'text'|'image'|'video'|'audio')
         return { priceLabel: label, outputPrice: rate }
       })
 
@@ -558,6 +620,7 @@ export async function POST(req: Request) {
         text:         results[i]?.text ?? null,
         isImage:      results[i]?.isImage ?? false,
         isVideo:      results[i]?.isVideo ?? false,
+        ...(results[i]?.isAudio ? { isAudio: true, audio: results[i]!.audio } : {}),
         cost:         results[i]?.cost ?? 0,
         responseTime: results[i]?.responseTime ?? 0,
         // Per-model tally. Zero WITH search allowed is a real datum — it
@@ -568,11 +631,15 @@ export async function POST(req: Request) {
         outputPrice:  slotPrices[i].outputPrice,
       }))
 
-      await sb.from('duels').insert({
+      const row: Record<string, unknown> = {
         id: duelId, user_id: user.id, mode, prompt,
         slots, attachment_id: attachmentId,
         input_media: inputMedia,
-      })
+      }
+      let { error: saveErr } = await sb.from('duels').insert(lang ? { ...row, lang } : row)
+      // Until migration 141 adds the column, save the duel without it.
+      if (saveErr && lang && /lang/.test(saveErr.message)) ({ error: saveErr } = await sb.from('duels').insert(row))
+      if (saveErr) console.error(`${LOG} saving the duel failed: ${saveErr.message}`)
 
       const duelCostCents = Math.round(slots.reduce((sum, sl) => sum + (sl.cost ?? 0), 0) * 100)
 

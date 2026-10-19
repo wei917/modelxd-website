@@ -275,7 +275,6 @@ export default function AuthModal() {
             {[
               { icon: 'duel',   text: <><strong>XDuel</strong> — {t('auth.f.xduel')}</> },
               { icon: 'create', text: <><strong>XCreate</strong> — {t('auth.f.xcreate')}</> },
-              { icon: 'vote',   text: <><strong>XVote</strong> — {t('auth.f.xvote')}</> },
               { icon: 'board',  text: <><strong>XBoard</strong> — {t('auth.f.xboard')}</> },
             ].map((f, i) => (
               <div className="auth-feature-row" key={i}>

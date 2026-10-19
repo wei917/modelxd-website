@@ -69,6 +69,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `141_duel_lang.sql` applied 2026-10-19 by the owner: `duels.lang`, the
+  starter's page language (one of the five, or null). Checked live: 'fr'
+  refused (23514, row unchanged), the publishable key reads no duels, and a
+  new zh-Hant text duel saved `zh-Hant`.
   `140_dev_is_real_site.sql` applied 2026-10-16 by the owner: dev.modelxd.com
   rows logged as 'preview' became 'production' (the owner's browsers
   'internal'), and `site_visit_by_product` counts every app a visit opened
@@ -220,7 +224,6 @@ more**, and the per-user feature system is gone with it.
 | **XTalk** | `/xtalk` | required | Discussion rooms. Open. |
 | **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Open. |
 | **XPersona** | `/xpersona` | required | X角色: the home for AI characters (`x_characters`, migration 75). Mounts `CharactersRoom` in `manage` mode: cards open the builder, **Talk** opens `/xtalk/c/<id>`. XTalk's roster sends ＋/✏ here. `?c=<id>` edits, `?new=1` creates. The builder's 公開 switch (Oct 15) sets `visibility`; only public characters may be featured in public places (today: 晴晴 in X體育's rooms), and the house picks which. |
-| **XVote** | `/xvote` | required | Judge other people's duels. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
 | **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
 | **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
@@ -235,8 +238,65 @@ more**, and the per-user feature system is gone with it.
 ### XDuel — `/xduel`
 One prompt, two anonymous models, 5-step flow: run → vote blind → reveal
 price → vote again → unmask identities and show savings. Free within a daily
-per-mode quota (`lib/duel-quota.ts`). Text / image / video.
+allowance (Oct 17, owner): 10 duels a day across all types (video had its
+own cap of 1 until Oct 18, owner: "can we increase it to 10?"; a 1v1 video
+duel costs the house ~$1.41 median, $2.17 mean)
+(`lib/duel-allowance.ts`, spent by `lib/duel-quota.ts` on the per-type
+counters of `duel_quotas`, no migration); the page shows no counts, only
+the "try again tomorrow" note once the day is used up. Was 10 text / 3
+image / 1 video, shown on the page. **1v1 only since Oct 18** (owner):
+every duel is 2 models (`DUEL_MODELS`), the API ignores any `count`, and
+the vote feed leaves out the older 3- and 4-model duels (Jul 19 – Oct 18).
+Why: picking one of four recorded the three unpicked models as TIED with
+each other in `model_pairwise_wins` (xd_apply_signal: a pair without the
+winner counts 0.5 each way); those old ties stay in the ratings.
+**The duel's address (Oct 18, owner):** once a duel is saved (the row is
+written before the stream's `end` event) the address becomes `/xduel/<id>`
+(history.replaceState, no navigation). `/xduel/<id>` renders the SAME
+page, `app/xduel/XDuelPage.tsx` with `resumeId`, rebuilt from
+`/api/xduel/view`: the maker resumes at step 2 / 4 / 5 by their votes;
+another signed-in user votes blind, then with prices (community votes,
+`/api/xduel/community-vote`); a signed-out visitor sees the result (no
+sign-in dialog). The old separate permalink page and its English layout
+are gone; `/duel/<id>` still redirects here.
+**語音 replaced 遊戲 (Oct 19, owner):** XDuel's types are text / image /
+video / audio. An audio duel is TEXT TO SPEECH (up to 300 characters, no
+attachment): the pool is the catalog's `text_to_speech` models (MiniMax
+Speech 2.8 HD/Turbo, Gemini 3.8 Flash TTS, Qwen3 TTS, GPT-4o mini TTS),
+never the music ones; each reads at its default voice. Files go to the
+private `xcreate-ai-audio` bucket at `xduel/<duelId>_slot<n>.<ext>` (no
+public bucket takes audio; no user id in the path); each slot keeps
+`isAudio` + `audio: {bucket, path}` and the view, feed and community-vote
+routes sign a fresh link on every read (`lib/xduel-audio.ts`). Price label
+$/min (`speechPricePerMinute`). Counted in duel_quotas' text column (the
+allowance is the sum; no migration). Rating pool 'audio' in
+`lib/xdrating.ts` MODES (no constraint on the rating tables); XBoard has an
+Audio tab ($/min). The game duels (GameDuel.tsx) were deleted from XDuel.
+**No news ideas** (Oct 18-19): a button that turned the news into prompt
+ideas was built and removed (owner: "stop this feature. let's clean this
+up"). Why, for whoever tries again: Google Search grounding may not be
+shown to anyone but the person who asked, nor cached or reworked; the owner
+found Anthropic's web search news "so bad"; X's Taiwan trends had no Taiwan
+topics; Google News RSS is for personal, non-commercial use
+(docs/XNEWS-PLAN.md).
 **No web search here by design** — it's meant to be a clean like-for-like test.
+Each new duel saves the starter's page language (`duels.lang`, migration 141,
+Oct 19; the route saves and the feed reads without it where the column is
+missing), and the vote feed shows the viewer's language first.
+**X先知's layout since Oct 16** (owner): no search bar (out of Omnibox's
+`SURFACES`); X先知's top bar carries the types Text / Image / Video / Game
+(`app/xduel/XDuelBar.tsx`, `?mode=` in the address; the permalink's bar
+links to a new duel), and both pages wear www's /xtell palette, serif
+headlines and round buttons via `.xduel-xt` in globals.css (scoped: XDirect
+also uses `.xduel-page`). **XVote folded in, Oct 17** (owner: nobody used
+it): the 熱門 starter prompts under the composer are gone, replaced by the
+vote feed for the chosen type (`app/xduel/VoteFeed.tsx`, `/api/xduel/feed`);
+`/xvote` and `/vote` were deleted, not redirected. **Media-type icons**
+(Oct 17, owner-approved set via Codex): `app/components/MediaIcon.tsx` maps
+text / image / video / audio / game to `public/media-icons/*.png` (the
+set's 128 px exports), used by XDuel's bar and XCreate's type bar in full
+colour, never tinted; XCreate's Film has no approved icon yet and keeps
+its line drawing.
 
 ### XCreate — `/xcreate`
 The paid studio. Up to 4 models side by side on the same prompt, plus recipes
@@ -492,9 +552,6 @@ Multi-model rooms. Two templates:
   villagers). Server-held state. Games get a permanent URL and appear in nav
   history.
 
-### XVote — `/xvote`
-Judge archived duels. Feeds the same ratings.
-
 ### XBoard — `/xboard`
 Models ranked by XD Score. Filter by mode and sub-type. Separate pools exist
 for search-enabled runs and for Werewolf.
@@ -559,8 +616,9 @@ app/
 │   ├── AttachmentButton.tsx    # File upload for prompts
 │   ├── GlobalCursor.tsx        # Default custom cursor for every page
 │   └── ProviderLogo.tsx / ModeIcon.tsx / MatchResult.tsx
-├── xduel/page.tsx              # XDuel 5-step flow
-├── xduel/[id]/page.tsx         # Duel permalink
+├── xduel/page.tsx              # XDuel: a new duel (XDuelPage)
+├── xduel/[id]/page.tsx         # A saved duel, same page (XDuelPage resumeId)
+├── xduel/XDuelPage.tsx         # The five-step duel page itself
 ├── xcreate/page.tsx            # Server shell — resolves feature flags
 ├── xcreate/client.tsx          # The whole studio UI (large)
 ├── xcreate/templates.ts        # XCREATE_TEMPLATES
@@ -568,7 +626,6 @@ app/
 ├── xcreate/StudioTypeBar.tsx   # The types row pinned on top of /xcreate
 ├── xtalk/page.tsx              # Room setup (Discussion / Werewolf)
 ├── xtalk/[id]/page.tsx         # Werewolf game permalink
-├── xvote/page.tsx              # Community voting
 ├── xboard/page.tsx             # Leaderboard
 ├── xdirect/page.tsx            # XDirect server shell (auth/feature gate)
 ├── xdirect/client.tsx          # Chat rail + canvas stage (Phase 1)
@@ -635,7 +692,7 @@ lib/
 ├── schema-adapt.ts             # Per-provider JSON Schema dialect adapter
 ├── xdirector-prompt.ts         # Director system prompt
 ├── site-token.ts               # HMAC cookie for SITE_PASSWORD gate
-├── duel-quota.ts               # Daily per-mode XDuel quotas
+├── duel-quota.ts               # Spends the daily XDuel allowance (duel-allowance.ts)
 ├── xcreate-discount.ts         # Pricing discount logic
 ├── referral.ts                 # Referral credits (server-only; see Referrals)
 ├── xcut-timeline.ts            # Timeline model, rough cut, ASS/SRT subtitles
@@ -658,7 +715,6 @@ supabase/                       # Numbered SQL migrations (01 → 70)
 
 ### Legacy redirects
 - `/models` → `/xboard`
-- `/vote` → `/xvote`
 - `/duel/<id>` → `/xduel/<id>`
 - `/xdirector` → `/xdirect` (preserves `?c=`/`?q=`)
 - `/xcreate?agent=1` / `/xcreate?c=…` → `/xdirect` (client-side, query intact)
@@ -976,6 +1032,10 @@ raw provider JSON until Aug 28).
 its reserve; a slot failing with an ACCOUNT-class error **or a provider
 content-moderation rejection** (`SAFETY` in `lib/provider-errors.ts`) takes
 the next reserve model **from a different provider** and re-runs, once.
+Since Oct 19 a model the provider says does not exist (`NOTFOUND`; Alibaba
+stopped serving `qwen3-tts-instruct-flash` to our key on Oct 18, and that
+row is switched off until it does) redraws too, and each failed card says
+why in the reader's language (`providerErrorKind` → `xduel.err.<kind>`).
 Moderation joined on Sep 16: xAI rejected "Tokyo game show pikachu" while
 Gemini drew it, so a refusal is the provider's verdict, not the prompt's. An
 oversized prompt or a timeout still fails in place. The client needed no change

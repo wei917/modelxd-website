@@ -40,8 +40,9 @@ type Row = {
  */
 // /profile left on Oct 15: its top is X先知's bar (Profile · Library), as
 // /xtell's is (owner: "why the top bar in the profile page is still the
-// search bar?").
-const SURFACES = ['/xduel', '/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xvote', '/xboard', '/xeval', '/xdev', '/xdirector']
+// search bar?"). /xduel left on Oct 16 for the same bar (owner: "remove the
+// search top nav bar and match what XTell has").
+const SURFACES = ['/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xboard', '/xeval', '/xdev', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [
@@ -53,7 +54,6 @@ const PAGES: { key: string; i18n: string; href: string }[] = [
   { key: 'xarch', i18n: 'nav.xarch', href: '/xarch' },
   { key: 'xpersona', i18n: 'nav.xpersona', href: '/xpersona' },
   { key: 'xtalk',   i18n: 'nav.xtalk',   href: '/xtalk' },
-  { key: 'xvote',   i18n: 'nav.xvote',   href: '/xvote' },
   { key: 'xboard',  i18n: 'nav.xboard',  href: '/xboard' },
   { key: 'xeval',   i18n: 'nav.xeval',   href: '/xeval' },
   { key: 'profile', i18n: 'nav.profile', href: '/profile' },

@@ -59,7 +59,7 @@ interface LeaderboardEntry {
   provisional: boolean
 }
 
-type FilterMode = 'text' | 'image' | 'video'
+type FilterMode = 'text' | 'image' | 'video' | 'audio'
 
 /**
  * Subtype of the selected category (CC, Aug 2: no separate boards — every
@@ -153,6 +153,7 @@ function primaryMode(m: AIModel): string {
   const out = m.output_modalities ?? []
   if (out.includes('video')) return 'video'
   if (out.includes('image')) return 'image'
+  if (out.includes('audio')) return 'audio'
   return 'text'
 }
 
@@ -175,6 +176,17 @@ function headlinePrice(m: AIModel): number | null {
 
 /** The headline rate of any pricing object, by the model's primary mode. */
 function headlineOf(mode: string, p: ModelPricing): number | null {
+  // Speech: $ per minute, so character- and token-billed models compare
+  // (900 characters or 1,500 audio tokens a minute, as lib/providers/
+  // pricing.ts speechPricePerMinute).
+  if (mode === 'audio') {
+    const q = p as any
+    if (typeof q.per_1m_characters === 'number') return (900 / 1_000_000) * q.per_1m_characters
+    const audioOut = rateNum(q.tokens?.audio_output)
+    if (audioOut != null) return (1500 / 1_000_000) * audioOut
+    if (typeof q.per_audio_second === 'number') return q.per_audio_second * 60
+    return null
+  }
   if (mode === 'video' && p.per_video_second) {
     const r = p.per_video_second
     return r['720p'] ?? r['default'] ?? Object.values(r)[0] ?? null
@@ -204,6 +216,7 @@ function priceParts(m: AIModel): { amount: string; unit: string } | null {
   const p = m.model_pricing ?? {}
   let unit: string
   if (mode === 'video')                                            unit = 'sec'
+  else if (mode === 'audio')                                       unit = 'min'
   else if (mode === 'image' && rateNum(p.tokens?.image_output) != null) unit = '1M'
   else if (mode === 'image')                                       unit = 'image'
   else                                                             unit = '1M'
@@ -584,7 +597,7 @@ export default function LeaderboardPage() {
             {/* Category filter. Picking a category resets its subtype to
                 the default so a leftover 'werewolf' can't leak into video. */}
             <div className="mode-seg">
-              {(['text', 'image', 'video'] as FilterMode[]).map(m => (
+              {(['text', 'image', 'video', 'audio'] as FilterMode[]).map(m => (
                 <button key={m}
                   onClick={() => { setFilterMode(m); setSubtype('all') }}
                   className={`mode-seg-btn${filterMode === m ? ' active' : ''}`}>
