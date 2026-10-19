@@ -1,6 +1,6 @@
 // lib/fan-template/cut.ts: the 風扇變裝 template's finish (Oct 18; t4's
-// finish, made automatic). The opening is the roll's first seconds and the
-// remote clip joined; a model looks at the frames to find when the person
+// finish, made automatic). The opening is the roll until she has settled and
+// the remote clip joined; a model looks at the frames to find when the person
 // presses the remote (the fan starts there) and where they lie (the hub goes
 // over them); then the fan is drawn over the takes (fan.ts), and each take's own
 // sound goes under it. No words on the video (owner, Oct 18).
@@ -63,6 +63,29 @@ export async function rolledOver(model: ModelInfo, ff: string, clip: string, use
   return { ok: seen.length !== frames.length || seen.some(v => v === false), cost }
 }
 
+/** When the fall has settled, in the roll's seconds: the first moment from
+ *  which every frame stays within a few grey levels of the last one (the
+ *  remote clip starts from that last frame, so the join is clean), never
+ *  before `from`. A take that settled late was cut mid-move at a fixed 3.0 s
+ *  and the join jumped (Oct 18: that take settled at 3.4 s, v6's at 2.8 s).
+ *  Plain sums over a 72x128 grey copy, no vision library. */
+export async function settledAt(ff: string, clip: string, from: number): Promise<number> {
+  const w = 72, h = 128, n = w * h, fps = 10, still = 4
+  const { stdout } = await run(ff, ['-v', 'error', '-ss', from.toFixed(2), '-i', clip, '-vf', `fps=${fps},scale=${w}:${h},format=gray`, '-f', 'rawvideo', '-'],
+    { encoding: 'buffer', maxBuffer: 64 * 1024 * 1024 }) as unknown as { stdout: Buffer }
+  const frames = Math.floor(stdout.length / n)
+  if (frames < 2) return from
+  const last = stdout.subarray((frames - 1) * n, frames * n)
+  let settled = frames - 1
+  for (let k = frames - 2; k >= 0; k--) {
+    let sum = 0
+    for (let i = 0, o = k * n; i < n; i++) sum += Math.abs(stdout[o + i] - last[i])
+    if (sum / n > still) break
+    settled = k
+  }
+  return Math.round((from + settled / fps) * 10) / 10
+}
+
 /** How far across the frame she lies, left to right (0-1), over the
  *  outfit pictures: the hub goes above the middle and the blade just wider.
  *  An arm stretched away from her body is left out (test run, Oct 18: the
@@ -77,14 +100,19 @@ export async function personSpan(model: ModelInfo, pictures: Buffer[], userId: s
   return { x0: Math.min(...boxes.map(b => Number(b[1]))) / 1000, x1: Math.max(...boxes.map(b => Number(b[3]))) / 1000, cost }
 }
 
-/** The opening: the roll until she has landed, then the remote clip from
- *  just before her hand moves (t4's cut). */
-export async function joinOpening(ff: string, roll: string, remote: string, out: string) {
-  const { rollEnd, remoteFrom } = TIMING
+/** The opening: the roll until she has settled (settledAt), then the remote
+ *  clip from just before her hand moves (t4's cut), faded into each other
+ *  over TIMING.blend while she lies still: the remote clip's first frames
+ *  drift in tone from the picture they start on, and a hard cut showed it
+ *  (Oct 18). The remote clip starts at rollEnd - blend in the opening. */
+export async function joinOpening(ff: string, roll: string, remote: string, out: string, rollEnd: number) {
+  const { remoteFrom, blend } = TIMING
+  const v = 'fps=30,scale=720:1280,setsar=1,format=yuv420p'
+  const a = 'aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo'
   await run(ff, ['-v', 'error', '-y', '-i', roll, '-i', remote, '-filter_complex',
-    `[0:v]trim=0:${rollEnd},setpts=PTS-STARTPTS,fps=30,scale=720:1280,setsar=1[v0];[1:v]trim=${remoteFrom},setpts=PTS-STARTPTS,fps=30,scale=720:1280,setsar=1[v1];` +
-    `[0:a]atrim=0:${rollEnd},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=stereo[a0];[1:a]atrim=${remoteFrom},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=stereo[a1];` +
-    '[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]',
+    `[0:v]trim=0:${rollEnd},setpts=PTS-STARTPTS,${v}[v0];[1:v]trim=${remoteFrom},setpts=PTS-STARTPTS,${v}[v1];` +
+    `[0:a]atrim=0:${rollEnd},asetpts=PTS-STARTPTS,${a}[a0];[1:a]atrim=${remoteFrom},asetpts=PTS-STARTPTS,${a}[a1];` +
+    `[v0][v1]xfade=transition=fade:duration=${blend}:offset=${(rollEnd - blend).toFixed(3)}[v];[a0][a1]acrossfade=d=${blend}[a]`,
     '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-crf', '16', '-pix_fmt', 'yuv420p', '-c:a', 'aac', out], { maxBuffer: 32 * 1024 * 1024 })
 }
 

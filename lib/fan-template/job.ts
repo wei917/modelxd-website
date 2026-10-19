@@ -19,10 +19,10 @@ import { ffmpegPath } from '@/lib/xcut-render'
 import { B, STATUS_BUCKET, durationOf, get, mixMusic, put, run, service, signed, userPhoto } from '@/lib/remake/store'
 import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/engine/produce'
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
-import { finishOverlay, joinOpening, personSpan, pressTime, rolledOver } from './cut'
+import { finishOverlay, joinOpening, personSpan, pressTime, rolledOver, settledAt } from './cut'
 import {
-  BLADE, DEFAULT_BLADE, END_BOX, HOLDING, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, SHEET, START_BOX, TIMING, roll as rollShot,
-  bladePrompt, endPrompt, fanMusicPrompt, fanQuote, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
+  BLADE, DEFAULT_BLADE, END_BOX, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, SHEET, START_BOX, TIMING, roll as rollShot,
+  bladePrompt, endPrompt, fanMusicPrompt, fanQuote, guideMarks, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
 } from './recipe'
 
 const LOG = '[fan:job]'
@@ -50,6 +50,8 @@ export type FanJob = {
   assets: { sheet?: string; set?: string; blade?: string; start?: string; end?: string; roll?: string; holding?: string; remote?: string; keys: Record<string, string>; clips: Record<string, string>; music?: string; video?: string }
   /** Seconds into the remote clip when she presses (a model read it). */
   press?: number
+  /** Seconds into the roll when she has settled (the opening's cut). */
+  rollEnd?: number
   /** Where she lies across the frame, 0-1. */
   span?: [number, number]
   seconds?: number
@@ -86,14 +88,14 @@ async function saveJob(sb: SupabaseClient, job: FanJob) {
   }
 }
 
-/** sheet, the set and the blades if asked for, start, end, roll, holding,
- *  remote, a picture and a clip per outfit after the first, music, video. */
+/** sheet, the set and the blades if asked for, start, end, roll, remote, a
+ *  picture and a clip per outfit after the first, music, video. */
 function totalSteps(req: FanRequest): number {
-  return 8 + 2 * (req.outfits.length - 1) + (req.scene?.sofa || req.scene?.carpet || req.scene?.floor ? 1 : 0) + (req.scene?.blade ? 1 : 0)
+  return 7 + 2 * (req.outfits.length - 1) + (req.scene?.sofa || req.scene?.carpet || req.scene?.floor ? 1 : 0) + (req.scene?.blade ? 1 : 0)
 }
 function doneSteps(job: FanJob): number {
   const a = job.assets
-  return [a.sheet, a.set, a.blade, a.start, a.end, a.roll, a.holding, a.remote, a.music, a.video].filter(Boolean).length + Object.keys(a.keys).length + Object.keys(a.clips).length
+  return [a.sheet, a.set, a.blade, a.start, a.end, a.roll, a.remote, a.music, a.video].filter(Boolean).length + Object.keys(a.keys).length + Object.keys(a.clips).length
     + (job.request.music.choice === 'none' && a.video ? 1 : 0)
 }
 
@@ -204,7 +206,7 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
   }
   const jpeg = (b: Buffer) => ({ buffer: b, mediaType: 'image/jpeg' }) as any
   /** A saved picture, or make it, save it and count its price. */
-  type Named = 'sheet' | 'set' | 'blade' | 'start' | 'end' | 'holding'
+  type Named = 'sheet' | 'set' | 'blade' | 'start' | 'end'
   const pic = async (key: Named | `key-${number}`, make: () => Promise<{ buffer: Buffer; cost: number }>): Promise<Buffer> => {
     const kept = key.startsWith('key-') ? job.assets.keys[key.slice(4)] : job.assets[key as Named]
     if (kept) return get(sb, B.image, kept)
@@ -248,8 +250,7 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const room = set ?? await get(sb, PLATE.bucket, PLATE.path)
     const boxed = async (b: typeof START_BOX) => {
       const { width: w = 1152, height: h = 2048 } = await sharp(room).metadata()
-      const rect = `<rect x="${Math.round(b.x * w)}" y="${Math.round(b.y * h)}" width="${Math.round(b.w * w)}" height="${Math.round(b.h * h)}" fill="none" stroke="red" stroke-width="8"/>`
-      return sharp(room).composite([{ input: Buffer.from(`<svg width="${w}" height="${h}">${rect}</svg>`) }]).jpeg({ quality: 93 }).toBuffer()
+      return sharp(room).composite([{ input: Buffer.from(`<svg width="${w}" height="${h}">${guideMarks(b, w, h)}</svg>`) }]).jpeg({ quality: 93 }).toBuffer()
     }
     const placeIn = async (b: typeof START_BOX, prompt: string) => picture(pictureModels, prompt, [await boxed(b), sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
     const start = await pic('start', () => placeIn(START_BOX, startPrompt(req.outfits[0])))
@@ -274,15 +275,15 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
       }
     })
     const landed = await lastFrame(ff, roll)
-    const holding = await pic('holding', () => picture(pictureModels, HOLDING, [jpeg(landed)], '9:16', ctx, 'high'))
-    const remote = await clip('remote', () => makeClip(ctx, shot(1, REMOTE), landed, '9:16', { lastFrame: holding, audio: true }))
-    // 4. outfits 2..n (2 to 5 in all): 2 is an edit of the remote frame, the
-    //    rest edits of 2 (one base, so no edit drifts from a chain of edits)
+    // The remote clip ends where it starts: she lays the remote back.
+    const remote = await clip('remote', () => makeClip(ctx, shot(1, REMOTE), landed, '9:16', { lastFrame: landed, audio: true }))
+    // 4. outfits 2..n (2 to 5 in all): 2 is an edit of the landing, the rest
+    //    edits of 2 (one base, so no edit drifts from a chain of edits)
     job.status = 'outfits'; await saveJob(sb, job)
     const ns = req.outfits.slice(1).map((_, i) => i + 2)
     const keys = new Map<number, Buffer>()
     const outfitPic = (n: number, base: Buffer) => pic(`key-${n}`, () => picture(pictureModels, outfitPrompt(n, req.outfits[n - 1]), [base, sheet, ...(outfitPhotos[n - 1] ? [outfitPhotos[n - 1]!] : [])].map(jpeg), '9:16', ctx, 'high'))
-    keys.set(2, await outfitPic(2, holding))
+    keys.set(2, await outfitPic(2, landed))
     await Promise.all(ns.slice(1).map(async (n, i) => { await new Promise(r => setTimeout(r, i * 1500)); keys.set(n, await outfitPic(n, keys.get(2)!)) }))
     // 5. still clips: the same picture as first and last frame (the camera cannot move)
     job.status = 'clips'; await saveJob(sb, job)
@@ -305,12 +306,14 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
       const r = await personSpan(model(MODELS.eyes), ns.map(n => keys.get(n)!), job.userId)
       job.span = [r.x0, r.x1]; await spend(r.cost)
     }
+    if (job.rollEnd == null) job.rollEnd = await settledAt(ff, rollF, TIMING.rollMin)
+    const rollEnd = job.rollEnd
     const openingF = path.join(tmp, 'opening.mp4')
-    await joinOpening(ff, rollF, remoteF, openingF)
+    await joinOpening(ff, rollF, remoteF, openingF, rollEnd)
     // The clock: the fan starts at the press; a blade passes every step.
-    const { step, tail, lead, rollEnd, remoteFrom } = TIMING
+    const { step, tail, lead, remoteFrom, blend } = TIMING
     const period = 3 * step
-    const fanStart = rollEnd + Math.max(0, job.press - remoteFrom)
+    const fanStart = rollEnd - blend + Math.max(0, job.press - remoteFrom)
     const first = fanStart + firstCrossing(period)
     const cross = ns.map((_, k) => first + k * step)
     const end = cross[cross.length - 1] + tail
