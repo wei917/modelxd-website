@@ -19,7 +19,7 @@ import { ffmpegPath } from '@/lib/xcut-render'
 import { B, STATUS_BUCKET, durationOf, get, mixMusic, put, run, service, signed, userPhoto } from '@/lib/remake/store'
 import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/engine/produce'
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
-import { finishOverlay, joinOpening, personSpan, pressTime } from './cut'
+import { finishOverlay, joinOpening, personSpan, pressTime, rolledOver } from './cut'
 import {
   BLADE, DEFAULT_BLADE, END_BOX, HOLDING, HUB_GOLD, PLATE, PRESS_DEFAULT, REMOTE, SHEET, START_BOX, TIMING, roll as rollShot,
   bladePrompt, endPrompt, fanMusicPrompt, fanQuote, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
@@ -257,7 +257,22 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     // 3. the opening: the roll (from the start to the end picture, so she ends
     //    in the middle), then the remote (first + last frame)
     job.status = 'opening'; await saveJob(sb, job)
-    const roll = await clip('roll', () => makeClip(ctx, shot(0, rollShot(req.scene)), start, '9:16', { lastFrame: endPic, audio: true }))
+    // A take that slides off without rolling over is made again (two more at
+    // most); the last one is kept whatever it does. A take the check turns
+    // down is the house's: the user pays for the kept one, as quoted.
+    const roll = await clip('roll', async () => {
+      let house = 0
+      for (let attempt = 1; ; attempt++) {
+        const r = await makeClip(ctx, shot(0, rollShot(req.scene)), start, '9:16', { lastFrame: endPic, audio: true })
+        if (attempt >= 3) return { buffer: r.buffer, cost: r.cost }
+        const f = path.join(tmp, `roll-${attempt}.mp4`)
+        await fs.writeFile(f, r.buffer)
+        const check = await rolledOver(model(MODELS.eyes), ff, f, job.userId)
+        if (check.ok) return { buffer: r.buffer, cost: r.cost + check.cost }
+        house += r.cost + check.cost
+        console.log(`${LOG} ${job.id} take ${attempt} of the fall slid instead of rolling over ($${house.toFixed(2)} on the house so far); another`)
+      }
+    })
     const landed = await lastFrame(ff, roll)
     const holding = await pic('holding', () => picture(pictureModels, HOLDING, [jpeg(landed)], '9:16', ctx, 'high'))
     const remote = await clip('remote', () => makeClip(ctx, shot(1, REMOTE), landed, '9:16', { lastFrame: holding, audio: true }))
