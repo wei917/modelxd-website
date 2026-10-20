@@ -66,7 +66,13 @@ pre defined charts without effecting by the filters"):
   browsers split into new and returning, signed-in users, visits by source
   (ChatGPT ads = `utm_source='chatgpt'`, Google Ads = a click id, other), and
   stay for two groups, each with median, top 20%, top 10% and average. With a
-  country picked, "new" and "returning" mean within that country.
+  country picked, "new" and "returning" mean within that country. The daily
+  table also has **New accounts** (Oct 20; owner: "should we add new signed
+  up user count?"): accounts made that day from `profiles.created_at`, the
+  owner's (`site_internal_users`) left out, read by page.tsx with no
+  migration; with a country picked, by `profiles.country`, where the account
+  was last seen, the only country an account has. If either read fails the
+  column is left out, never drawn as zeros.
 - **Fixed charts**, always every country (only the range applies): browsers
   by country (the three biggest named, the rest Other) and sign-ins by
   method (Google, LINE Taiwan, LINE Japan, X).

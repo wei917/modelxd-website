@@ -12,6 +12,7 @@ export type DayRow = {
   newBrowsers: number
   returningBrowsers: number
   signedInUsers: number
+  newAccounts: number | null // accounts made that day, the owner's left out; null when unread
   medianSeconds: number
   top20Seconds: number       // the average stay of the fifth of browsers that stayed longest
   top10Seconds: number       // the same for the tenth (migration 128)
@@ -192,10 +193,19 @@ export function daysThrough(first: string | undefined, today: string): string[] 
   return out
 }
 
+/** Accounts made per day in `tz`, from their creation times. */
+export function accountsByDay(created: string[], tz: string): Record<string, number> {
+  const dayOf = new Intl.DateTimeFormat('en-CA', { timeZone: tz })
+  const out: Record<string, number> = {}
+  for (const t of created) { const d = dayOf.format(new Date(t)); out[d] = (out[d] ?? 0) + 1 }
+  return out
+}
+
 /** The functions return only days that had visits. Fill the quiet days in
  *  between with zeros, from the first day returned through today; days before
- *  the log has any row are left out rather than drawn as zero. */
-export function fillDaily(data: DailyRow[], today: string): DayRow[] {
+ *  the log has any row are left out rather than drawn as zero. `made` is the
+ *  accounts made per day (accountsByDay), null when they could not be read. */
+export function fillDaily(data: DailyRow[], today: string, made: Record<string, number> | null = null): DayRow[] {
   const byDay = new Map(data.map(r => [r.day, r]))
   return daysThrough(data[0]?.day, today).map(d => {
     const r = byDay.get(d)
@@ -206,6 +216,7 @@ export function fillDaily(data: DailyRow[], today: string): DayRow[] {
       newBrowsers: r?.new_browsers ?? 0,
       returningBrowsers: r?.returning_browsers ?? 0,
       signedInUsers: r?.signed_in_users ?? 0,
+      newAccounts: made ? made[d] ?? 0 : null,
       medianSeconds: r?.median_seconds ?? 0,
       top20Seconds: r?.top20_avg_seconds ?? 0,
       top10Seconds: r?.top10_avg_seconds ?? 0,
