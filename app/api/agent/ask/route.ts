@@ -55,7 +55,7 @@ const ROUTES: Record<string, string> = {
   '/xgame':   'XGame',
   '/xboard':  'XBoard',
   '/profile': 'Profile',
-  '/xdev':      'XDev (keys + API docs)',
+  '/xkit':      'XKit (keys + API docs)',
   '/xsports':  'XSports (watch MLB live with an AI buddy)',
 }
 // Never a hidden app (lib/hidden-apps), whichever its level.

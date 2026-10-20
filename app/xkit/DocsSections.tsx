@@ -1,5 +1,5 @@
 'use client'
-// app/xdev/DocsSections.tsx — the API reference, embedded in /xdev.
+// app/xkit/DocsSections.tsx — the API reference, embedded in /xkit.
 //
 // One page for developers (owner, twice: "why a separate page?") — the
 // reference lives UNDER the key dashboard, not on its own URL. Shaped like
@@ -251,7 +251,7 @@ export default function DocsSections() {
 
             <Section id="quickstart" title={l("Quickstart \u2014 first call in two minutes", "クイックスタート：2分で最初の呼び出し")}>
               <ol style={{ ...p, paddingLeft: 20, marginBottom: 4 }}>
-                <li style={{ marginBottom: 4 }}>{l<React.ReactNode>(<>Sign in and mint a key on <Link href="/xdev" style={{ color: 'var(--red)' }}>/xdev</Link> — new accounts start with <strong>$10 free credit</strong>, no card.</>, <>ログインして <Link href="/xdev" style={{ color: 'var(--red)' }}>/xdev</Link> でキーを発行します。新規アカウントには<strong>10米ドル分の無料クレジット</strong>が付き、カード登録は不要です。</>)}</li>
+                <li style={{ marginBottom: 4 }}>{l<React.ReactNode>(<>Sign in and mint a key on <Link href="/xkit" style={{ color: 'var(--red)' }}>/xkit</Link> — new accounts start with <strong>$10 free credit</strong>, no card.</>, <>ログインして <Link href="/xkit" style={{ color: 'var(--red)' }}>/xkit</Link> でキーを発行します。新規アカウントには<strong>10米ドル分の無料クレジット</strong>が付き、カード登録は不要です。</>)}</li>
                 <li style={{ marginBottom: 4 }}>{l('Set a spend cap on the key (you can raise it later).', 'キーの利用上限額を設定します（後から変更できます）。')}</li>
                 <li>{l('Make the call:', '次のコードで呼び出します。')}</li>
               </ol>
@@ -293,10 +293,10 @@ console.log(r.choices[0].message.content, r.model, r.usage)` },
             <Section id="auth" title={l("Authentication", "認証")}>
               <Code text={`Authorization: Bearer xd_...`} />
               <p style={{ ...p, marginTop: 12 }}>
-                {l<React.ReactNode>(<>Keys are minted on <Link href="/xdev" style={{ color: 'var(--red)' }}>/xdev</Link>,
+                {l<React.ReactNode>(<>Keys are minted on <Link href="/xkit" style={{ color: 'var(--red)' }}>/xkit</Link>,
                 shown once, stored hashed. Each key can carry a <strong>lifetime spend cap</strong>,
                 enforced atomically <em>before</em> a call spends — ten concurrent requests cannot
-                slip past it together.</>, <>キーは <Link href="/xdev" style={{ color: 'var(--red)' }}>/xdev</Link> で発行し、一度だけ表示されます。保存時はハッシュ化されます。キーごとに<strong>累計の利用上限額</strong>を設定でき、課金前に不可分な処理で確認します。同時に10件のリクエストを送っても、上限をすり抜けることはありません。</>)}
+                slip past it together.</>, <>キーは <Link href="/xkit" style={{ color: 'var(--red)' }}>/xkit</Link> で発行し、一度だけ表示されます。保存時はハッシュ化されます。キーごとに<strong>累計の利用上限額</strong>を設定でき、課金前に不可分な処理で確認します。同時に10件のリクエストを送っても、上限をすり抜けることはありません。</>)}
               </p>
               <p style={{ ...p, marginBottom: 0 }}>
                 {l<React.ReactNode>(<><strong>Server-side only.</strong> The API sends no CORS headers, so a browser cannot

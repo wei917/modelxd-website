@@ -1034,7 +1034,7 @@ export const STRINGS: Record<string, Entry> = {
   'omni.sec.creations':  { en: 'Your creations', 'zh-Hant': '你的作品', 'zh-Hans': '你的作品', ja: 'あなたの作品', ko: '내 작업물' },
   'omni.sec.talks':      { en: 'Your XTalk rooms', 'zh-Hant': '你的 XTalk 房間', 'zh-Hans': '你的 XTalk 房间', ja: 'あなたの XTalk ルーム', ko: '내 XTalk 방' },
   'nav.xboard':       { en: 'XBoard',  'zh-Hant': 'X排行榜', 'zh-Hans': 'X排行榜', ja: 'Xランキング', ko: 'X랭킹' },
-  'nav.xdev':         { en: 'XDev',    'zh-Hant': 'X開發者', 'zh-Hans': 'X开发者', ja: 'Xデベロッパー', ko: 'X개발자' },
+  'nav.xdev':         { en: 'XKit',    'zh-Hant': 'X開發者', 'zh-Hans': 'X开发者', ja: 'Xデベロッパー', ko: 'X개발자' },
   'nav.xeval':        { en: 'XEval',   'zh-Hant': 'X評測',   'zh-Hans': 'X评测',   ja: 'X評価',       ko: 'X평가' },
   'nav.xtell':        { en: 'XTell',   'zh-Hant': 'X先知',   'zh-Hans': 'X先知',   ja: 'X占い',   ko: 'X운세' },
   'nav.xsports':      { en: 'XSports', 'zh-Hant': 'X體育',   'zh-Hans': 'X体育',   ja: 'Xスポーツ', ko: 'X스포츠' },

@@ -20,7 +20,7 @@ analysis, chats, gaming, benchmarks, or your own agents — and ModelXD sends ea
 whichever model earns it, decided by two independent kinds of evidence:
 real blind votes, and XEval runs on public benchmark datasets (GDPval).
 Prices are always in the open. Developers get the same routing inside their own agents through
-XDev (API keys + the full API reference, one public page — docs readable without signing in; key management needs sign-in). Two surfaces on one key: an
+XKit (API keys + the full API reference, one public page — docs readable without signing in; key management needs sign-in). Two surfaces on one key: an
 OpenAI-compatible text API — POST /api/v1/chat/completions, point any OpenAI
 SDK at the base URL; `model` takes `provider/model_name` or the routing verbs
 `xd/auto` / `xd/fast` / `xd/budget` / `xd/max`; JSON
@@ -328,13 +328,13 @@ Today:
 
 Coming to the arena: Chess, 中國象棋, and 麻將.
 
-### XDev — `/xdev`
+### XKit — `/xkit` (called XDev until Oct 20; `/xdev` forwards here)
 For developers and agents. Create an API key, and point any
 OpenAI-compatible client at ModelXD's own endpoint
 (`/api/v1/chat/completions`) to reach every model in the catalog through one
 key and one bill. Keys can carry a **spend cap**, and there is an **MCP
 server** so an agent can query the leaderboard and run models as tools. Full
-reference at `/xdev/docs`.
+reference at `/xkit/docs`.
 
 Address a model as `provider/model_name` — for example
 `google/gemini-3.6-flash` — or let ModelXD choose with one of four routing
@@ -343,7 +343,7 @@ lowest measured time to first token; **`xd/budget`** picks the cheapest model
 that still clears a quality bar; **`xd/max`** picks the highest blind-vote
 quality and ignores price. All four score the same candidates on the same
 three axes — they differ only in how those axes are weighted, and the panel on
-XDev lets you move the weights yourself and see what would answer. The
+XKit lets you move the weights yourself and see what would answer. The
 headline feature
 is **structured output** — ask for JSON matching a schema and you get it back
 filled in, across providers that each express schemas differently. Tool
@@ -576,7 +576,7 @@ demand.
 - **How do I invite someone / do you have referrals?** Yes — your link is on
   `/profile`. They get $15 instead of $10 and you get $5, once they verify a
   card. The card is never charged.
-- **Can I use ModelXD from my own code or agent?** Yes — XDev (`/xdev`) gives
+- **Can I use ModelXD from my own code or agent?** Yes — XKit (`/xkit`) gives
   you an API key for an OpenAI-compatible endpoint, plus an MCP server.
 - **Can you answer questions about other things?** No. This guide is only
   about ModelXD — it does not answer general questions, write things, or do

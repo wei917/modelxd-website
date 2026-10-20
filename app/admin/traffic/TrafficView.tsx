@@ -465,7 +465,7 @@ const PRODUCTS: Series<ProductDay>[] = [
 const PRODUCT_NAMES: Record<string, string> = {
   xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home', xpersona: 'XPersona',
   xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xdirect: 'XDirect', xcut: 'XCut', xworld: 'XWorld', xarch: 'XArch',
-  xdev: 'XDev', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
+  xkit: 'XKit', xdev: 'XKit (old /xdev)', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
 }
 const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`
 /** A page view's key as the table shows it: an X先知 room by its Chinese

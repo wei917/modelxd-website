@@ -42,7 +42,7 @@ type Row = {
 // /xtell's is (owner: "why the top bar in the profile page is still the
 // search bar?"). /xduel left on Oct 16 for the same bar (owner: "remove the
 // search top nav bar and match what XTell has").
-const SURFACES = ['/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xboard', '/xeval', '/xdev', '/xdirector']
+const SURFACES = ['/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xboard', '/xeval', '/xkit', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const PAGES: { key: string; i18n: string; href: string }[] = [

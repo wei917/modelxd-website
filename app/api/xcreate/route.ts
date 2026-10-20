@@ -761,7 +761,7 @@ export async function POST(req: Request) {
         console.warn(`${LOG} blocked: key ${apiToken.name} at cap $${cap.toFixed(2)} (spent $${apiToken.spentUsd.toFixed(2)}, needs ~$${(estCents / 100).toFixed(2)})`)
         return Response.json({
           error:   'spend_cap_reached',
-          message: `This API key has reached its spend cap ($${cap.toFixed(2)}). Raise the cap on the XDev page.`,
+          message: `This API key has reached its spend cap ($${cap.toFixed(2)}). Raise the cap on the XKit page (modelxd.com/xkit).`,
           capUsd:  cap,
           spentUsd: apiToken.spentUsd,
         }, { status: 402 })
