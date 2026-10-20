@@ -13,6 +13,7 @@ import {
   POKER, newGame, dealNext, apply, snapshot, viewHand, currentHand, fullDeck,
   positions, handSummary, fallbackDecision, type PokerGame, type CardCode, type Decision,
 } from '../lib/poker-engine'
+import { view as tableView } from '../lib/poker-table'
 
 let fails = 0
 const ok = (cond: boolean, msg: string) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) fails++ }
@@ -234,6 +235,45 @@ const act = (g: PokerGame, d: Decision) => {
   act(g, { act: 'fold' }); act(g, { act: 'fold' })
   const sum = handSummary(currentHand(g)!, n => `Seat ${n + 1}`)
   ok(s.holes.flat().every(c => !sum.includes(c!)), `hand summary after folds shows no cards: "${sum}"`)
+}
+
+// ── The whole reply a seated person gets (lib/poker-table view()) ──────
+// Per section: this hand carries none of this hand's hidden cards, the
+// previous hand none of its own, and the results list only showdown cards.
+{
+  const row: any = { id: 'x', user_id: 'u', status: 'active', human_seat: 0, day: 1, pending: {}, title: 't', winner: null, cost_usd: 0, updated_at: new Date().toISOString(),
+    players: [0, 1, 2, 3].map(i => ({ seat: i, isHuman: i === 0, modelId: i ? 'm' : null, name: i ? `M${i}` : 'P', provider: null, thinking: null })) }
+  const hidden = (h: any) => {
+    let k = 0
+    const out: string[] = []
+    h.start.forEach((c: number, s: number) => { if (c > 0) { if (s !== 0 && !h.result?.shown[s]) out.push(h.deck[k], h.deck[k + 1]); k += 2 } })
+    return out
+  }
+  let leaks = 0, views = 0, whys = 0
+  for (let t = 0; t < 120; t++) {
+    const g = newGame(4, 10)
+    dealNext(g)
+    while (!g.over) {
+      const s = snapshot(g)!
+      if (s.done) { dealNext(g); continue }
+      const v: any = tableView(row, g)
+      if (!v.spectator) {
+        views++
+        const hv = JSON.stringify(v.hand)
+        for (const c of hidden(currentHand(g)!)) if (!v.hand.board.includes(c) && hv.includes(`"${c}"`)) leaks++
+        const prev = g.hands.length >= 2 ? g.hands[g.hands.length - 2] : null
+        if (prev && v.prev) { const pv = JSON.stringify(v.prev); for (const c of hidden(prev)) if (!v.prev.board.includes(c) && pv.includes(`"${c}"`)) leaks++ }
+        for (const r of v.results) for (const seat of Object.keys(r.shown)) if (!g.hands[r.n - 1].result!.shown[+seat]) leaks++
+        if (JSON.stringify(v.hand).includes('secret-why')) whys++
+      }
+      const L = s.legal!
+      const d: Decision = s.toAct === 0 ? { act: L.canCheck ? 'check' : 'call' }
+        : Math.random() < 0.3 ? { act: 'fold' } : L.raise && Math.random() < 0.2 ? { act: 'allin' } : { act: L.canCheck ? 'check' : 'call' }
+      apply(g, s.toAct!, d, { why: 'secret-why' })
+    }
+  }
+  ok(leaks === 0 && views > 1000, `view(): no hidden card in ${views} seated replies (this hand, last hand, results)`)
+  ok(whys === 0, 'view(): no reason in the hand being played, for a seated person')
 }
 
 // ── Thousands of random hands: chips conserved, replay identical ──────

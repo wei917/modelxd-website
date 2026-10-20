@@ -10,19 +10,19 @@
 //      the person gets is checked for a hole card or a reason they may not
 //      see yet.
 //
-//   npx tsx scripts/poker-live.ts [handsA] [handsB]     stops at $2 of spend
+//   npx tsx scripts/poker-live.ts [handsA] [handsB] [B-only]   stops at $2 of spend
 
 process.loadEnvFile('.env.local')
 import { getModelById } from '../lib/models'
 import { handlePoker, type PokerRow, type PokerDeps } from '../lib/poker-table'
 import { unseal } from '../lib/poker-seal'
-import { snapshot, currentHand, type PokerGame } from '../lib/poker-engine'
+import { currentHand, type PokerGame } from '../lib/poker-engine'
 
 const LUNA = '8837c35c-90fd-4975-a3fa-05e64c268ce1'   // GPT-6 Luna
 const QWEN = '488d4156-c49e-4eeb-afc7-93760b7bb4f1'   // Qwen 3.8 Flash
 const CAP_USD = 2
 const handsA = Number(process.argv[2] ?? 5)
-const handsB = Number(process.argv[3] ?? 3)
+const handsB = Number(process.argv[3] ?? 5)   // 5, 10, 20 or 50 (the table's choices)
 
 let spent = 0, fails = 0
 const ok = (cond: boolean, msg: string) => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${msg}`); if (!cond) fails++ }
@@ -91,6 +91,7 @@ async function drive(d: ReturnType<typeof deps>, v: any, human?: (v: any) => any
 
 ;(async () => {
   // ── Table A: AI only ─────────────────────────────────────────────────
+  if (process.argv[4] !== 'B-only') {
   const dA = deps()
   const c = await handlePoker({ action: 'create', hands: handsA, lang: 'zh-Hant', seats: [
     { modelId: LUNA, thinking: null }, { modelId: QWEN, thinking: null },
@@ -107,6 +108,7 @@ async function drive(d: ReturnType<typeof deps>, v: any, human?: (v: any) => any
   ok(v.next === 'over' || spent >= CAP_USD, 'table A: the game ran to its end')
   const g: PokerGame = unseal(dA.rows.get(v.id)!.pending.sealed!)
   ok(g.hands.length === v.handsPlayed, 'table A: sealed state round-trips')
+  }
 
   // ── Table B: a person and two models ──────────────────────────────────
   const dB = deps()
@@ -115,19 +117,29 @@ async function drive(d: ReturnType<typeof deps>, v: any, human?: (v: any) => any
   ] }, dB)
   ok(cb.status === 200, `table B created (${cb.status})`)
   let leaks = 0, whyEarly = 0, views = 0, legalOthers = 0
+  // Per section: the current hand's reply may carry no hidden card of THIS
+  // hand, and the previous hand's none of that hand's. (A whole-reply search
+  // is wrong: earlier showdowns are public and reuse the same card codes.)
+  const hidden = (h: any, seat: number) => {
+    let k = 0
+    const out: Record<number, string[]> = {}
+    h.start.forEach((c: number, s: number) => { if (c > 0) { out[s] = [h.deck[k], h.deck[k + 1]]; k += 2 } })
+    return Object.entries(out).filter(([s]) => +s !== seat && !h.result?.shown[+s]).flatMap(([, cs]) => cs)
+  }
   const check = (view: any) => {
     views++
     const row = dB.rows.get(view.id)!
     const gs: PokerGame = unseal(row.pending.sealed!)
     const h = currentHand(gs)!
-    const snap = snapshot(gs)!
-    const out = JSON.stringify(view)
     if (view.spectator) return
-    snap.holes.forEach((cs, seat) => {
-      if (!cs || seat === 0) return
-      const shownNow = h.result?.shown[seat]
-      for (const card of cs) if (!shownNow && !snap.board.includes(card) && out.includes(`"${card}"`)) leaks++
-    })
+    const hv = JSON.stringify(view.hand)
+    for (const c of hidden(h, 0)) if (!view.hand.board.includes(c) && hv.includes(`"${c}"`)) leaks++
+    const prev = gs.hands.length >= 2 ? gs.hands[gs.hands.length - 2] : null
+    if (prev && view.prev) {
+      const pv = JSON.stringify(view.prev)
+      for (const c of hidden(prev, 0)) if (!view.prev.board.includes(c) && pv.includes(`"${c}"`)) leaks++
+    }
+    for (const r of view.results) for (const s of Object.keys(r.shown)) if (!gs.hands[r.n - 1].result!.shown[+s]) leaks++
     if (!h.result && view.hand.log.some((l: any) => l.t === 'act' && l.why)) whyEarly++
     if (view.hand.legal && view.hand.legal.seat !== 0) legalOthers++
   }
