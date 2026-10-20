@@ -28,6 +28,16 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
   browser, not per person.
 - **`user_id`** = the first signed-in user seen during the visit. Visits
   before sign-in are tied to the user through `visitor_id`.
+- **`time_zone`** (Oct 20, migration 145; owner: "you should record
+  timezone, not UTC") = the visitor's own IANA zone, from the browser's
+  clock settings, else Vercel's guess for the connection
+  (`x-vercel-ip-timezone`); the first report's sticks, and /api/visit keeps
+  only a name its runtime knows. `started_at` and `last_seen_at` are
+  timestamptz, which holds the moment but not the zone, so the visitor's
+  local time is `started_at at time zone time_zone`. Visits before Oct 20
+  have none; their zone follows from `country` (96% are in one-zone
+  countries) or, in the US and the few other many-zone countries, `city`
+  (the query under "Reports").
 - **Source**: `gclid` / `gbraid` / `wbraid` (Google Ads auto-tagging; gbraid and
   wbraid are iOS), `utm_*` from the landing URL, `referrer` host. Only taken
   when the tab arrived from outside: a reload of an ad URL is not a new click.
@@ -216,6 +226,45 @@ ChatGPT ads 363, 103 stayed, 36 signed in. Accounts: 90 (Taiwan 81, US 6,
 China 1, Japan 1, unknown 1).
 
 ## Reports (Supabase SQL editor)
+
+Each visit's local time: its own `time_zone` (Oct 20 on), else the zone of
+its country, or of its city where a country has several. The list covers
+every country and many-zone city in the log on Oct 20; a city it lacks
+gives no zone.
+
+```sql
+with zone(country, city, tz) as (values
+  ('TW', null, 'Asia/Taipei'), ('JP', null, 'Asia/Tokyo'), ('CN', null, 'Asia/Shanghai'),
+  ('HK', null, 'Asia/Hong_Kong'), ('MO', null, 'Asia/Macau'), ('KR', null, 'Asia/Seoul'),
+  ('SG', null, 'Asia/Singapore'), ('MY', null, 'Asia/Kuala_Lumpur'), ('PH', null, 'Asia/Manila'),
+  ('VN', null, 'Asia/Ho_Chi_Minh'), ('IN', null, 'Asia/Kolkata'), ('BD', null, 'Asia/Dhaka'),
+  ('TR', null, 'Europe/Istanbul'), ('AR', null, 'America/Argentina/Buenos_Aires'),
+  ('BR', 'São Paulo', 'America/Sao_Paulo'), ('AU', 'Melbourne', 'Australia/Melbourne'),
+  ('ID', 'Denpasar', 'Asia/Makassar'),
+  ('US', 'Napa', 'America/Los_Angeles'), ('US', 'Santa Clara', 'America/Los_Angeles'),
+  ('US', 'San Jose', 'America/Los_Angeles'), ('US', 'San Francisco', 'America/Los_Angeles'),
+  ('US', 'Los Angeles', 'America/Los_Angeles'), ('US', 'Boardman', 'America/Los_Angeles'),
+  ('US', 'Phoenix', 'America/Phoenix'), ('US', 'Salt Lake City', 'America/Denver'),
+  ('US', 'Dallas', 'America/Chicago'), ('US', 'Council Bluffs', 'America/Chicago'),
+  ('US', 'Des Moines', 'America/Chicago'), ('US', 'Bartlett', 'America/Chicago'),
+  ('US', 'Gallatin', 'America/Chicago'),
+  ('US', 'New York City', 'America/New_York'), ('US', 'Washington', 'America/New_York'),
+  ('US', 'Ashburn', 'America/New_York'), ('US', 'Alexandria', 'America/New_York'),
+  ('US', 'Warrenton', 'America/New_York'), ('US', 'Calhoun', 'America/New_York'),
+  ('US', 'Charleston', 'America/New_York'), ('US', 'Forest City', 'America/New_York'),
+  ('US', 'Saginaw', 'America/Detroit')
+)
+select v.started_at,
+       v.country,
+       v.city,
+       coalesce(v.time_zone, c.tz, z.tz)                           as time_zone,
+       v.started_at at time zone coalesce(v.time_zone, c.tz, z.tz) as local_time
+from public.site_visits v
+left join zone c on c.country = v.country and c.city = v.city
+left join zone z on z.country = v.country and z.city is null
+where v.env = 'production'
+order by v.started_at desc;
+```
 
 Time on site by source, last 7 days:
 

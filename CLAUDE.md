@@ -69,6 +69,15 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `145_site_visit_time_zone.sql` applied 2026-10-20 by the owner:
+  `site_visits.time_zone` (an IANA name, the browser's, else Vercel's
+  `x-vercel-ip-timezone`; timestamptz keeps the moment, not the zone) and
+  `log_site_visit` taking `p_time_zone` (the old signature dropped). Proven
+  on PGlite (20/20). Checked live: 42501 for the publishable key on the
+  function and the table; the service key's call stored
+  `America/Los_Angeles`, a call without the zone (the code then live) and
+  one with a malformed name both logged with the zone null; test rows
+  removed.
   `143_reserve_app_handles.sql` applied 2026-10-20 by the owner: xkit,
   xoracle and xfilm join `handle_is_reserved()` (the new app names; lib/handle.ts
   has the same). Checked live: xkit, x.oracle_2, xfi1m and xtell reserved,
@@ -1202,7 +1211,9 @@ brought them. `VisitTracker.tsx` (root layout) reports to `/api/visit`, which
 writes one row per visit through `log_site_visit()` (migration 109). Active
 time = tab in front, pausing a minute after the last real input (a tap,
 a key, a finger or wheel scroll; until Oct 19 it was 5 minutes and any
-scroll, so a self-scrolling chat kept counting); the
+scroll, so a self-scrolling chat kept counting); each visit keeps the
+visitor's time zone since Oct 20 (`time_zone`, migration 145: the browser's,
+else Vercel's guess; local time = `started_at at time zone time_zone`); the
 `modelxd_vid` cookie ties a browser's visits together, so a later sign-up
 traces back to its first ad click (`gclid`/`gbraid`/`wbraid`, `utm_*`). No
 IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`). There is no
