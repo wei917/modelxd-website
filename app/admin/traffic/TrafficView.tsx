@@ -548,6 +548,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   const nameOf = (c: string) => names[c] ?? c
   const where = country ? nameOf(country) : 'All countries'
   const offered = country && !picker.includes(country) ? [...picker, country] : picker
+  // New accounts per day; left out when the page could not read them.
+  const madeKnown = rows.some(r => r.newAccounts != null)
 
   const countrySeries: Series<CountryDay>[] = [
     ...countryCodes.slice(0, 3).map((c, i) => ({ key: COUNTRY_KEYS[i], label: nameOf(c), color: COUNTRY_COLORS[i] })),
@@ -868,6 +870,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                 <tr>
                   <th style={{ ...th, ...first }}>Day</th>
                   <th style={th}>Browsers</th><th style={th}>New</th><th style={th}>Returning</th><th style={th}>Signed-in users</th>
+                  {madeKnown && <th style={th}>New accounts</th>}
                   <th style={th}>Visits</th><th style={th}>Median stay</th>
                   {topStay && <><th style={th}>Top 20% avg stay</th><th style={th}>Top 10% avg stay</th></>}
                   <th style={th}>Average stay</th><th style={th}>Total time</th>
@@ -879,6 +882,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
                   <tr key={r.day}>
                     <td style={{ ...td, ...first }}>{r.day}</td>
                     <td style={td}>{num(r.browsers)}</td><td style={td}>{num(r.newBrowsers)}</td><td style={td}>{num(r.returningBrowsers)}</td><td style={td}>{num(r.signedInUsers)}</td>
+                    {madeKnown && <td style={td}>{num(r.newAccounts ?? 0)}</td>}
                     <td style={td}>{num(r.visits)}</td><td style={td}>{stayOf(r.browsers, r.medianSeconds)}</td>
                     {topStay && <><td style={td}>{stayOf(r.browsers, r.top20Seconds)}</td><td style={td}>{stayOf(r.browsers, r.top10Seconds)}</td></>}
                     <td style={td}>{stayOf(r.browsers, r.avgSeconds)}</td><td style={td}>{(r.totalSeconds / 3600).toFixed(1)} h</td>

@@ -23,12 +23,12 @@
 // heading and labels say "today".
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getAdminUser } from '@/lib/admin'
 import TrafficView from './TrafficView'
 import { DAILY_CAP_USD, spendDays, taipeiDay } from '@/lib/xsports-ai-spend'
 import { cheerModelStats } from '@/lib/xsports-cheer-stats'
-import { askedCountry, countryDays, countryNames, fillDaily, productDays, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type PageRow, type ProductRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
+import { accountsByDay, askedCountry, countryDays, countryNames, fillDaily, productDays, shareLines, signinDays, tapTotals, toSummary, voteLines, type CountryRow, type DailyRow, type PageRow, type ProductRow, type ShareRow, type SigninRow, type SummaryRow, type TapRow, type VoteRow, type AccountRow, type FunnelRow } from './data'
 
 export const dynamic = 'force-dynamic'
 
@@ -112,9 +112,13 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   const countries = countryDays((byCountry?.data ?? []) as CountryRow[], today)
   const methods = signinDays((signins?.data ?? []) as SigninRow[], today)
 
+  // Accounts made per day (owner, Oct 20: "should we add new signed up user
+  // count?"), for the daily table.
+  const made = await accountsMade(sb, days, upgraded ? wanted : null)
+
   return (
     <TrafficView
-      rows={fillDaily(found, today)}
+      rows={fillDaily(found, today, made)}
       whole={toSummary(((range?.data ?? []) as SummaryRow[])[0])}
       taps={tapped && !tapped.error ? tapTotals((tapped.data ?? []) as TapRow[]) : null}
       votes={voted && !voted.error ? voteLines(voteRows, modelNames) : null}
@@ -144,4 +148,28 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
       cheerModels={await cheerModelStats(sb, days).catch(() => null)}
     />
   )
+}
+
+/** Accounts made per day over the range, leaving out the owner's
+ *  (site_internal_users, 129). With a country picked, by where each account
+ *  was last seen (profiles.country): the only country an account has. Null
+ *  when either read fails, so the table leaves the column out rather than
+ *  show zeros or count the owner's accounts. */
+async function accountsMade(sb: SupabaseClient, days: number, country: string | null): Promise<Record<string, number> | null> {
+  // A day more than the range, so its first Taipei day is whole; fillDaily
+  // shows only the range's days.
+  const since = new Date(Date.now() - (days + 1) * 86_400_000).toISOString()
+  const owner = await sb.from('site_internal_users').select('user_id')
+  if (owner.error) { console.error('[admin/traffic] site_internal_users:', owner.error.message); return null }
+  const mine = new Set((owner.data ?? []).map(r => r.user_id as string))
+  const created: string[] = []
+  for (let from = 0; ; from += 1000) {
+    let q = sb.from('profiles').select('id, created_at').gte('created_at', since).order('created_at').range(from, from + 999)
+    if (country) q = q.eq('country', country)
+    const { data, error } = await q
+    if (error) { console.error('[admin/traffic] profiles:', error.message); return null }
+    for (const p of data ?? []) if (!mine.has(p.id as string)) created.push(p.created_at as string)
+    if (!data || data.length < 1000) break
+  }
+  return accountsByDay(created, TZ)
 }

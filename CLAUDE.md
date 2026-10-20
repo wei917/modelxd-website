@@ -1174,7 +1174,8 @@ The daily picture is the admin page **`/admin/traffic`**: filters at the top
 (range, country), the part they narrow (tiles for the RANGE as a whole with
 today and yesterday under them, from `site_visit_summary()` in 118; then
 per day: active browsers, new and returning,
-signed-in users, visits by source, stay for signed-in and not signed-in
+signed-in users, new accounts (Oct 20, from `profiles.created_at`, the
+owner's left out), visits by source, stay for signed-in and not signed-in
 browsers as median / top 20% avg / top 10% avg / average; the two tops are
 the average stay of the longest-staying fifth and tenth since migration 128,
 Oct 7, not percentiles), then fixed charts that
