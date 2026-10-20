@@ -15,10 +15,14 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
 - **One visit = one tab's stay.** Reloads and in-app navigation continue it;
   30 minutes without input ends it. Moving between front doors (www → xtell)
   is a new visit, because each host has its own tab storage. Same visitor.
-- **`active_seconds`** = time with the tab in front, pausing 5 minutes after
-  the last input (mouse, keys, scroll, touch). An idle period can add at most
-  those 5 minutes. The tab reports at the start, every minute while in front,
-  and when hidden or closed, so an abrupt end loses at most a minute.
+- **`active_seconds`** = time with the tab in front, pausing a minute after
+  the last real input: a tap or click, a key, a finger or wheel scroll (events
+  a script made never count). An idle period can add at most that minute.
+  Until Oct 19 it was 5 minutes and any scroll or mouse move, so a page
+  scrolling itself (X體育's chat, a Werewolf game, a streaming answer) kept a
+  visible tab counting, and a desktop window left open added 5 minutes; stays
+  before Oct 19 read longer. The tab reports at the start, every minute while
+  in front, and when hidden or closed, so an abrupt end loses at most a minute.
 - **`visitor_id`** = the `modelxd_vid` cookie (first party, one year,
   `.modelxd.com`, server-set so Safari does not cut it to 7 days). One per
   browser, not per person.
@@ -111,7 +115,7 @@ view it is on: `{ page: { id, key, active } }` → `site_page_views` through
 `xtell`), anything else is its path with ids masked (`lib/page-key.ts`:
 `/xtalk/:id`, `/xsports/mlb`). A new page view starts on a route change or a
 room change; its time is counted like the visit's (tab in front, pausing
-after 5 minutes without input). `site_page_window(p_days, p_tz, p_country)`
+after a minute without real input). `site_page_window(p_days, p_tz, p_country)`
 gives views, browsers and time per page for the "Rooms and pages" card. The
 privacy page already says the visit log records "the pages you open".
 

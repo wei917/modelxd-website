@@ -8,8 +8,11 @@
 //
 // A visit is one tab's stay. Its state lives in sessionStorage, so reloads
 // and in-app navigation continue it, and 30 minutes without input starts a
-// new one. Only time with the tab in front counts, and counting pauses after
-// 5 minutes without input, so a tab left open overnight is not a long visit.
+// new one. Only time with the tab in front counts, and counting pauses a
+// minute after the last real input: a tap or click, a key, a finger or wheel
+// scroll (owner, Oct 19: "just change it"; it was 5 minutes and any scroll or
+// mouse move). A page scrolling itself (a chat, a streaming answer, a
+// Werewolf game) or a mouse passing over the window is not the visitor.
 // The tab reports at the start (a bounce is still a visit), once a minute
 // while in front, and when it is hidden or closed. The server owns the
 // visitor cookie, the signed-in user and the geo; nothing here reads auth.
@@ -28,13 +31,13 @@ import { usePathname } from 'next/navigation'
 import { PAGE_EVENT, currentPageKey } from '../../lib/page-key'
 
 const KEY = 'modelxd:visit'
-const IDLE_MS = 5 * 60_000        // counting pauses after this long without input
+const IDLE_MS = 60_000            // counting pauses after this long without input
 const NEW_VISIT_MS = 30 * 60_000  // and the visit ends after this long
 const TICK_MS = 15_000
 const REPORT_MS = 60_000
 const INPUT_THROTTLE_MS = 5_000
 const AD_PARAMS = ['gclid', 'gbraid', 'wbraid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
-const INPUTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'] as const
+const INPUTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const  // never 'scroll' or 'pointermove'
 
 type Visit = {
   id: string
@@ -187,7 +190,8 @@ export default function VisitTracker() {
       write(cur)
     }
 
-    const onInput = () => {
+    const onInput = (e: Event) => {
+      if (!e.isTrusted) return  // an event a script made is not the visitor
       const t = Date.now()
       if (t - lastSeenInput < INPUT_THROTTLE_MS) return
       lastSeenInput = t
