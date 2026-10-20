@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240">
+  <!-- XGame chess banner (Oct 19). Pieces: Cburnett's set from Wikimedia Commons, used under the
+       BSD 3-clause license (copyright (c) 2006 Cburnett; full text in public/xgame/chess/LICENSE.txt). -->
+  <defs>
+    <radialGradient id="chk"><stop offset="0" stop-color="#ff2a1a" stop-opacity="0.9"/><stop offset="0.5" stop-color="#e8261a" stop-opacity="0.45"/><stop offset="1" stop-color="#e8261a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="vig" cx="50%" cy="45%" r="75%"><stop offset="0.62" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2410" stop-opacity="0.36"/></radialGradient>
+  </defs>
+  <!-- ranks 6 to 4 of a game in progress: Ng4-e5+ forks king and queen -->
+  <rect x="0" y="0" width="80" height="80" fill="#efe3cc"/>
+  <rect x="80" y="0" width="80" height="80" fill="#b58a63"/>
+  <rect x="160" y="0" width="80" height="80" fill="#efe3cc"/>
+  <rect x="240" y="0" width="80" height="80" fill="#b58a63"/>
+  <rect x="320" y="0" width="80" height="80" fill="#efe3cc"/>
+  <rect x="400" y="0" width="80" height="80" fill="#b58a63"/>
+  <rect x="480" y="0" width="80" height="80" fill="#efe3cc"/>
+  <rect x="560" y="0" width="80" height="80" fill="#b58a63"/>
+  <rect x="0" y="80" width="80" height="80" fill="#b58a63"/>
+  <rect x="80" y="80" width="80" height="80" fill="#efe3cc"/>
+  <rect x="160" y="80" width="80" height="80" fill="#b58a63"/>
+  <rect x="240" y="80" width="80" height="80" fill="#efe3cc"/>
+  <rect x="320" y="80" width="80" height="80" fill="#b58a63"/>
+  <rect x="400" y="80" width="80" height="80" fill="#efe3cc"/>
+  <rect x="480" y="80" width="80" height="80" fill="#b58a63"/>
+  <rect x="560" y="80" width="80" height="80" fill="#efe3cc"/>
+  <rect x="0" y="160" width="80" height="80" fill="#efe3cc"/>
+  <rect x="80" y="160" width="80" height="80" fill="#b58a63"/>
+  <rect x="160" y="160" width="80" height="80" fill="#efe3cc"/>
+  <rect x="240" y="160" width="80" height="80" fill="#b58a63"/>
+  <rect x="320" y="160" width="80" height="80" fill="#efe3cc"/>
+  <rect x="400" y="160" width="80" height="80" fill="#b58a63"/>
+  <rect x="480" y="160" width="80" height="80" fill="#efe3cc"/>
+  <rect x="560" y="160" width="80" height="80" fill="#b58a63"/>
+  <rect x="480" y="160" width="80" height="80" fill="rgb(246,208,68)" opacity="0.55"/>
+  <rect x="320" y="80" width="80" height="80" fill="rgb(246,208,68)" opacity="0.55"/>
+  <circle cx="520" cy="40" r="40" fill="url(#chk)"/>
+  <g transform="translate(480 0) scale(1.7778)"><g style="fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;">
+    <path d="M 22.5,11.63 L 22.5,6" style="fill:none; stroke:#000000; stroke-linejoin:miter;" id="path6570"/>
+    <path d="M 22.5,25 C 22.5,25 27,17.5 25.5,14.5 C 25.5,14.5 24.5,12 22.5,12 C 20.5,12 19.5,14.5 19.5,14.5 C 18,17.5 22.5,25 22.5,25" style="fill:#000000;fill-opacity:1; stroke-linecap:butt; stroke-linejoin:miter;"/>
+    <path d="M 12.5,37 C 18,40.5 27,40.5 32.5,37 L 32.5,30 C 32.5,30 41.5,25.5 38.5,19.5 C 34.5,13 25,16 22.5,23.5 L 22.5,27 L 22.5,23.5 C 20,16 10.5,13 6.5,19.5 C 3.5,25.5 12.5,30 12.5,30 L 12.5,37" style="fill:#000000; stroke:#000000;"/>
+    <path d="M 20,8 L 25,8" style="fill:none; stroke:#000000; stroke-linejoin:miter;"/>
+    <path d="M 32,29.5 C 32,29.5 40.5,25.5 38.03,19.85 C 34.15,14 25,18 22.5,24.5 L 22.5,26.6 L 22.5,24.5 C 20,18 10.85,14 6.97,19.85 C 4.5,25.5 13,29.5 13,29.5" style="fill:none; stroke:#ffffff;"/>
+    <path d="M 12.5,30 C 18,27 27,27 32.5,30 M 12.5,33.5 C 18,30.5 27,30.5 32.5,33.5 M 12.5,37 C 18,34 27,34 32.5,37" style="fill:none; stroke:#ffffff;"/>
+  </g></g>
+  <g transform="translate(160 0) scale(1.7778)"><g style="fill:#000000;stroke:#000000;stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round">
+
+    <path d="M 9,26 C 17.5,24.5 30,24.5 36,26 L 38.5,13.5 L 31,25 L 30.7,10.9 L 25.5,24.5 L 22.5,10 L 19.5,24.5 L 14.3,10.9 L 14,25 L 6.5,13.5 L 9,26 z"
+    style="stroke-linecap:butt;fill:#000000" />
+    <path d="m 9,26 c 0,2 1.5,2 2.5,4 1,1.5 1,1 0.5,3.5 -1.5,1 -1,2.5 -1,2.5 -1.5,1.5 0,2.5 0,2.5 6.5,1 16.5,1 23,0 0,0 1.5,-1 0,-2.5 0,0 0.5,-1.5 -1,-2.5 -0.5,-2.5 -0.5,-2 0.5,-3.5 1,-2 2.5,-2 2.5,-4 -8.5,-1.5 -18.5,-1.5 -27,0 z" />
+    <path d="M 11.5,30 C 15,29 30,29 33.5,30" />
+    <path d="m 12,33.5 c 6,-1 15,-1 21,0" />
+    <circle cx="6" cy="12" r="2" />
+    <circle cx="14" cy="9" r="2" />
+    <circle cx="22.5" cy="8" r="2" />
+    <circle cx="31" cy="9" r="2" />
+    <circle cx="39" cy="12" r="2" />
+    <path d="M 11,38.5 A 35,35 1 0 0 34,38.5"
+    style="fill:none; stroke:#000000;stroke-linecap:butt;" />
+    <g style="fill:none; stroke:#ffffff;">
+      <path d="M 11,29 A 35,35 1 0 1 34,29" />
+      <path d="M 12.5,31.5 L 32.5,31.5" />
+      <path d="M 11.5,34.5 A 35,35 1 0 0 33.5,34.5" />
+      <path d="M 10.5,37.5 A 35,35 1 0 0 34.5,37.5" />
+    </g>
+  </g></g>
+  <g transform="translate(240 80) scale(1.7778)"><path d="m 22.5,9 c -2.21,0 -4,1.79 -4,4 0,0.89 0.29,1.71 0.78,2.38 C 17.33,16.5 16,18.59 16,21 c 0,2.03 0.94,3.84 2.41,5.03 C 15.41,27.09 11,31.58 11,39.5 H 34 C 34,31.58 29.59,27.09 26.59,26.03 28.06,24.84 29,23.03 29,21 29,18.59 27.67,16.5 25.72,15.38 26.21,14.71 26.5,13.89 26.5,13 c 0,-2.21 -1.79,-4 -4,-4 z" style="opacity:1; fill:#000000; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"/></g>
+  <g transform="translate(320 80) scale(1.7778)"><g style="opacity:1; fill:none; fill-opacity:1; fill-rule:evenodd; stroke:#000000; stroke-width:1.5; stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;" transform="translate(0,0.3)">
+    <path
+      d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18"
+      style="fill:#ffffff; stroke:#000000;" />
+    <path
+      d="M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10"
+      style="fill:#ffffff; stroke:#000000;" />
+    <path
+      d="M 9.5 25.5 A 0.5 0.5 0 1 1 8.5,25.5 A 0.5 0.5 0 1 1 9.5 25.5 z"
+      style="fill:#000000; stroke:#000000;" />
+    <path
+      d="M 15 15.5 A 0.5 1.5 0 1 1  14,15.5 A 0.5 1.5 0 1 1  15 15.5 z"
+      transform="matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)"
+      style="fill:#000000; stroke:#000000;" />
+  </g></g>
+  <g transform="translate(240 160) scale(1.7778)"><path d="m 22.5,9 c -2.21,0 -4,1.79 -4,4 0,0.89 0.29,1.71 0.78,2.38 C 17.33,16.5 16,18.59 16,21 c 0,2.03 0.94,3.84 2.41,5.03 C 15.41,27.09 11,31.58 11,39.5 H 34 C 34,31.58 29.59,27.09 26.59,26.03 28.06,24.84 29,23.03 29,21 29,18.59 27.67,16.5 25.72,15.38 26.21,14.71 26.5,13.89 26.5,13 c 0,-2.21 -1.79,-4 -4,-4 z" style="opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"/></g>
+  <g transform="translate(400 160) scale(1.7778)"><path d="m 22.5,9 c -2.21,0 -4,1.79 -4,4 0,0.89 0.29,1.71 0.78,2.38 C 17.33,16.5 16,18.59 16,21 c 0,2.03 0.94,3.84 2.41,5.03 C 15.41,27.09 11,31.58 11,39.5 H 34 C 34,31.58 29.59,27.09 26.59,26.03 28.06,24.84 29,23.03 29,21 29,18.59 27.67,16.5 25.72,15.38 26.21,14.71 26.5,13.89 26.5,13 c 0,-2.21 -1.79,-4 -4,-4 z" style="opacity:1; fill:#ffffff; fill-opacity:1; fill-rule:nonzero; stroke:#000000; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:miter; stroke-miterlimit:4; stroke-dasharray:none; stroke-opacity:1;"/></g>
+  <rect width="640" height="240" fill="url(#vig)"/>
+</svg>

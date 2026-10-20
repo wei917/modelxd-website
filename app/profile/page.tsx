@@ -48,6 +48,7 @@ const formatCents = (cents: number): string => {
 const REF_LABELS: Record<string, string> = {
   xcharacter_chat: 'Character chat',
   xgame_gomoku: 'Gomoku game',
+  xgame_chess: 'Chess game',
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',
   xtalk_bid: 'Discussion',

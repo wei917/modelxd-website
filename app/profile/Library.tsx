@@ -171,7 +171,7 @@ export function makeLoader(userId: string): Loader {
         if (p.q) q = q.ilike('title', like(p.q))
         const { data, count, error } = await q.order('created_at', { ascending: asc }).range(p.offset, to)
         if (error) throw error
-        return { total: count, items: (data ?? []).map((g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: g.game === 'gomoku' ? 'xg.game.gomoku' : g.game === 'draw' ? 'xg.game.draw' : 'xt.tpl.werewolf.name', badge: g.status === 'active' ? 'live' : undefined })) }
+        return { total: count, items: (data ?? []).map((g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: g.game === 'gomoku' ? 'xg.game.gomoku' : g.game === 'chess' ? 'xg.game.chess' : g.game === 'draw' ? 'xg.game.draw' : 'xt.tpl.werewolf.name', badge: g.status === 'active' ? 'live' : undefined })) }
       }
       case 'xpersonas': {
         let q = client.from('x_characters').select('id, name, avatar_path, msg_count, created_at', { count: 'exact' }).eq('user_id', userId)
