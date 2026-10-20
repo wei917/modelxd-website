@@ -49,6 +49,8 @@ const REF_LABELS: Record<string, string> = {
   xcharacter_chat: 'Character chat',
   xgame_gomoku: 'Gomoku game',
   xgame_chess: 'Chess game',
+  xgame_poker: 'Poker game',
+  xgame_xiangqi: 'Xiangqi game',
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',
   xtalk_bid: 'Discussion',

@@ -44,6 +44,7 @@ const nextConfig = {
     '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/xgame/chess': ['./node_modules/ffish/ffish.js', './node_modules/ffish/ffish.wasm'],
+    '/api/xgame/xiangqi': ['./node_modules/ffish/ffish.js', './node_modules/ffish/ffish.wasm'],
   },
   // Old app addresses forward to the new ones, path and query kept
   // (lib/renamed-apps.js: /xdev → /xkit, …).

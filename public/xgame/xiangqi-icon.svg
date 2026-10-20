@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- XGame 象棋's icon in the top bar (Oct 20): the red general on a corner
+       of the board, big enough to read at 30-40 px. Drawn in code like the
+       other XGame art, until approved icons exist. -->
+  <rect width="120" height="120" fill="#e9c992"/>
+  <g stroke="#7a5530" stroke-width="2.4" opacity="0.85">
+    <line x1="0" y1="20" x2="120" y2="20"/><line x1="0" y1="60" x2="120" y2="60"/><line x1="0" y1="100" x2="120" y2="100"/>
+    <line x1="20" y1="0" x2="20" y2="120"/><line x1="60" y1="0" x2="60" y2="120"/><line x1="100" y1="0" x2="100" y2="120"/>
+    <line x1="20" y1="20" x2="100" y2="100"/><line x1="100" y1="20" x2="20" y2="100"/>
+  </g>
+  <g transform="translate(60 60)" font-family="'Noto Sans TC','PingFang TC','Hiragino Sans',sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="central">
+    <circle r="40" fill="#f7ead0" stroke="#c0392b" stroke-width="4.5"/>
+    <circle r="33" fill="none" stroke="#c0392b" stroke-width="2"/>
+    <text y="2" font-size="44" fill="#c0392b">帥</text>
+  </g>
+</svg>

@@ -23,6 +23,7 @@ import GomokuLive from './GomokuLive'
 import DrawLive from './DrawLive'
 import ChessLive from './ChessLive'
 import PokerLive from './PokerLive'
+import XiangqiLive from './XiangqiLive'
 import XGameBar from './XGameBar'
 import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
 import TemplateHelp from '../xtalk/TemplateHelp'
@@ -38,6 +39,7 @@ const INTRO: Record<Exclude<GameKey, 'werewolf'>, { tag: string; blurb: string; 
   draw: { tag: 'xg.draw.tag', blurb: 'xg.draw.blurb', seats: '2' },
   chess: { tag: 'xg.chess.tag', blurb: 'xg.chess.blurb', seats: '2' },
   poker: { tag: 'xg.poker.tag', blurb: 'xg.poker.blurb', seats: '2–9' },
+  xiangqi: { tag: 'xg.xiangqi.tag', blurb: 'xg.xiangqi.blurb', seats: '2' },
 }
 
 export default function XGameClient({ resumeId = null, initialGame = null }: {
@@ -67,7 +69,9 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
       const c = await probe('chess').catch(() => null)
       if (c?.ok) { setActive('chess'); return }
       const p = await probe('poker').catch(() => null)
-      setActive(p?.ok ? 'poker' : 'werewolf')
+      if (p?.ok) { setActive('poker'); return }
+      const x = await probe('xiangqi').catch(() => null)
+      setActive(x?.ok ? 'xiangqi' : 'werewolf')
     }).catch(() => setActive('werewolf'))
   }, [resumeId])
   const [nonce, setNonce] = useState(0)
@@ -140,6 +144,8 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
 
           {active === 'chess' ? (
             <ChessLive key={`chess-${nonce}`} models={models} resumeId={resume} onExit={exit} />
+          ) : active === 'xiangqi' ? (
+            <XiangqiLive key={`xiangqi-${nonce}`} models={models} resumeId={resume} onExit={exit} />
           ) : active === 'poker' ? (
             <PokerLive key={`poker-${nonce}`} models={models} resumeId={resume} onExit={exit} />
           ) : active === 'draw' ? (
