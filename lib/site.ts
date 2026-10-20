@@ -38,7 +38,7 @@ export const SITE_HEADER = 'x-modelxd-site'
 export const SITE_COOKIE = 'modelxd_site'
 
 /** Pages the XTell host serves. Everything else 302s to `/` (which is the street). */
-export const XTELL_ROUTES = ['/xtell', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
+export const XTELL_ROUTES = ['/xoracle', '/xtell', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
 
 const ROUTES: Record<Exclude<Site, 'modelxd'>, string[]> = { xtell: XTELL_ROUTES }
 
@@ -52,16 +52,20 @@ export const WWW_ORIGIN = 'https://www.modelxd.com'
  *  dev version first"). Point it back at WWW_ORIGIN when www opens. */
 export const MAIN_ORIGIN = 'https://dev.modelxd.com'
 
-/** The XTell door's content is also www's page at /xtell, inside www's own
- *  shell (owner, Oct 4: no subdomains; dev.modelxd.com/xtell first, www stays
- *  behind its password). The subdomain keeps serving the door until it is
- *  retired. Links to the street and temples use a base: '' on the subdomain,
- *  '/xtell' on www (app/components/xtell/XTellBase.tsx). */
-export const XTELL_PATH = '/xtell'
-export type XTellBase = '' | '/xtell'
+/** The XTell door's content is also www's page, inside www's own shell
+ *  (owner, Oct 4: no subdomains; dev.modelxd.com first, www stays behind its
+ *  password). The page is /xoracle since Oct 20 (owner: XTell → XOracle; /xtell
+ *  forwards, lib/renamed-apps.js); the door keeps its host, xtell.modelxd.com.
+ *  Links to the street and temples use a base: '' on the subdomain,
+ *  '/xoracle' on www (app/components/xtell/XTellBase.tsx). Internal names
+ *  (xtell_* tables, .xtell-* classes, /api/xtell/*) stay as they are. */
+export const XTELL_PATH = '/xoracle'
+export type XTellBase = '' | '/xoracle'
+/** The street's page on the door ('/') or on www (XTELL_PATH). */
+export const isStreetPath = (p: string): boolean => p === '/' || p === XTELL_PATH
 
-/** www's XTell page and anything under it. Files under /xtell (pictures,
- *  cards) are not pages. */
+/** www's XTell page and anything under it. Files (pictures, cards; they stay
+ *  under /xtell/ in public/) are not pages. */
 export function isXTellPath(pathname: string): boolean {
   if (/\.[a-z0-9]+$/i.test(pathname)) return false
   return pathname === XTELL_PATH || pathname.startsWith(XTELL_PATH + '/')

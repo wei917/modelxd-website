@@ -113,7 +113,7 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
 // (owner, Oct 1: "not auto fill since other people will see their birthday
 // if they watch you use the website").
 {
-  const client = fs.readFileSync(path.join(__dirname, '..', 'app/xtell/client.tsx'), 'utf8')
+  const client = fs.readFileSync(path.join(__dirname, '..', 'app/xoracle/client.tsx'), 'utf8')
   const dailyUi = fs.readFileSync(path.join(__dirname, '..', 'app/components/xtell/XTellDaily.tsx'), 'utf8')
   const S = STRINGS as any
   check('占星 no longer fills the birth row on load', !/useEffect\(\(\) => \{\s*if \(temple !== 'zhanxing'\) return\s*try \{\s*const v = rememberedBirth/.test(client))

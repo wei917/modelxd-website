@@ -442,7 +442,7 @@ const TILES: Array<{ label: string; top?: boolean; whole: (s: Summary) => string
 const NEEDS_128 = 'Top 20% and top 10% average stay appear once supabase/128_site_visit_top_avg.sql has been run.'
 const NEEDS_118 = 'These tiles are today only. Totals for the whole range appear once supabase/118_site_visit_summary.sql has been run.'
 const NEEDS_120 = 'Taps on the sign-in buttons appear once supabase/120_signin_taps.sql has been run.'
-const NEEDS_122 = 'XTell answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
+const NEEDS_122 = 'XOracle answer votes and share presses appear once supabase/122_xtell_votes_shares.sql has been run.'
 const NEEDS_123 = 'What ad visitors did, and accounts per country, appear once supabase/123_site_ads_accounts.sql has been run.'
 const AD_SOURCE: Record<string, string> = { google: 'Google Ads', chatgpt: 'ChatGPT ads' }
 /** "43 (70%)": a count and its share of the ad browsers. */
@@ -465,14 +465,14 @@ const PRODUCTS: Series<ProductDay>[] = [
 const PRODUCT_NAMES: Record<string, string> = {
   xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home', xpersona: 'XPersona',
   xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xdirect: 'XDirect', xcut: 'XCut', xworld: 'XWorld', xarch: 'XArch',
-  xkit: 'XKit', xdev: 'XKit (old /xdev)', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
+  xkit: 'XKit', xdev: 'XKit', xoracle: 'X先知', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
 }
 const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`
 /** A page view's key as the table shows it: an X先知 room by its Chinese
  *  name (the street is 'xtell'), an app's path by the app, anything else as
  *  the path it is. */
 function pageName(key: string): string {
-  if (key === 'xtell' || key === '/xtell') return 'X先知 street'
+  if (key === 'xtell' || key === '/xtell' || key === '/xoracle') return 'X先知 street'
   const room = key.match(/^xtell\/([a-z]+)$/)?.[1]
   if (room) return `X先知 ${STRINGS[`xtell.site.focus.${room}.name`]?.['zh-Hant'] ?? room}`
   if (key === '/') return 'www home'
@@ -769,7 +769,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
               </Card>
             )}
             {votes && (
-              <Card title="XTell teacher votes"
+              <Card title="XOracle teacher votes"
                 note={`👍 and 👎 under teachers' answers${country ? ` from ${where}` : ''}, as they stand now, counted on the day last set. People = accounts that voted. Production only.`}>
                 {votes.length ? (
                   <div style={wrap}>
@@ -791,8 +791,8 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
               </Card>
             )}
             {shares && (
-              <Card title="XTell shares"
-                note={`Presses in XTell's share dialogs${country ? ` from ${where}` : ''}: what was shared, from which temple, and how. Completed and Closed come from the phone's share sheet, which never says which app was picked; a download or a copied link counts as completed. Production only.`}>
+              <Card title="XOracle shares"
+                note={`Presses in XOracle's share dialogs${country ? ` from ${where}` : ''}: what was shared, from which temple, and how. Completed and Closed come from the phone's share sheet, which never says which app was picked; a download or a copied link counts as completed. Production only.`}>
                 {shares.length ? (
                   <div style={wrap}>
                     <table style={table}>

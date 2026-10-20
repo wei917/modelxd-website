@@ -59,7 +59,7 @@ export default function XTellActivity({ userId, basePath = '/' }: { userId: stri
     return [...by.entries()]
   }, [rows])
   return <section id="xtell-activity" className="xtell-activity" aria-labelledby="xtell-activity-title">
-    <div className="xtell-section-heading"><h2 id="xtell-activity-title">{t('xtell.site.history')}</h2><span>XTell</span></div>
+    <div className="xtell-section-heading"><h2 id="xtell-activity-title">{t('xtell.site.history')}</h2><span>XOracle</span></div>
     <p className="xtell-account-note">{t('xtell.site.historyNote')}</p>
     {status === 'loading' ? <p role="status" className="xtell-history-empty">{t('common.loading')}</p>
       : status === 'error' ? <div className="xtell-history-empty" role="alert"><p>{t('xtell.site.historyError')}</p><button className="xtell-button" onClick={() => setAttempt(n => n + 1)}>{t('xtell.site.retry')}</button></div>

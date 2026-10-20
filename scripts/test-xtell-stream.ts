@@ -105,7 +105,7 @@ async function server() {
 }
 
 function page() {
-  const client = read('app/xtell/client.tsx')
+  const client = read('app/xoracle/client.tsx')
   const ask = client.slice(client.indexOf('const askTeacher = async'), client.indexOf('const recovering = useRef'))
   const rec = client.slice(client.indexOf('const recoverAnswer = async'), client.indexOf('const signedIn = async'))
   check('page: a dropped line (TypeError) is never shown as the browser wrote it', /e instanceof TypeError/.test(ask) && !/Load failed/.test(ask.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')))

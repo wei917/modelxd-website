@@ -31,7 +31,7 @@ check('月老: the other person\'s type, said to be typed in by the visitor', pt
 check('nothing valid attached: nothing said', pt.personalityFacts(undefined) === '' && pt.personalityFacts('hello', 'x') === '')
 check('offered in 孫子兵法, 月老 and 塔羅 only', ['sunzi', 'yuelao', 'tarot'].every(pt.offersPersonality) && ['guanyin', 'guandi', 'mazu', 'bazi', 'ziwei', 'zhanxing', 'navagraha', 'kyusei', 'sukuyo', 'xingming', 'cezi', 'yixue', 'jiemeng', 'cookie', 'simianfo', 'daily'].every(t => !pt.offersPersonality(t)))
 
-const reading = read('app/api/xtell/reading/route.ts'), chart = read('app/api/xtell/chart/route.ts'), client = read('app/xtell/client.tsx')
+const reading = read('app/api/xtell/reading/route.ts'), chart = read('app/api/xtell/chart/route.ts'), client = read('app/xoracle/client.tsx')
 check('the reading route adds it only in those rooms, never to the daily reading, after the chart\'s own facts', reading.includes("const typeFacts = !daily && offersPersonality(temple) ? personalityFacts(body?.mbti, temple === 'yuelao' ? body?.mbti2 : undefined) : ''") && reading.includes('const facts = typeFacts ? `${chartFacts}\\n\\n${typeFacts}` : chartFacts'))
 check('the visit keeps what was attached, so a reopened visit asks with the same type', /SUBJECT_KEYS = \[[^\]]*'mbti', 'mbti2'[,\]]/.test(chart) && client.includes('asPersonalityType(init.mbti) ?? savedType'))
 check('the box is off by default and sends nothing until ticked', client.includes('useState<boolean>(!!asPersonalityType(init.mbti))') && client.includes('offersPersonality(temple) && withType ?'))

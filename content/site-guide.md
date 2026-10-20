@@ -378,9 +378,9 @@ votes cast on ModelXD; XEval republishes benchmark work under our own
 transparent protocol. Public page, no sign-in needed. Numbers are not
 comparable to GDPval-AA's leaderboard (different judges and anchors).
 
-### XTell（X先知）— the temple street
+### XOracle（X先知; XTell until Oct 20）— the temple street
 
-`/xtell`, signed-in; on xtell.modelxd.com anyone can open a temple and see
+`/xoracle` (`/xtell` forwards here), signed-in; on xtell.modelxd.com anyone can open a temple and see
 their chart for free without signing in (sign-in comes when they ask a
 master, which is paid; 解夢 and the fortune cookie ask for it at the door,
 and 孫子兵法 gives three free lookups a day before asking). The street opens with a guide that

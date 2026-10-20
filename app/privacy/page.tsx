@@ -1,8 +1,8 @@
 import LocaleSummary from '../components/LocaleSummary'
 // app/privacy/page.tsx — Privacy Policy (drafted July 20, 2026; CC to review
-// before beta). Static page, same layout language as /terms. Sep 28: XTell's
+// before beta). Static page, same layout language as /terms. Sep 28: XOracle's
 // data, the referral card check, bug reports, the language and referral
-// cookies, and what deleting really erases (XTell rows at once; a removed
+// cookies, and what deleting really erases (XOracle rows at once; a removed
 // XDuel/XCreate only hides until the account goes). Sep 29: LINE sign-in,
 // in the summaries too, and the situation written at 孫子兵法. Oct 2: X sign-in,
 // and the website name and picture a person chooses (checked by OpenAI).
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
         This policy explains what data ModelXD collects, how it is used, and the
         choices you have. It applies to modelxd.com, xtell.modelxd.com (X先知)
         and every ModelXD service, including XDuel, XCreate (X創作),
-        XDirect, XCut, XTalk, XGame, XWorld, XArch, XTell, XBoard and the API.
+        XDirect, XCut, XTalk, XGame, XWorld, XArch, XOracle, XBoard and the API.
       </p>
 
       <LocaleSummary items={['legal.privacy.signin', 'legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xtell', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
         moderation service to check that it is safe to show.
         <br /><strong>Content you submit.</strong> Prompts, messages, uploaded files
         (images, videos, documents), the AI outputs generated for you, and your votes.
-        <br /><strong>XTell (X先知).</strong> What a temple needs to draw your chart
+        <br /><strong>XOracle (X先知).</strong> What a temple needs to draw your chart
         or answer you: your birth date and time (or that the hour is unknown) and the
         time zone you were born in; for 月老 and compatibility charts, the same for a
         second person; a name at 姓名學, a character at 測字, your wishes at 四面佛, a
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
         keeping the Service safe.
       </p>
       <p style={S.p}>
-        In XTell, charts, sticks and the almanac are computed by our own code. When
+        In XOracle, charts, sticks and the almanac are computed by our own code. When
         you ask a teacher, the details the reading needs (such as your birth details,
         the chart computed from them, a name at 姓名學 or your dream) and your
         question go to the model you chose. The free helpers (the guide on the
@@ -112,11 +112,11 @@ export default function PrivacyPage() {
         anything attached to it, and the models&apos; outputs. Your name, email and
         profile are never shown with a duel. Everything else is private to your
         account: your work in XCreate, XDirect, XCut, XTalk, XGame, XWorld, XArch and
-        XTell, your votes, your profile, and your credit history. Nothing in XTell is
+        XOracle, your votes, your profile, and your credit history. Nothing in XOracle is
         public: your readings, questions and birth details are visible only to you.
       </p>
       <p style={S.p}>
-        When you share from XTell, the picture is made on your own device and we
+        When you share from XOracle, the picture is made on your own device and we
         do not upload or publish it; what you post, and where, is up to you. The
         picture carries the result, not your birth details or your question. Its
         link opens the temple and, when you are signed in, carries your referral
@@ -145,7 +145,7 @@ export default function PrivacyPage() {
 
       <h2 style={S.h2}>5. Retention &amp; Deletion</h2>
       <p style={S.p}>
-        Your data is kept while your account is active. XTell readings you delete on
+        Your data is kept while your account is active. XOracle readings you delete on
         your account page are erased at once, and so are saved birth details when
         you delete them there. Photos added at 相學館 are never stored; the written
         description is erased with its reading. Removing an XDuel or XCreate from your profile hides it

@@ -52,7 +52,7 @@ const REF_LABELS: Record<string, string> = {
   xtalk_werewolf: 'Werewolf game',
   xtalk_turn: 'Discussion',
   xtalk_bid: 'Discussion',
-  xtell: 'XTell',
+  xtell: 'XOracle',
   xcreate: 'XCreate',
   xcreate_reserve: 'XCreate',
   xcreate_refund: 'XCreate',
@@ -683,7 +683,7 @@ export default function ProfilePage() {
             />
           )}
           {isXTell && <>
-          {isXTell && <><p className="xtell-eyebrow">XTell</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
+          {isXTell && <><p className="xtell-eyebrow">XOracle</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
 
           {/* Eyebrow — ties the profile page into the same section-label
               motif used across XDuel / XCreate / landing. Gives the page

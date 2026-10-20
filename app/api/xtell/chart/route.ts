@@ -289,7 +289,7 @@ export async function POST(req: Request) {
     const cents = (count ?? 0) >= FREE_PER_MEAL ? EXTRA_CENTS : 0
     if (cents) {
       try {
-        await debitCredits({ userId: user.id, amountCents: cents, referenceType: 'xtell', referenceId: 'cookie', description: 'XTell fortune cookie (third or later of a meal)', metadata: { temple: 'cookie', meal: key } })
+        await debitCredits({ userId: user.id, amountCents: cents, referenceType: 'xtell', referenceId: 'cookie', description: 'XOracle fortune cookie (third or later of a meal)', metadata: { temple: 'cookie', meal: key } })
       } catch (e) {
         if (e instanceof InsufficientCreditsError) return refuse('no_credits', 'not enough credits', 402)
         throw e
@@ -310,7 +310,7 @@ export async function POST(req: Request) {
     const pick = pickText ? parsePick(pickText, valid) : null
     const slip = pick ? fortuneOf(pick.ids[crypto.getRandomValues(new Uint32Array(1))[0] % pick.ids.length]) : null
     if (!pick || !slip) {
-      if (cents) await grantCredits({ userId: user.id, amountCents: cents, kind: 'refund', referenceType: 'xtell', referenceId: 'cookie', description: 'XTell fortune cookie refund (no slip)' }).catch(() => null)
+      if (cents) await grantCredits({ userId: user.id, amountCents: cents, kind: 'refund', referenceType: 'xtell', referenceId: 'cookie', description: 'XOracle fortune cookie refund (no slip)' }).catch(() => null)
       return refuse('cookie_failed', 'the cookie could not be cracked', 502)
     }
     const texts = fortuneTexts(slip)

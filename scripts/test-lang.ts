@@ -120,7 +120,7 @@ check('XCreate: /xcreate is titled with the name www\'s nav gives it, and xcreat
   check('layout: the migration script is the first child of <head> (the first inline script once rendered)', /<head>\s*\{\/\*[\s\S]*?\*\/\}\s*<script dangerouslySetInnerHTML=\{\{ __html: LANG_BOOT \}\} \/>/.test(layout))
   check('metadata in <head> for every visitor', /htmlLimitedBots:\s*\/\.\*\//.test(read('next.config.js')))
   check('no timed re-titling left in the door top bar', !/setTimeout\(apply/.test(read('app/components/xtell/XTellNav.tsx')))
-  check('every generateMetadata takes the resolved language', ['app/layout.tsx', 'app/page.tsx', 'app/xtell/page.tsx', 'app/xcreate/page.tsx'].every(f => !/(xtell|xcreate)Metadata\(h\)/.test(read(f))))
+  check('every generateMetadata takes the resolved language', ['app/layout.tsx', 'app/page.tsx', 'app/xoracle/page.tsx', 'app/xcreate/page.tsx'].every(f => !/(xtell|xcreate)Metadata\(h\)/.test(read(f))))
 }
 
 // ── The proxy stamps it ────────────────────────────────────────────────────

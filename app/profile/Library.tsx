@@ -208,7 +208,7 @@ export function makeLoader(userId: string): Loader {
         if (p.q) q = q.ilike('title', like(p.q))
         const { data, count, error } = await q.order('created_at', { ascending: asc }).range(p.offset, to)
         if (error) throw error
-        return { total: count, items: (data ?? []).map((r: any) => ({ id: r.id, title: r.title ?? '', created: r.created_at, href: `/xtell?reading=${r.id}`, raw: r })) }
+        return { total: count, items: (data ?? []).map((r: any) => ({ id: r.id, title: r.title ?? '', created: r.created_at, href: `/xoracle?reading=${r.id}`, raw: r })) }
       }
       default:
         return { items: [], total: 0 }

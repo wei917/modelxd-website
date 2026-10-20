@@ -128,7 +128,12 @@ export type ProductAvgDay = { day: string; xtell: number | null; xcreate: number
 type ChartKey = (typeof CHART_PRODUCTS)[number] | 'other'
 const CHART_KEYS: ChartKey[] = [...CHART_PRODUCTS, 'other']
 
-export function productDays(data: ProductRow[], today: string): { days: ProductDay[]; avg: ProductAvgDay[]; totals: ProductTotal[] } {
+/** An app's old and new landing names are one app (lib/renamed-apps.js):
+ *  history landed on /xtell and /xdev, new visits on /xoracle and /xkit. */
+const RENAMED_PRODUCT: Record<string, string> = { xoracle: 'xtell', xdev: 'xkit' }
+
+export function productDays(rows: ProductRow[], today: string): { days: ProductDay[]; avg: ProductAvgDay[]; totals: ProductTotal[] } {
+  const data = rows.map(r => ({ ...r, product: RENAMED_PRODUCT[r.product] ?? r.product }))
   const empty = (day: string): ProductDay => ({ day, xtell: 0, xcreate: 0, xsports: 0, www: 0, other: 0 })
   const byDay = new Map<string, ProductDay>()
   // Visits and seconds per day per charted app, for the averages.
@@ -154,8 +159,13 @@ export function productDays(data: ProductRow[], today: string): { days: ProductD
   return {
     days: range.map(d => byDay.get(d) ?? empty(d)),
     avg: range.map(avgOf),
-    totals: data.filter(r => r.day === null)
-      .map(r => ({ product: r.product, visits: r.visits, browsers: r.browsers, seconds: Number(r.total_seconds) }))
+    // A renamed app's two names sum to one row (a browser that landed on both
+    // counts twice, as one landing on two apps already does).
+    totals: [...data.filter(r => r.day === null).reduce((m, r) => {
+      const t = m.get(r.product) ?? { product: r.product, visits: 0, browsers: 0, seconds: 0 }
+      t.visits += r.visits; t.browsers += r.browsers; t.seconds += Number(r.total_seconds)
+      return m.set(r.product, t)
+    }, new Map<string, ProductTotal>()).values()]
       .sort((x, y) => y.browsers - x.browsers || x.product.localeCompare(y.product)),
   }
 }

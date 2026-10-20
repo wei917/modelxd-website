@@ -15,7 +15,7 @@ import { siteFromHeaders } from '../lib/site'
 import { serverLang } from '../lib/lang'
 import { xtellMetadata } from '../lib/xtell-meta'
 import HomeClient from './HomeClient'
-import XTellClient from './xtell/client'
+import XTellClient from './xoracle/client'
 import { almanacSection } from './components/xtell/AlmanacSection'
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {

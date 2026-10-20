@@ -19,6 +19,7 @@ import { createContext, useContext, useEffect, useId, useRef, useState } from 'r
 import { useSearchParams } from 'next/navigation'
 import { goToRoom } from '../../lib/xtell-room'
 import { useSite } from '../../lib/useSite'
+import { XTELL_PATH } from '../../lib/site'
 import { setPageKey } from '../../lib/page-key'
 import XTellAuthGate from '../components/xtell/XTellAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
@@ -403,10 +404,10 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
 
   // On www (/xtell, owner Oct 4: no subdomains) the door's content sits in
   // www's own shell: the temples row on top (the shell's left nav carries
-  // the ModelXD logo and the account), links under /xtell, and the door's
+  // the ModelXD logo and the account), links under /xoracle, and the door's
   // footer at the bottom, as on xtell.modelxd.com.
   const inWww = site !== 'xtell'
-  if (standalone) return <XTellBaseProvider base={inWww ? '/xtell' : ''}><div className={'xtell-site' + (inWww ? ' is-in-www xtell-www-page' : '')}>
+  if (standalone) return <XTellBaseProvider base={inWww ? XTELL_PATH : ''}><div className={'xtell-site' + (inWww ? ' is-in-www xtell-www-page' : '')}>
     {inWww && <XTellNav user={null} embedded />}
     <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : ' xtell-room-container')} tabIndex={-1}>
       {!temple ? <>

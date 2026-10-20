@@ -80,7 +80,7 @@ const req = (path: string, host = 'dev.modelxd.com', cookie?: string) => {
   ok(bp.kind === 'next' && bp.cookieSets.some(c => c.value === 'rotated'), 'an admin (ADMIN_EMAILS, any case) gets the app; a session refreshed on the way is kept')
   const rot = await proxyWith({ user: { email: 'fan@fixture.test' }, refreshed: true })(req('/xsports'))
   ok(rot.kind === 'rewrite' && rot.cookieSets.some(c => c.value === 'rotated'), "a refreshed session is kept on the not-found answer too (or the fan would be signed out)")
-  const other = await fan(req('/xtell'))
+  const other = await fan(req('/xoracle'))
   ok(other.kind === 'next', 'every other app is untouched')
   const local = await proxyWith({ user: null })(req('/xsports', 'localhost:3090'))
   ok(local.kind === 'next', 'this machine (localhost) is not gated')

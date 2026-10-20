@@ -2,7 +2,7 @@ import LocaleSummary from '../components/LocaleSummary'
 // app/terms/page.tsx — Terms of Service (drafted July 20, 2026; CC to review
 // before beta. This is a plain static page; the big title lives in the
 // TopBar per the July 16 convention.) Sep 28: every door and app named,
-// XTell's entertainment-only rule, other people's details, and the referral
+// XOracle's entertainment-only rule, other people's details, and the referral
 // rules; Your Content moved to §5. Oct 7: 相學館's photos (another person's only
 // with their agreement) and what a face or palm reading is not.
 
@@ -25,7 +25,7 @@ export default function TermsPage() {
         Welcome to ModelXD. These Terms of Service (&quot;Terms&quot;) govern your use of
         ModelXD&apos;s websites (modelxd.com and xtell.modelxd.com)
         and services, including XDuel, XCreate (X創作), XDirect, XCut, XTalk, XGame, XWorld,
-        XArch, XTell (X先知), XBoard and the API (together, the
+        XArch, XOracle (X先知), XBoard and the API (together, the
         &quot;Service&quot;). By creating an account or using the Service, you agree to
         these Terms.
       </p>
@@ -35,7 +35,7 @@ export default function TermsPage() {
       <p style={S.p}>
         ModelXD runs apps built on many AI models: a studio for images and video
         (XCreate, XDirect, XCut), rooms and games (XTalk, XGame), 3D worlds and floor
-        plans (XWorld, XArch), fortune-telling temples (XTell, also called X先知), and
+        plans (XWorld, XArch), fortune-telling temples (XOracle, also called X先知), and
         an API for developers. XDuel runs your task on anonymous models and reveals
         identity and price after you vote, and lets the community vote on completed
         duels; XBoard ranks models on those votes. Model outputs are produced by
@@ -46,7 +46,7 @@ export default function TermsPage() {
       <h2 style={S.h2}>2. Accounts</h2>
       <p style={S.p}>
         Most of the Service needs an account (via Google, LINE or X sign-in); a few parts, such
-        as the XTell almanac, work without one. You are responsible for activity under
+        as the XOracle almanac, work without one. You are responsible for activity under
         your account. You must be at least 13 years old (or the minimum age of digital
         consent in your country). We may suspend or terminate accounts that violate
         these Terms.
@@ -55,8 +55,8 @@ export default function TermsPage() {
       <h2 style={S.h2}>3. Free Quotas, Credits &amp; Payments</h2>
       <p style={S.p}>
         Some features are free: XDuel includes a limited number of free duels per day,
-        and XTell&apos;s charts and daily reading cost nothing. Other use, including
-        asking an XTell teacher, is paid from your prepaid credit balance at the
+        and XOracle&apos;s charts and daily reading cost nothing. Other use, including
+        asking an XOracle teacher, is paid from your prepaid credit balance at the
         estimated rates shown before you run it; final cost is based on actual usage
         reported by the provider. Credits are prepaid, non-transferable, and, except
         where required by law, non-refundable. The monthly plan renews automatically
@@ -114,7 +114,7 @@ export default function TermsPage() {
         objective measure of model quality, and may change.
       </p>
       <p style={S.p}>
-        XTell (X先知) is for reflection and entertainment. Its readings are AI
+        XOracle (X先知) is for reflection and entertainment. Its readings are AI
         interpretations of charts, sticks and texts computed from traditional
         methods; they are not statements of fact and not professional advice. Do not
         rely on them for decisions about health, money, legal matters or safety; for

@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
-import { MAIN_ORIGIN } from '../../lib/site'
+import { MAIN_ORIGIN, isStreetPath } from '../../lib/site'
 import { XTellMark } from './xtell/XTellNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 import { countSigninTap, type SignInVia } from '../../lib/signin-tap'
@@ -262,7 +262,7 @@ export default function AuthModal() {
               // does) so the explorer keeps the temple just left instead of
               // reloading to the default one. Elsewhere (account page) go home.
               const p = window.location.pathname
-              if ((p === '/' || p === '/xtell') && new URLSearchParams(window.location.search).has('t')) { goToRoom(null); window.scrollTo({ top: 0 }) }
+              if (isStreetPath(p) && new URLSearchParams(window.location.search).has('t')) { goToRoom(null); window.scrollTo({ top: 0 }) }
               else window.location.href = '/'
             }}
               style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
