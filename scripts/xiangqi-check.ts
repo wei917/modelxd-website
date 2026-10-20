@@ -79,8 +79,11 @@ const ok = (cond: boolean, label: string) => {
   // ── the prompt ────────────────────────────────────────────────────────
   const p = xiangqiPrompt(afterC, null)
   ok(p.includes('as Black') && p.includes('h3e3 (C2=5)') && p.includes('river'), 'the prompt names the side, the record with WXF, the river')
-  ok(!/"move":\s*"[a-i]\d/.test(p), 'no example coordinate in the reply shape')
-  ok(XIANGQI_HARNESS.timeoutSec === 90 && XIANGQI_HARNESS.plyCap === 200 && XIANGQI_HARNESS.legalList, 'harness: 90 s, 200 plies, the legal list')
+  ok(!/"move":\s*"[a-i]\d/.test(p) && !/like h3e3/.test(p), 'no sample coordinate anywhere a model could copy')
+  ok(!xiangqiPrompt(start, null).includes('Your legal moves'), 'prompt v2: no legal list on the first ask')
+  const rp = xiangqiPrompt(start, '"e1e3" is not a legal move in this position')
+  ok(rp.includes('Your legal moves (all of them): ') && rp.includes('h3e3 (C2=5)') && rp.indexOf('Your legal moves') < rp.indexOf('rejected'), 'prompt v2: the retry lists every legal move with its WXF name')
+  ok(XIANGQI_HARNESS.timeoutSec === 90 && XIANGQI_HARNESS.plyCap === 200 && XIANGQI_HARNESS.legalList === 'retry' && XIANGQI_HARNESS.version === 2, 'harness v2: 90 s, 200 plies, the legal list on the retry')
 
   console.log(fails ? `\n${fails} FAILED` : '\nall passed')
   process.exit(fails ? 1 : 0)

@@ -5,14 +5,22 @@
 // played by the route's own code.
 //
 // FAIRNESS: every model gets this exact harness, published on the table
-// (CHESS_HARNESS, lib/chess-board.ts): the same text, the same board formats, the same legal
-// list, one retry, the same fallback. Only the seat's thinking level differs,
+// (CHESS_HARNESS, lib/chess-board.ts): the same text, the same board formats,
+// one retry with the legal list, the same fallback. Only the seat's thinking level differs,
 // and it is shown next to the name. Change anything here and old games stop
 // being comparable with new ones: bump CHESS_HARNESS.version.
 //
 // Prompt shape (docs/research-gomoku-llm.md): the whole state every turn
-// (FEN, a text board, both piece lists, the SAN record, the legal moves),
-// reasoning BEFORE the move in the reply. No worked example: in the first
+// (FEN, a text board, both piece lists, the SAN record), reasoning BEFORE
+// the move in the reply.
+//
+// The legal moves (harness v2, Oct 20; owner: "you make the call"): NOT on
+// the first ask. The model reads the board and knows the rules itself; that
+// is what the table compares, and the literature found legal-move lists made
+// LLM chess play worse (docs/research-gomoku-llm.md, item 4). The retry after
+// an illegal or unreadable answer carries the reason AND the full legal
+// list, so a game does not fall into marked fallbacks; the ↻ on a move and
+// the seat's count show each model's illegal-move rate. No worked example: in the first
 // test games (Oct 19) cheap models copied the example's move verbatim
 // ("Nf3" on move 1, then "Bxe5" where no bishop could take), so the reply
 // shape is given with placeholders instead.
@@ -50,17 +58,18 @@ export function chessPrompt(pos: ChessPosition, objection: string | null): strin
     ...(last ? [`${other} just played ${last}.`] : []),
     ...(pos.check ? [`You are in CHECK. Only moves that get out of check are legal.`] : []),
     '',
-    `Your legal moves (all of them): ${pos.legalSan.join(' ')}`,
-    ...(objection ? ['', `Your previous answer was rejected: ${objection}.`] : []),
-    '',
+    // The legal list only on the retry (see the header).
+    ...(objection ? [`Your legal moves (all of them): ${pos.legalSan.join(' ')}`, '', `Your previous answer was rejected: ${objection}. Choose one of the legal moves above.`, ''] : []),
     'Check IN THIS ORDER before answering:',
-    '1. Does one of your legal moves give checkmate? Play it.',
+    '1. Is there a move that gives checkmate? Play it.',
     `2. What does ${other} threaten right now (a check, a capture of an undefended piece, a mate)? Deal with it.`,
     '3. Can you win material safely (a capture they cannot answer by taking back more)?',
     '4. Otherwise develop your pieces, keep your king safe and improve your worst piece.',
     '',
     'Reply with ONLY this JSON, in this field order:',
-    '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<one move, copied exactly from your legal moves>"}',
+    objection
+      ? '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<one move, copied exactly from your legal moves>"}'
+      : '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<your move in standard algebraic notation (SAN)>"}',
   ].join('\n')
 }
 

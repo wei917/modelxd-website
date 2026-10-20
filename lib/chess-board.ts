@@ -16,10 +16,11 @@ export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0
  *  (client-safe) so the setup screen can show it before a game exists; the
  *  turn code is lib/chess-turn.ts. Bump `version` on any change. */
 export const CHESS_HARNESS = {
-  version: 1,
+  version: 2,
   board: 'FEN + text board + piece lists',
   history: 'SAN record',
-  legalList: true,
+  /** v2 (Oct 20): the legal moves only on the retry after an illegal or unreadable answer. */
+  legalList: 'retry',
   retries: 1,
   timeoutSec: 90,
   fallback: 'a legal move picked by a hash of the position, marked ⚠',

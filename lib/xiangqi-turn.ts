@@ -5,16 +5,20 @@
 //
 // FAIRNESS: every model gets this exact harness, published on the table
 // (XIANGQI_HARNESS): the same text, the board as text plus both piece lists,
-// the record, every legal move, one retry, the same fallback. Only the seat's
+// the record, one retry with every legal move, the same fallback. Only the seat's
 // thinking level differs, shown next to the name. Change anything here and
 // bump XIANGQI_HARNESS.version.
 //
 // As chess (lib/chess-turn.ts), with what 五子棋 learned on Oct 20: no worked
 // example a model could copy (the reply shape has placeholders), and a JSON
 // schema sent with the ask (native schema or JSON mode by provider) with the
-// tolerant reader kept as a backstop. Moves are coordinates (h3e3), each
-// legal one shown with its WXF name too (C2=5), so a model may think in
-// either; a Chinese name (炮二平五) is also read.
+// tolerant reader kept as a backstop. Moves are coordinates, each in the
+// record (and in the retry's legal list) with its WXF name too, so a model
+// may think in either; a Chinese name (炮二平五) is also read.
+//
+// Harness v2 (Oct 20, as chess; owner: "you make the call"): the legal
+// moves are NOT on the first ask, only on the retry after an illegal or
+// unreadable answer, and the reply shape has no sample coordinate.
 
 import * as providers from './providers'
 import { adaptSchema, strictIsSafe } from './schema-adapt'
@@ -42,7 +46,7 @@ export function xiangqiPrompt(pos: XqPosition, objection: string | null): string
   return [
     `You are playing xiangqi (Chinese chess) as ${me}. It is your move.`,
     'Standard xiangqi rules: you win by checkmating the enemy general, or when the side to move has no legal move at all (that side loses). Perpetual check loses. The game is a draw after 100 moves each.',
-    'Coordinates: files a-i from Red\'s left, ranks 1-10 from Red\'s side (Red starts on ranks 1-4, Black on 7-10). A move is the from-square then the to-square, like h3e3. In brackets each move also has its WXF name (C2=5 is 炮二平五).',
+    'Coordinates: files a-i from Red\'s left, ranks 1-10 from Red\'s side (Red starts on ranks 1-4, Black on 7-10). A move is written as the from-square followed by the to-square (file letter and rank number, twice). In brackets each move in the record also has its WXF name (C2=5 is 炮二平五).',
     '',
     'Board (Red is UPPERCASE, Black is lowercase, "." is empty; rank 10 is at the top). K general, A advisor, B elephant, N horse, R chariot, C cannon, P soldier:',
     boardText(pos.fen),
@@ -53,17 +57,18 @@ export function xiangqiPrompt(pos: XqPosition, objection: string | null): string
     ...(last ? [`${other} just played ${last.uci} (${last.wxf}).`] : []),
     ...(pos.check ? ['Your general is in CHECK. Only moves that get out of check are legal.'] : []),
     '',
-    `Your legal moves (all of them): ${pos.legalUci.map((u, i) => `${u} (${pos.legalWxf[i]})`).join(', ')}`,
-    ...(objection ? ['', `Your previous answer was rejected: ${objection}.`] : []),
-    '',
+    // The legal list only on the retry (see the header).
+    ...(objection ? [`Your legal moves (all of them): ${pos.legalUci.map((u, i) => `${u} (${pos.legalWxf[i]})`).join(', ')}`, '', `Your previous answer was rejected: ${objection}. Choose one of the legal moves above.`, ''] : []),
     'Check IN THIS ORDER before answering:',
-    '1. Does one of your legal moves checkmate, or leave the enemy with no legal move? Play it.',
+    '1. Is there a move that checkmates, or leaves the enemy with no legal move? Play it.',
     `2. What does ${other} threaten right now (a check, a capture of an undefended piece, a mate)? Deal with it.`,
     '3. Can you win material safely (a capture they cannot answer by taking back more)? A chariot is worth about two horses or cannons.',
     '4. Otherwise develop: chariots to open files, horses forward, cannons where they have a screen, and keep your general covered.',
     '',
     'Reply with ONLY this JSON, in this field order:',
-    '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<one coordinate move, copied exactly from your legal moves>"}',
+    objection
+      ? '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<one coordinate move, copied exactly from your legal moves>"}'
+      : '{"why": "<one or two short sentences: the threat you see and your plan>", "move": "<your move: from-square then to-square>"}',
   ].join('\n')
 }
 
@@ -71,7 +76,7 @@ export const XIANGQI_REPLY_SCHEMA = {
   type: 'object',
   properties: {
     why: { type: 'string', description: 'One or two short sentences: the threat you see and your plan.' },
-    move: { type: 'string', description: 'One coordinate move copied exactly from the legal moves, like h3e3.' },
+    move: { type: 'string', description: 'One move: the from-square then the to-square.' },
   },
   required: ['why', 'move'],
   additionalProperties: false,
