@@ -19,6 +19,7 @@ import { templateById, type Speaker } from '../xtalk/templates'
 import GomokuLive from './GomokuLive'
 import DrawLive from './DrawLive'
 import ChessLive from './ChessLive'
+import PokerLive from './PokerLive'
 import TemplateHelp from '../xtalk/TemplateHelp'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -38,7 +39,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   // with a gomoku id — it resumed the wrong row as a board (stones as
   // players, undefined seats → React key warnings) until the probe flipped
   // it. Render NOTHING until we know. (CC, Aug 6)
-  const [active, setActive] = useState<'werewolf' | 'gomoku' | 'draw' | 'chess' | null>(resumeId ? null : 'werewolf')
+  const [active, setActive] = useState<'werewolf' | 'gomoku' | 'draw' | 'chess' | 'poker' | null>(resumeId ? null : 'werewolf')
   // A resumed id names a row whose game we can't know client-side; probe
   // each game's state action in turn, fall back to werewolf on 404s.
   useEffect(() => {
@@ -50,7 +51,9 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
       const d = await probe('draw').catch(() => null)
       if (d?.ok) { setActive('draw'); return }
       const c = await probe('chess').catch(() => null)
-      setActive(c?.ok ? 'chess' : 'werewolf')
+      if (c?.ok) { setActive('chess'); return }
+      const p = await probe('poker').catch(() => null)
+      setActive(p?.ok ? 'poker' : 'werewolf')
     }).catch(() => setActive('werewolf'))
   }, [resumeId])
   const [nonce, setNonce] = useState(0)
@@ -75,7 +78,7 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
         {/* The slogan sells the LOBBY; the table's headline is simply the
             game you are at. (owner, Aug 6) */}
         <h1 className="page-headline" style={{ marginBottom: 20 }}>
-          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : active === 'draw' ? 'xg.game.draw' : active === 'chess' ? 'xg.game.chess' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
+          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : active === 'draw' ? 'xg.game.draw' : active === 'chess' ? 'xg.game.chess' : active === 'poker' ? 'xg.game.poker' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
         </h1>
 
         {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
@@ -159,11 +162,34 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
             </button>
           </div>
 
+          <div className="xt-tpl-wrap">
+            <button className={`xt-tpl${active === 'poker' ? ' is-on' : ''}`} onClick={() => { setActive('poker'); setResume(null); setNonce(n => n + 1) }}>
+              <span className="xt-tpl-banner"><img src="/xgame/poker-banner.svg" alt="" loading="lazy" /></span>
+              <span className="xt-tpl-body">
+                <span className="xt-tpl-text">
+                  <span className="xt-tpl-head">
+                    <span className="xt-tpl-name">{t('xg.game.poker')}</span>
+                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2–9')}</span>
+                  </span>
+                  <span className="xt-tpl-tag">{t('xg.poker.tag')}</span>
+                  <span className="xt-tpl-blurb">{t('xg.poker.blurb')}</span>
+                </span>
+              </span>
+            </button>
+          </div>
+
         </div>)}
 
         {active === 'chess' ? (
           <ChessLive
             key={`chess-${nonce}`}
+            models={models}
+            resumeId={resume}
+            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
+          />
+        ) : active === 'poker' ? (
+          <PokerLive
+            key={`poker-${nonce}`}
             models={models}
             resumeId={resume}
             onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
