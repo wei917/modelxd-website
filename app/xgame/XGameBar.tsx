@@ -10,8 +10,8 @@
 // (werewolf's painted icon, the other banners' centres) until generated
 // icons replace them.
 
-import { useT } from '../../lib/i18n'
-import { GAMES, GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
+import { useLang, useT } from '../../lib/i18n'
+import { gamesFor, GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
 
 const ICON: Record<GameKey, string> = {
   werewolf: '/xtalk/werewolf.png',
@@ -19,6 +19,7 @@ const ICON: Record<GameKey, string> = {
   draw: '/xgame/draw-banner.svg',
   chess: '/xgame/chess-banner.svg',
   poker: '/xgame/poker-banner.svg',
+  xiangqi: '/xgame/xiangqi-icon.svg',
 }
 
 /** Where the square sits in a banner, when its centre is not the subject. */
@@ -30,12 +31,13 @@ export default function XGameBar({ current, onPick }: {
   onPick?: (k: GameKey) => void
 }) {
   const t = useT()
+  const { lang } = useLang()
   return (
     <div className="xtell-embedded-bar xgame-bar">
       <div className="xtell-embedded-inner">
         <div className="xtell-temple-wrap">
           <nav className="xtell-temple-nav" aria-label="XGame">
-            {GAMES.map(k => (
+            {gamesFor(lang).map(k => (
               <a key={k} href={`/xgame?game=${k}`} aria-current={current === k ? 'page' : undefined}
                 onClick={onPick ? e => {
                   // A new tab or window keeps the browser's own behaviour.

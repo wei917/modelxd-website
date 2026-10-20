@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../lib/i18n'
+import { GAME_NAME_KEY, isGameKey, type GameKey } from '../../lib/xgame-games'
 import { describeVisit, notAskedKey, firstAsk, cleanTitle } from '../../lib/xtell-history'
 import { TitleEditor } from '../components/xtell/TitleEditor'
 import { TempleArtwork, TEMPLE_ART, type TempleKey } from '../components/xtell/TempleArtwork'
@@ -171,7 +172,7 @@ export function makeLoader(userId: string): Loader {
         if (p.q) q = q.ilike('title', like(p.q))
         const { data, count, error } = await q.order('created_at', { ascending: asc }).range(p.offset, to)
         if (error) throw error
-        return { total: count, items: (data ?? []).map((g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: g.game === 'gomoku' ? 'xg.game.gomoku' : g.game === 'chess' ? 'xg.game.chess' : g.game === 'draw' ? 'xg.game.draw' : 'xt.tpl.werewolf.name', badge: g.status === 'active' ? 'live' : undefined })) }
+        return { total: count, items: (data ?? []).map((g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: GAME_NAME_KEY[isGameKey(g.game) ? (g.game as GameKey) : 'werewolf'], badge: g.status === 'active' ? 'live' : undefined })) }
       }
       case 'xpersonas': {
         let q = client.from('x_characters').select('id, name, avatar_path, msg_count, created_at', { count: 'exact' }).eq('user_id', userId)
