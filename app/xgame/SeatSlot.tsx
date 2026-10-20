@@ -13,7 +13,8 @@ import type { Speaker } from '../xtalk/templates'
 export type SeatAssign = 'me' | { modelId: string; name: string } | null
 
 export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, onAssign, onOpenPicker }: {
-  icon: string
+  /** A stone emoji (五子棋) or a picture (chess draws its king). */
+  icon: React.ReactNode
   assign: SeatAssign
   models: Speaker[]
   seatOpts: Record<string, SeatOpts>

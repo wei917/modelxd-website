@@ -15,7 +15,10 @@ const nextConfig = {
   // XCut renders and the platform video export run ffmpeg-static's binary:
   // keep the package out of the bundle and trace the binary into the
   // functions that spawn it.
-  serverExternalPackages: ['ffmpeg-static'],
+  // XGame chess (Oct 19) runs ffish, Fairy-Stockfish's WebAssembly build
+  // (GPL-3.0, server only): kept external so Node loads it from
+  // node_modules, with its .wasm traced into the route (lib/chess-engine.ts).
+  serverExternalPackages: ['ffmpeg-static', 'ffish'],
   // Metadata in <head>, before first paint, for every visitor. By default
   // Next 16 streams the <title> into <body> after the shell has hydrated,
   // which overwrote the tab title the XTell/XCreate top bars had just set
@@ -39,6 +42,7 @@ const nextConfig = {
     // captions, so no fonts).
     '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg'],
+    '/api/xgame/chess': ['./node_modules/ffish/ffish.js', './node_modules/ffish/ffish.wasm'],
   },
   webpack: (config) => {
     config.watchOptions = {

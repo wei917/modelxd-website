@@ -23,7 +23,7 @@ const APP_OF: Record<string, string> = {
   api: 'xdev',
   xcreate: 'xcreate', xcreate_reserve: 'xcreate', xcreate_refund: 'xcreate', xcreate_chat: 'xcreate',
   xcreate_film_reserve: 'xcreate', xcreate_film_refund: 'xcreate', create_job: 'xcreate',
-  xtalk_werewolf: 'xgame', xgame_gomoku: 'xgame', xgame_draw: 'xgame',
+  xtalk_werewolf: 'xgame', xgame_gomoku: 'xgame', xgame_draw: 'xgame', xgame_chess: 'xgame',
   xtalk_turn: 'xtalk', xtalk_bid: 'xtalk', xtalk_scene: 'xtalk',
   xcharacter_chat: 'xpersona', xpersona_story: 'xpersona',
   xtell: 'xtell', tripo_task: 'xworld', xworld: 'xworld', xarch: 'xarch',
