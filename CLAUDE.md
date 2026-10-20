@@ -375,15 +375,20 @@ X창작 (`nav.xcreate`; Sep 28), also the page title (`lib/xcreate-meta.ts`). **
 Pollo AI's /image page; the composer stays as it was, owner: "the top part
 stays the same", except that its From dropdown sits inside the prompt box,
 "like what others do", and the "Your prompt" line above it went): trending on
-social media and your works. **影片 has XDuel's Mode row instead of From
-(Oct 19; owner: "XDuel has updated the UI for video tab page, especially for
-different mode. can you follow it?"):** the same component
+social media and your works. **影片 has XDuel's Mode row (Oct 19; owner:
+"XDuel has updated the UI for video tab page, especially for different
+mode. can you follow it?"):** the same component
 (`app/xduel/RecipeBar.tsx`, `kinds` = every video mode the catalog serves,
 so X創作 also offers 延長影片 and 用參考圖編輯) above the box; each mode
 its own labelled slots and no catch-all Attach slot (延長影片 and 音訊／音樂
 got their own, `recipeInputSlots`); XDuel's placeholder per mode
 (`xduel.ph.video.<mode>`, X創作's own `xcreate.ph.video.<mode>` for the two
-modes a duel lacks); the 圖N hint under the box. The other types keep From. The tools and templates row
+modes a duel lacks). **Both pages also keep a Mode dropdown inside the
+prompt box (Oct 20; owner: "a dropdown is much easier to select", "we can
+still have the dropdown in the prompt box"):** XDuel's is `ModeDropdown` in
+RecipeBar.tsx, X創作's is its From picker labelled Mode on 影片; either
+control moves the other, and X創作 shows the 圖N hint beside it for 參考圖片.
+The other types keep From. The tools and templates row
 (`StandaloneTemplates.tsx`) was taken off the same day (owner: "remove all
 tool&templates we have"), to be rebuilt from Pollo's tools list; the file
 stays, and the 4 platform templates and the free converter have no door
