@@ -26,6 +26,7 @@ import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, f
 import { estimateCost, searchRate, supportsWebSearch, resolveTokenRate } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { portSchemaFor, assignPorts, toWires } from '@/lib/ports'
+import { rewriteRefTokens } from '@/lib/reference-tokens'
 import { logRefusal } from '@/lib/providers/call-log'
 
 const LOG = '[xcreate]'
@@ -498,8 +499,14 @@ async function runSlot(
       }
 
       const callAt = Date.now()
+      // 圖1 / 圖2 in the prompt, in this model's own words for its reference
+      // pictures (lib/reference-tokens.ts, shared with XDuel); the row keeps
+      // what was typed.
+      const refCount = wired.filter(a => a.port === 'reference_image').length
+      const modelPrompt = refCount ? rewriteRefTokens(prompt, model, refCount) : prompt
+      if (modelPrompt !== prompt) console.log(`${LOG} Slot[${index}] reference names → ${modelPrompt.slice(0, 120)}`)
       const result = await providers.generateVideo(
-        model, prompt, videoSize, videoDuration, wired,
+        model, modelPrompt, videoSize, videoDuration, wired,
         (pct) => { patch({ progress: Math.max(0, Math.min(100, Math.round(pct))) }).catch(() => {}) },
         callContext,
         { watermark: videoWatermark, aspect_ratio: videoAspectRatio, mode: options.mode ?? null, extend_video_ref: extendVideoRef,

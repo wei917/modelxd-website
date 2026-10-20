@@ -53,8 +53,10 @@ const RATE     = /rate limit|too many requests|overloaded|UNAVAILABLE|RESOURCE_E
 // one list, two readers.
 // Alibaba's content filter says neither: "DataInspectionFailed ... Input
 // data may contain inappropriate content" (Qwen Image 2.0 Pro refused a
-// Taiwan black bear in a forest on Oct 19, and the duel lost a side).
-export const SAFETY = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged|DataInspectionFailed|inappropriate content/i
+// Taiwan black bear in a forest on Oct 19, and the duel lost a side), or,
+// on a video task, "Green net check rejected text (input)" (Wan 3.0, the
+// same bear in a rainy old street, same day).
+export const SAFETY = /safety|blocked|policy|policies|refused|RECITATION|moderat|flagged|DataInspectionFailed|inappropriate content|green net check/i
 // A provider message wrapped by one of our own throw sites — e.g.
 // `Runway request failed (400): {...}` or `Runway task FAILED: SAFETY.INPUT`.
 // Never echo these to the user: they carry our endpoint/status detail and read

@@ -219,7 +219,9 @@ export async function generateVideo(
     if (urls.length === 0) {
       throw new Error('Grok reference-to-video needs attachment URLs (signed storage links missing)')
     }
-    body.reference_images = urls
+    // Each in the same OBJECT form as `image` below: bare strings are
+    // refused ("reference_images[0]: invalid type: string", XDuel, Oct 19).
+    body.reference_images = urls.map(url => ({ type: 'image_url', url }))
     console.log(`${TAG} reference_images=${urls.length}`)
   } else if (imageAtts.length > 0) {
     const a = imageAtts[0]
