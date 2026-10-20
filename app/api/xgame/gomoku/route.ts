@@ -17,6 +17,7 @@ export const maxDuration = 120
 
 import { createClient } from '@supabase/supabase-js'
 import { debitCredits } from '@/lib/credits'
+import { seatThinking } from '@/lib/game-thinking'
 import * as providers from '@/lib/providers'
 import {
   emptyBoard, place, winAt, isFull, parseCoord, coordName, boardText,
@@ -196,7 +197,7 @@ export async function POST(req: Request) {
         const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
         return m ? {
           stone, modelId: m.id, name: m.display_name, isHuman: false,
-          thinking: typeof cfg?.thinking === 'string' ? cfg.thinking : null,
+          thinking: seatThinking(m, cfg?.thinking),
         } : null
       }
       black = await mk('B', seats.black); white = await mk('W', seats.white)

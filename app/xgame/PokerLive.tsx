@@ -18,6 +18,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
+import { seatThinking } from '../../lib/game-thinking'
 
 type Card = string
 type Act = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin'
@@ -313,7 +314,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
       if (!a || a === 'me') return []
       const m: any = models.find((x: any) => x.id === a.modelId)
       if (!m) return []
-      return [{ pricing: m.model_pricing, thinking: seatOpts[i]?.[m.id]?.thinking ?? null, levels: m.output_config?.text?.thinking_levels ?? [] }]
+      return [{ pricing: m.model_pricing, thinking: seatThinking(m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] }]
     })
     const est = ai.length ? pokerCostRange(ai, seats.length, hands) : null
     return (
