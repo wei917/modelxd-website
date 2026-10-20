@@ -15,6 +15,7 @@
 // own, costs nothing, and gets the shape right before the agent arrives.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { isHiddenHref } from '../../lib/hidden-apps'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLang, useT } from '../../lib/i18n'
 import { createSupabaseBrowser } from '../../lib/supabase-client'
@@ -45,7 +46,7 @@ type Row = {
 const SURFACES = ['/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xgame', '/xboard', '/xeval', '/xkit', '/xdirector']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
-const PAGES: { key: string; i18n: string; href: string }[] = [
+const ALL_PAGES: { key: string; i18n: string; href: string }[] = [
   { key: 'xduel',   i18n: 'nav.xduel',   href: '/xduel' },
   { key: 'xcreate', i18n: 'nav.xcreate', href: '/xcreate' },
   { key: 'xdirect', i18n: 'nav.xdirect', href: '/xdirect' },
@@ -58,6 +59,8 @@ const PAGES: { key: string; i18n: string; href: string }[] = [
   { key: 'xeval',   i18n: 'nav.xeval',   href: '/xeval' },
   { key: 'profile', i18n: 'nav.profile', href: '/profile' },
 ]
+// A hidden app (lib/hidden-apps) is not offered here either.
+const PAGES = ALL_PAGES.filter(p => !isHiddenHref(p.href))
 
 /** Which XCreate tab a model should open on. */
 function modeOf(m: any): string {
