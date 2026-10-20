@@ -2915,6 +2915,8 @@ export const STRINGS: Record<string, Entry> = {
   'xcreate.ph.text':     { en: 'Ask anything…', 'zh-Hant': '問任何問題…', 'zh-Hans': '问任何问题…', ja: '何でも質問…', ko: '무엇이든 물어보세요…' },
   'xcreate.ph.image':    { en: 'Describe an image…', 'zh-Hant': '描述一張圖片…', 'zh-Hans': '描述一张图片…', ja: '画像を説明…', ko: '이미지를 설명하세요…' },
   'xcreate.ph.video':    { en: 'Describe a video…', 'zh-Hant': '描述一段影片…', 'zh-Hans': '描述一段视频…', ja: '動画を説明…', ko: '동영상을 설명하세요…' },
+  'xcreate.ph.video.extend_video': { en: 'What happens next… e.g. "she keeps walking and turns the corner"', 'zh-Hant': '接下來發生什麼…例如「她繼續往前走，轉過街角」', 'zh-Hans': '接下来发生什么…例如“她继续往前走，转过街角”', ja: 'この続きに何が起きるか…例「彼女はそのまま歩いて角を曲がる」', ko: '다음에 일어날 일… 예: "그녀가 계속 걸어가 모퉁이를 돈다"' },
+  'xcreate.ph.video.video_edit': { en: 'What to change in the video, shown by your reference pictures… e.g. "swap her dress for the one in the picture"', 'zh-Hant': '說明要怎麼改這段影片，用參考圖示範…例如「把她的洋裝換成參考圖裡那件」', 'zh-Hans': '说明要怎么改这段视频，用参考图示范…例如“把她的洋装换成参考图里那件”', ja: '参照画像を見せて動画のどこを変えるか…例「彼女のドレスを画像のものに替える」', ko: '참조 이미지로 영상에서 바꿀 부분… 예: "그녀의 드레스를 사진 속 드레스로 바꿔 줘"' },
   'xcreate.pickone':     { en: 'Pick at least one model', 'zh-Hant': '至少選擇一個模型', 'zh-Hans': '至少选择一个模型', ja: 'モデルを1つ以上選択', ko: '모델을 하나 이상 선택하세요' },
   'xcreate.selected':    { en: '{n} models selected', 'zh-Hant': '已選 {n} 個模型', 'zh-Hans': '已选 {n} 个模型', ja: '{n}モデル選択中', ko: '모델 {n}개 선택됨' },
   'xcreate.selected1':   { en: '1 model selected', 'zh-Hant': '已選 1 個模型', 'zh-Hans': '已选 1 个模型', ja: '1モデル選択中', ko: '모델 1개 선택됨' },

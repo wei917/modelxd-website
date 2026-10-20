@@ -704,3 +704,5 @@
 
 /* 圖1 / 圖2 hint beside the From button for reference runs (Oct 19). */
 .xcs-ref-hint { font-size: 12.5px; color: var(--xc-secondary); margin-left: 4px; }
+/* 影片's 圖N hint, under the box like XDuel's (the Mode row replaced From there). */
+.xcs-ref-note { margin: 8px 2px 0; font-size: 12.5px; line-height: 1.5; color: var(--xc-secondary); }
