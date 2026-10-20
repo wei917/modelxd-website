@@ -6,6 +6,8 @@
 // step aside. The kinds, their order, names and icons are X創作's (owner:
 // "the modes do not match what XCreate's video tab"): RECIPES.video and
 // `recipefrom.<id>`, less what a duel cannot hold (lib/xduel-recipes.ts).
+// X創作's video tab shows the same row with its own kinds, every video mode
+// its catalog serves (owner, Oct 19: XDuel's video tab, "can you follow it?").
 
 import { useEffect, useRef, useState } from 'react'
 import { VIDEO_RECIPES, type VideoRecipe } from '@/lib/xduel-recipes'
@@ -17,10 +19,12 @@ const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: numbe
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 )
 
-export default function RecipeBar({ recipe, onPick, t }: {
-  recipe: VideoRecipe
-  onPick: (r: VideoRecipe) => void
+export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPick, t, kinds }: {
+  recipe: K
+  onPick: (r: K) => void
   t: (k: string) => string
+  /** The kinds offered, in order; a duel's own when left out. */
+  kinds?: readonly K[]
 }) {
   const row = useRef<HTMLDivElement>(null)
   const [ends, setEnds] = useState({ left: false, right: false })
@@ -60,7 +64,7 @@ export default function RecipeBar({ recipe, onPick, t }: {
         <Icon size={18}><path d="m15 18-6-6 6-6" /></Icon>
       </button>
       <div className={`xduel-modebar-row${ends.left ? ' fade-l' : ''}${ends.right ? ' fade-r' : ''}`} ref={row} role="tablist" aria-label={t('xduel.recipe.label')}>
-        {KINDS.map(k => (
+        {(kinds ?? (KINDS as readonly string[] as readonly K[])).map(k => (
           <button key={k} type="button" role="tab" aria-selected={k === recipe}
             className={k === recipe ? 'on' : ''} onClick={() => onPick(k)}>
             <InputIcon kind={RECIPE_ICONS[k]?.[0] ?? 'video'} size={20} />

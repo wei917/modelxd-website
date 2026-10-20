@@ -41,6 +41,7 @@ import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import ModeIcon from '../components/ModeIcon'
 import { RECIPES, RECIPE_ICONS, InputIcon, type ModelMode } from './recipes'
+import RecipeBar from '../xduel/RecipeBar'
 import TemplatePicker from '../components/TemplatePicker'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
 import MatchResult, { type MatchResultEntry } from '../components/MatchResult'
@@ -225,7 +226,10 @@ function recipeInputSlots(r: ModelMode | null, t: (k: string) => string): { labe
       { label: nth('xc.slot.refN', 2), hint: optional },
     ]
     case 'video_to_video':
+    case 'extend_video':
     case 'video_to_text':    return [{ label: t('xc.slot.video'), hint: upload }]
+    // XDuel's words; 影片's Mode row has no catch-all Attach slot to take it.
+    case 'audio_to_video':   return [{ label: t('xduel.slot.audio'), hint: t('xduel.slot.audio.hint') }]
     case 'pdf_to_text':      return [{ label: 'PDF', hint: upload }]
     default:                 return []
   }
@@ -3950,8 +3954,17 @@ function CreateStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // The recipe list under the From button: www's sits above the prompt box,
-  // the door's inside it (owner, Oct 3).
+  // 影片's modes as XDuel's Mode row (owner, Oct 19: "XDuel has updated the
+  // UI for video tab page, especially for different mode. can you follow
+  // it?"): every video mode a model in the catalog serves, X創作's order.
+  const videoKinds = useMemo(() => {
+    const served = RECIPES.video.filter(r => catalog.some(c => (c.output_modalities ?? []).includes('video') && (c.modes ?? []).includes(r.id)))
+    return (served.length ? served : RECIPES.video).map(r => r.id)
+  }, [catalog])
+
+  // The recipe list under the From button (the other types; 影片 has the
+  // Mode row): www's sits above the prompt box, the door's inside it (owner,
+  // Oct 3).
   const fromMenu = fromOpen && (() => {
     const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
     const recipes = avail.length ? avail : RECIPES[mode]
@@ -3975,6 +3988,11 @@ function CreateStudio() {
 
   const promptComposer = (
     <>
+                {mode === 'video' && (
+                  <div style={{ opacity: isLocked ? 0.55 : 1, pointerEvents: isLocked ? 'none' : undefined }}>
+                    <RecipeBar recipe={recipeMode} kinds={videoKinds} onPick={r => { if (r !== recipeMode) selectRecipe(r) }} t={t} />
+                  </div>
+                )}
 {/* Prompt — framed composer. The labeled upload slots
                     (ROSE/JACK/YOUR PHOTO…) render INSIDE the frame, above
                     the borderless textarea (Pollo-style), so prompt +
@@ -4032,6 +4050,9 @@ function CreateStudio() {
                     // file there auto-switches the sub-mode (see
                     // handleComposerAttachments).
                     const generic = !slots || slots.length === 0
+                    // 影片 has none: its Mode row says what is uploaded, and
+                    // 文字 takes nothing (as XDuel's).
+                    if (generic && mode === 'video') return null
                     if (generic) {
                       slots = [{ label: t('xc.slot.attach'), hint: t('xc.slot.optional') }]
                     }
@@ -4211,7 +4232,9 @@ function CreateStudio() {
                   )}
                   <textarea id="xcreate-prompt" aria-label={copy.prompt} className="prompt-textarea"
                     maxLength={XCREATE_PROMPT_MAX}
-                    placeholder={t('xcreate.ph.' + mode)}
+                    placeholder={mode === 'video'
+                      ? tOr(t, 'xduel.ph.video.' + recipeMode, tOr(t, 'xcreate.ph.video.' + recipeMode, t('xcreate.ph.video')))
+                      : t('xcreate.ph.' + mode)}
                     value={prompt} onChange={e => setPrompt(e.target.value)}
                     // Locked once a run starts. The user can still see what
                     // prompt was used, but can't edit it until Start Over.
@@ -4232,7 +4255,7 @@ function CreateStudio() {
                   {/* The From dropdown sits in the prompt box (owner, Oct 3:
                       "put the source drop down to inside the prompt box like
                       what others do"). */}
-                    <div className="xcs-prompt-tools">
+                    {mode !== 'video' && <div className="xcs-prompt-tools">
                       <div className="xcs-source" ref={fromRef}>
                         <button type="button" className="xcs-source-btn" disabled={isLocked}
                           aria-haspopup="listbox" aria-expanded={fromOpen}
@@ -4246,8 +4269,9 @@ function CreateStudio() {
                       {/* 圖1 / 圖2 name the reference pictures; each model
                           gets them in its own words (lib/reference-tokens.ts). */}
                       {recipeMode === 'reference_frames' && <span className="xcs-ref-hint">{t('ref.howto')}</span>}
-                    </div>
+                    </div>}
                 </div>
+                {mode === 'video' && recipeMode === 'reference_frames' && <p className="xcs-ref-note">{t('ref.howto')}</p>}
     </>
   )
 
