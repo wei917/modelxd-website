@@ -2,12 +2,15 @@
 // app/xgame/client.tsx
 // The XGame shell (CC, Aug 6). Werewolf's room component moved here from
 // XTalk unchanged — the game itself (server-held state, /api/xtalk/werewolf)
-// did not move, only its address. The picker shows the roadmap: one live
-// game and the seats being built, so the page reads as an arena rather
-// than a single game with a grand name.
+// did not move, only its address. Every game is an entry here, not a page.
 //
-// Deliberately the same thin-shell pattern as XTalk's client: when 五子棋
-// lands it becomes another entry here, not another page.
+// Oct 20 (owner: "modify the xgame page UI to be the same as xtell/xoracle:
+// the top nav bar is a list of games (icon + text), remove the search bar"):
+// X先知's layout on XDuel's paper (.xduel-xt). The games are the rooms of a
+// top bar (XGameBar) instead of a grid of cards; the chosen game's line and
+// blurb sit under the lobby's headline. ?game= names the game, so a link
+// opens it and the server draws it on first paint. The Omnibox search bar
+// left /xgame (app/components/Omnibox.tsx).
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -20,6 +23,8 @@ import GomokuLive from './GomokuLive'
 import DrawLive from './DrawLive'
 import ChessLive from './ChessLive'
 import PokerLive from './PokerLive'
+import XGameBar from './XGameBar'
+import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
 import TemplateHelp from '../xtalk/TemplateHelp'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -27,8 +32,19 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
+/** Each game's line, blurb and seat count, as its lobby card had them. */
+const INTRO: Record<Exclude<GameKey, 'werewolf'>, { tag: string; blurb: string; seats: string }> = {
+  gomoku: { tag: 'xg.gomoku.tag', blurb: 'xg.gomoku.blurb', seats: '2' },
+  draw: { tag: 'xg.draw.tag', blurb: 'xg.draw.blurb', seats: '2' },
+  chess: { tag: 'xg.chess.tag', blurb: 'xg.chess.blurb', seats: '2' },
+  poker: { tag: 'xg.poker.tag', blurb: 'xg.poker.blurb', seats: '2–9' },
+}
 
-export default function XGameClient({ resumeId = null }: { resumeId?: string | null }) {
+export default function XGameClient({ resumeId = null, initialGame = null }: {
+  resumeId?: string | null
+  /** From ?game= on the server, so the first paint is the right game. */
+  initialGame?: GameKey | null
+}) {
   useRequireAuth()
   const t = useT()
   const router = useRouter()
@@ -36,10 +52,8 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   const [resume, setResume] = useState<string | null>(resumeId)
   // null = resume probe still deciding which game this id is. Defaulting to
   // werewolf here made every gomoku permalink phantom-mount WerewolfLive
-  // with a gomoku id — it resumed the wrong row as a board (stones as
-  // players, undefined seats → React key warnings) until the probe flipped
-  // it. Render NOTHING until we know. (CC, Aug 6)
-  const [active, setActive] = useState<'werewolf' | 'gomoku' | 'draw' | 'chess' | 'poker' | null>(resumeId ? null : 'werewolf')
+  // with a gomoku id. Render NOTHING until we know. (CC, Aug 6)
+  const [active, setActive] = useState<GameKey | null>(resumeId ? null : (initialGame ?? 'werewolf'))
   // A resumed id names a row whose game we can't know client-side; probe
   // each game's state action in turn, fall back to werewolf on 404s.
   useEffect(() => {
@@ -71,150 +85,71 @@ export default function XGameClient({ resumeId = null }: { resumeId?: string | n
   const tpl = templateById('werewolf')
   const Room = tpl.component
 
+  // The bar: in the lobby a game switches in place (and the address says
+  // which); at a table it leaves for that game's lobby.
+  const pick = (k: GameKey) => {
+    if (resume) { router.push(`/xgame?game=${k}`); return }
+    setActive(k); setNonce(n => n + 1)
+    try { window.history.replaceState(window.history.state, '', `/xgame?game=${k}`) } catch { /* the address is a nicety */ }
+  }
+  // "New game" at a table goes back to that game's lobby.
+  const exit = () => { router.push(active ? `/xgame?game=${active}` : '/xgame'); setResume(null); setNonce(n => n + 1) }
+
+  const intro = active && active !== 'werewolf' ? INTRO[active] : null
+
   return (
-    <div className="xduel-page">
-      <div className="arena xcreate-arena">
-        <Link href="/xgame" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XGAME</Link>
-        {/* The slogan sells the LOBBY; the table's headline is simply the
-            game you are at. (owner, Aug 6) */}
-        <h1 className="page-headline" style={{ marginBottom: 20 }}>
-          {resume ? (active ? t(active === 'gomoku' ? 'xg.game.gomoku' : active === 'draw' ? 'xg.game.draw' : active === 'chess' ? 'xg.game.chess' : active === 'poker' ? 'xg.game.poker' : 'xt.tpl.werewolf.name') : ' ') : t('xg.shell.title')}
-        </h1>
-
-        {/* The picker is the LOBBY. A resumed game is the TABLE — it gets
-            the page to itself, no other game's card in sight. (owner, Aug 6) */}
-        {!resume && (
-        <div className="prompt-label" style={{ marginBottom: 10 }}>{t('xt.shell.choose')}</div>)}
-        {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
-            below seats you OR runs AI against AI; the seat toggles live on
-            each table. The Practice (練習) card left the lobby on Oct 14
-            (owner: "remove 練習 section"); /xgame/practice itself is still
-            served, with no link to it. */}
-        {!resume && (
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
-          <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.play')}</b> {t('xg.lobby.play.desc')}</span>
-          <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.spectate')}</b> {t('xg.lobby.spectate.desc')}</span>
-        </div>)}
-        {!resume && (
-        <div className="xt-tpl-grid">
-          <div className="xt-tpl-wrap">
-            <button className={`xt-tpl${active === 'werewolf' ? ' is-on' : ''}`} onClick={() => { setActive('werewolf'); setResume(null); setNonce(n => n + 1) }}>
-              <span className="xt-tpl-banner"><img src={tpl.banner} alt="" loading="lazy" /></span>
-              <span className="xt-tpl-body">
-                <span className="xt-tpl-text">
-                  <span className="xt-tpl-head">
-                    <span className="xt-tpl-name">{t(tpl.nameKey)}</span>
-                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', String(tpl.minPlayers))}</span>
-                  </span>
-                  <span className="xt-tpl-tag">{t(tpl.tagKey)}</span>
-                  <span className="xt-tpl-blurb">{t(tpl.blurbKey)}</span>
-                </span>
-              </span>
-            </button>
-            <TemplateHelp templateId="werewolf" variant="icon" />
+    <div className="xduel-xt">
+      {/* Outside .xduel-page, whose overflow would swallow the bar's sticky. */}
+      <XGameBar current={active} onPick={pick} />
+      <div className="xduel-page">
+        <div className="arena xcreate-arena">
+          <div className="prompt-header">
+            <Link href="/xgame" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XGAME</Link>
+            {/* The slogan sells the LOBBY; the table's headline is simply the
+                game you are at. (owner, Aug 6) */}
+            <h1 className="page-headline" style={{ marginBottom: 20 }}>
+              {resume ? (active ? t(GAME_NAME_KEY[active]) : ' ') : t('xg.shell.title')}
+            </h1>
           </div>
 
-          <div className="xt-tpl-wrap">
-            <button className={`xt-tpl${active === 'gomoku' ? ' is-on' : ''}`} onClick={() => { setActive('gomoku'); setResume(null); setNonce(n => n + 1) }}>
-              <span className="xt-tpl-banner"><img src="/xgame/gomoku-banner.svg" alt="" loading="lazy" /></span>
-              <span className="xt-tpl-body">
-                <span className="xt-tpl-text">
-                  <span className="xt-tpl-head">
-                    <span className="xt-tpl-name">{t('xg.game.gomoku')}</span>
-                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
-                  </span>
-                  <span className="xt-tpl-tag">{t('xg.gomoku.tag')}</span>
-                  <span className="xt-tpl-blurb">{t('xg.gomoku.blurb')}</span>
+          {/* The chosen game, as its lobby card said it (Oct 20: the cards
+              became the top bar). A resumed game is the TABLE: it gets the
+              page to itself. (owner, Aug 6) */}
+          {!resume && active && (
+            <div className="xgame-intro">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 19, fontWeight: 700 }}>{t(GAME_NAME_KEY[active])}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted2)' }}>
+                  {t('xt.seats').replace('{n}', active === 'werewolf' ? String(tpl.minPlayers) : intro!.seats)}
                 </span>
-              </span>
-            </button>
-          </div>
+                {active === 'werewolf' && <TemplateHelp templateId="werewolf" variant="icon" />}
+              </div>
+              <div className="xgame-tag">{t(active === 'werewolf' ? tpl.tagKey : intro!.tag)}</div>
+              <div className="xgame-blurb">{t(active === 'werewolf' ? tpl.blurbKey : intro!.blurb)}</div>
+            </div>
+          )}
+          {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
+              seats you OR runs AI against AI. The Practice (練習) card left
+              the lobby on Oct 14; /xgame/practice is still served, unlinked. */}
+          {!resume && (
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 6, fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6 }}>
+              <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.play')}</b> {t('xg.lobby.play.desc')}</span>
+              <span><b style={{ color: 'var(--white)' }}>{t('xg.lobby.spectate')}</b> {t('xg.lobby.spectate.desc')}</span>
+            </div>
+          )}
 
-          <div className="xt-tpl-wrap">
-            <button className={`xt-tpl${active === 'draw' ? ' is-on' : ''}`} onClick={() => { setActive('draw'); setResume(null); setNonce(n => n + 1) }}>
-              <span className="xt-tpl-banner"><img src="/xgame/draw-banner.svg" alt="" loading="lazy" /></span>
-              <span className="xt-tpl-body">
-                <span className="xt-tpl-text">
-                  <span className="xt-tpl-head">
-                    <span className="xt-tpl-name">{t('xg.game.draw')}</span>
-                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
-                  </span>
-                  <span className="xt-tpl-tag">{t('xg.draw.tag')}</span>
-                  <span className="xt-tpl-blurb">{t('xg.draw.blurb')}</span>
-                </span>
-              </span>
-            </button>
-          </div>
-
-          <div className="xt-tpl-wrap">
-            <button className={`xt-tpl${active === 'chess' ? ' is-on' : ''}`} onClick={() => { setActive('chess'); setResume(null); setNonce(n => n + 1) }}>
-              <span className="xt-tpl-banner"><img src="/xgame/chess-banner.svg" alt="" loading="lazy" /></span>
-              <span className="xt-tpl-body">
-                <span className="xt-tpl-text">
-                  <span className="xt-tpl-head">
-                    <span className="xt-tpl-name">{t('xg.game.chess')}</span>
-                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2')}</span>
-                  </span>
-                  <span className="xt-tpl-tag">{t('xg.chess.tag')}</span>
-                  <span className="xt-tpl-blurb">{t('xg.chess.blurb')}</span>
-                </span>
-              </span>
-            </button>
-          </div>
-
-          <div className="xt-tpl-wrap">
-            <button className={`xt-tpl${active === 'poker' ? ' is-on' : ''}`} onClick={() => { setActive('poker'); setResume(null); setNonce(n => n + 1) }}>
-              <span className="xt-tpl-banner"><img src="/xgame/poker-banner.svg" alt="" loading="lazy" /></span>
-              <span className="xt-tpl-body">
-                <span className="xt-tpl-text">
-                  <span className="xt-tpl-head">
-                    <span className="xt-tpl-name">{t('xg.game.poker')}</span>
-                    <span className="xt-tpl-seats">{t('xt.seats').replace('{n}', '2–9')}</span>
-                  </span>
-                  <span className="xt-tpl-tag">{t('xg.poker.tag')}</span>
-                  <span className="xt-tpl-blurb">{t('xg.poker.blurb')}</span>
-                </span>
-              </span>
-            </button>
-          </div>
-
-        </div>)}
-
-        {active === 'chess' ? (
-          <ChessLive
-            key={`chess-${nonce}`}
-            models={models}
-            resumeId={resume}
-            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
-          />
-        ) : active === 'poker' ? (
-          <PokerLive
-            key={`poker-${nonce}`}
-            models={models}
-            resumeId={resume}
-            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
-          />
-        ) : active === 'draw' ? (
-          <DrawLive
-            key={`draw-${nonce}`}
-            resumeId={resume}
-            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
-          />
-        ) : active === 'gomoku' ? (
-          <GomokuLive
-            key={`gomoku-${nonce}`}
-            models={models}
-            resumeId={resume}
-            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
-          />
-        ) : active === 'werewolf' ? (
-          <Room
-            key={`werewolf-${nonce}`}
-            models={models}
-            resumeId={resume}
-            onExit={() => { router.push('/xgame'); setResume(null); setNonce(n => n + 1) }}
-          />
-        ) : null}
+          {active === 'chess' ? (
+            <ChessLive key={`chess-${nonce}`} models={models} resumeId={resume} onExit={exit} />
+          ) : active === 'poker' ? (
+            <PokerLive key={`poker-${nonce}`} models={models} resumeId={resume} onExit={exit} />
+          ) : active === 'draw' ? (
+            <DrawLive key={`draw-${nonce}`} resumeId={resume} onExit={exit} />
+          ) : active === 'gomoku' ? (
+            <GomokuLive key={`gomoku-${nonce}`} models={models} resumeId={resume} onExit={exit} />
+          ) : active === 'werewolf' ? (
+            <Room key={`werewolf-${nonce}`} models={models} resumeId={resume} onExit={exit} />
+          ) : null}
+        </div>
       </div>
     </div>
   )
