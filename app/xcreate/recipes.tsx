@@ -7,7 +7,7 @@
 import ModeIcon from '../components/ModeIcon'
 
 export type StudioMode = 'text' | 'image' | 'video' | 'audio'
-export type InputKind = 'text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' | 'audio'
+export type InputKind = 'text' | 'image' | 'video' | 'pdf' | 'frames' | 'references' | 'audio' | 'mic'
 
 export type ModelMode =
   | 'text_to_text'
@@ -26,6 +26,7 @@ export type ModelMode =
   | 'audio_to_video'
   | 'text_to_speech'
   | 'text_to_music'
+  | 'voice_clone'
   | 'start_end_frames'
   | 'reference_frames'
 
@@ -44,6 +45,10 @@ export interface Recipe {
 export const RECIPES: Record<StudioMode, Recipe[]> = {
   audio: [
     { id: 'text_to_speech', title: 'Text to Speech', recipe: 'TEXT → AUDIO', provide: 'a script' },
+    // Your own voice (Oct 20): record yourself once, then any script is
+    // spoken in it. Rows declare it in `modes` (MiniMax Speech 2.8 HD and
+    // Turbo); app/xcreate/MyVoices.tsx and /api/xcreate/voices.
+    { id: 'voice_clone',    title: 'My Voice',       recipe: 'MY VOICE → AUDIO', provide: 'your voice, recorded once + a script' },
   ],
   text: [
     { id: 'text_to_text',  title: 'Text to Text',  recipe: 'TEXT → TEXT',  provide: 'a prompt' },
@@ -75,6 +80,7 @@ export function InputIcon({ kind, size = 16 }: { kind: InputKind; size?: number 
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style: { flexShrink: 0 } }
   if (kind === 'text' || kind === 'image' || kind === 'video') return <ModeIcon m={kind} size={size} />
   if (kind === 'audio')  return (<svg {...p}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>)
+  if (kind === 'mic')    return (<svg {...p}><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/><path d="M8 22h8"/></svg>)
   if (kind === 'pdf')    return (<svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>)
   if (kind === 'frames') return (<svg {...p}><rect x="2" y="6" width="9" height="12" rx="1"/><rect x="13" y="6" width="9" height="12" rx="1"/></svg>)
   return (<svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>)
@@ -97,4 +103,6 @@ export const RECIPE_ICONS: Record<string, [InputKind, StudioMode]> = {
   start_end_frames: ['frames',     'video'],
   reference_frames: ['references', 'video'],
   audio_to_video:   ['audio',      'video'],
+  text_to_speech:   ['text',       'audio'],
+  voice_clone:      ['mic',        'audio'],
 }

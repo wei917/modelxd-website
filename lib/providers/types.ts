@@ -129,6 +129,7 @@ export type ModelMode =
   // audio-output
   | 'text_to_speech'   // text → spoken audio (Gemini TTS, MiniMax T2A)
   | 'text_to_music'    // text → a song, lyrics and all (Lyria 3.5)
+  | 'voice_clone'      // your own recorded voice reads a script (MiniMax Speech 2.8; X創作's 我的聲音)
   | 'start_end_frames'
   // shared (image / video)
   | 'reference_frames'

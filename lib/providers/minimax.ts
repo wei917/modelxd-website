@@ -218,3 +218,69 @@ export async function generateSpeech(
     durationSeconds, cost, characters, usageMetadata: info,
   }
 }
+
+// ── voice cloning (X創作's 我的聲音, Oct 20) ─────────────────────────────────
+//
+// Upload the recording (purpose voice_clone), then clone it under an id we
+// choose; generateSpeech above speaks with that id like a preset voice.
+// Read Oct 20 (platform.minimax.io, docs and the pay-as-you-go page):
+//   * the recording: mp3 / m4a / wav, 10 s to 5 min, at most 20 MB,
+//   * voice_id: 8-256 characters, a letter first, letters / digits / - / _,
+//     not ending in - or _, never reused,
+//   * $1.50 a voice, charged the FIRST time it speaks, not when cloned
+//     (lib/xcreate-voices.ts charges the person at that same moment),
+//   * a cloned voice that never speaks within 7 days is deleted.
+// We send no `text_validation`: the reading is checked before this with
+// Whisper (lib/voice-passages.ts), which also covers Japanese and Korean.
+// Probed live Oct 20: our key may clone (no 2038), and delete_voice works.
+
+/** MiniMax's list price per cloned voice, charged at its first use. */
+export const VOICE_CLONE_USD = 1.5
+
+const BOOST: Record<string, string> = { 'zh-Hant': 'Chinese', 'zh-Hans': 'Chinese', ja: 'Japanese', ko: 'Korean', en: 'English' }
+
+export async function cloneVoice(audio: Buffer, mediaType: string, voiceId: string, lang?: string | null): Promise<void> {
+  const TAG = '[minimax/voice_clone]'
+  const ext = mediaType.includes('wav') ? 'wav' : mediaType.includes('mp4') || mediaType.includes('m4a') ? 'm4a' : 'mp3'
+  const fd = new FormData()
+  fd.append('purpose', 'voice_clone')
+  fd.append('file', new Blob([new Uint8Array(audio)], { type: mediaType }), `voice.${ext}`)
+  const up = await fetch('https://api.minimax.io/v1/files/upload', { method: 'POST', headers: { Authorization: `Bearer ${apiKey()}` }, body: fd })
+  const uj: any = await up.json().catch(() => ({}))
+  const fileId = uj?.file?.file_id
+  if (!up.ok || uj?.base_resp?.status_code !== 0 || !fileId) {
+    throw new Error(`MiniMax upload ${up.status} ${uj?.base_resp?.status_code ?? ''}: ${uj?.base_resp?.status_msg ?? 'no file id'}`)
+  }
+  const res = await fetch('https://api.minimax.io/v1/voice_clone', {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({
+      file_id: fileId, voice_id: voiceId,
+      need_noise_reduction: true, need_volume_normalization: true,
+      language_boost: (lang && BOOST[lang]) || 'auto',
+    }),
+  })
+  const j: any = await res.json().catch(() => ({}))
+  const br = j?.base_resp ?? {}
+  if (!res.ok || br.status_code !== 0) {
+    throw new Error(`MiniMax voice_clone ${res.status} ${br.status_code ?? ''}: ${br.status_msg ?? JSON.stringify(j).slice(0, 200)}`)
+  }
+  // The content check (a sensitive recording) answers inside a success.
+  const sens = j?.input_sensitive
+  if (sens === true || (typeof sens === 'object' && sens && Number(sens.type) > 0) || Number(j?.input_sensitive_type) > 0) {
+    await deleteVoice(voiceId).catch(() => {})
+    throw new Error('MiniMax voice_clone: the recording was flagged by moderation')
+  }
+  console.log(`${TAG} cloned ${voiceId} from ${audio.length} bytes`)
+}
+
+/** Delete a cloned voice. True when MiniMax says it is gone. */
+export async function deleteVoice(voiceId: string): Promise<boolean> {
+  const res = await fetch('https://api.minimax.io/v1/delete_voice', {
+    method: 'POST', headers: headers(),
+    body: JSON.stringify({ voice_type: 'voice_cloning', voice_id: voiceId }),
+  })
+  const j: any = await res.json().catch(() => ({}))
+  const ok = res.ok && j?.base_resp?.status_code === 0
+  if (!ok) console.warn(`[minimax/delete_voice] ${voiceId}: ${res.status} ${j?.base_resp?.status_code ?? ''} ${j?.base_resp?.status_msg ?? ''}`)
+  return ok
+}
