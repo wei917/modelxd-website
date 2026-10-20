@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#eadfcb"/>
+    </radialGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2a22"/><stop offset="1" stop-color="#1f1612"/>
+    </linearGradient>
+    <pattern id="back" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#d63b32"/><rect width="4" height="8" fill="#e45a51"/>
+    </pattern>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.22"/>
+    </filter>
+    <radialGradient id="vig" cx="50%" cy="45%" r="78%">
+      <stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#2a170c" stop-opacity="0.35"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="240" fill="url(#rail)"/>
+  <!-- a table seen from a seat: the oval runs off the frame -->
+  <ellipse cx="320" cy="200" rx="420" ry="190" fill="url(#felt)"/>
+  <ellipse cx="320" cy="200" rx="420" ry="190" fill="none" stroke="#d63b32" stroke-opacity="0.18" stroke-width="10"/>
+
+  <!-- the board: flop, turn, river -->
+  <g filter="url(#sh)" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <g transform="translate(176 52)">
+      <rect width="50" height="70" rx="6" fill="#fff" stroke="#00000026"/>
+      <text x="25" y="33" text-anchor="middle" font-size="22" fill="#0f0f0f">K</text>
+      <text x="25" y="57" text-anchor="middle" font-size="20" fill="#0f0f0f">♠</text>
+    </g>
+    <g transform="translate(234 52)">
+      <rect width="50" height="70" rx="6" fill="#fff" stroke="#00000026"/>
+      <text x="25" y="33" text-anchor="middle" font-size="22" fill="#d63b32">9</text>
+      <text x="25" y="57" text-anchor="middle" font-size="20" fill="#d63b32">♥</text>
+    </g>
+    <g transform="translate(292 52)">
+      <rect width="50" height="70" rx="6" fill="#fff" stroke="#00000026"/>
+      <text x="25" y="33" text-anchor="middle" font-size="22" fill="#d63b32">9</text>
+      <text x="25" y="57" text-anchor="middle" font-size="20" fill="#d63b32">♦</text>
+    </g>
+    <g transform="translate(350 52)">
+      <rect width="50" height="70" rx="6" fill="url(#back)" stroke="#ffffff" stroke-width="3"/>
+    </g>
+    <g transform="translate(408 52)">
+      <rect width="50" height="70" rx="6" fill="url(#back)" stroke="#ffffff" stroke-width="3"/>
+    </g>
+  </g>
+
+  <!-- chips in the middle, no numbers on them -->
+  <g filter="url(#sh)">
+    <g transform="translate(300 150)">
+      <ellipse cx="0" cy="10" rx="22" ry="8" fill="#a82c24"/>
+      <ellipse cx="0" cy="4" rx="22" ry="8" fill="#d63b32"/>
+      <ellipse cx="0" cy="-2" rx="22" ry="8" fill="#a82c24"/>
+      <ellipse cx="0" cy="-8" rx="22" ry="8" fill="#d63b32"/>
+      <ellipse cx="0" cy="-8" rx="14" ry="5" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/>
+    </g>
+    <g transform="translate(344 158)">
+      <ellipse cx="0" cy="6" rx="22" ry="8" fill="#1f1f1f"/>
+      <ellipse cx="0" cy="0" rx="22" ry="8" fill="#3a3a3a"/>
+      <ellipse cx="0" cy="0" rx="14" ry="5" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/>
+    </g>
+  </g>
+
+  <!-- a seat's hole cards, fanned, bottom left -->
+  <g filter="url(#sh)" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <g transform="translate(52 128) rotate(-12)">
+      <rect width="62" height="88" rx="7" fill="#fff" stroke="#00000026"/>
+      <text x="31" y="40" text-anchor="middle" font-size="28" fill="#0f0f0f">A</text>
+      <text x="31" y="70" text-anchor="middle" font-size="26" fill="#0f0f0f">♠</text>
+    </g>
+    <g transform="translate(112 120) rotate(9)">
+      <rect width="62" height="88" rx="7" fill="#fff" stroke="#00000026"/>
+      <text x="31" y="40" text-anchor="middle" font-size="28" fill="#d63b32">K</text>
+      <text x="31" y="70" text-anchor="middle" font-size="26" fill="#d63b32">♥</text>
+    </g>
+  </g>
+
+  <!-- the other side of the table, cards face down, and its table talk -->
+  <g filter="url(#sh)">
+    <g transform="translate(520 120) rotate(10)">
+      <rect width="46" height="64" rx="6" fill="url(#back)" stroke="#fff" stroke-width="3"/>
+    </g>
+    <g transform="translate(546 126) rotate(22)">
+      <rect width="46" height="64" rx="6" fill="url(#back)" stroke="#fff" stroke-width="3"/>
+    </g>
+    <g transform="translate(470 44)">
+      <rect width="108" height="42" rx="18" fill="#0f0f0f"/>
+      <path d="M78 41 L92 56 L90 41 Z" fill="#0f0f0f"/>
+      <circle cx="36" cy="21" r="5" fill="#fff"/><circle cx="54" cy="21" r="5" fill="#fff"/><circle cx="72" cy="21" r="5" fill="#fff"/>
+    </g>
+  </g>
+  <rect width="640" height="240" fill="url(#vig)"/>
+</svg>
