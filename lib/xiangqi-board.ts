@@ -17,10 +17,11 @@ export type XY = [number, number]
 /** The harness every model plays under, published on the table. Change
  *  anything in lib/xiangqi-turn.ts and bump the version. */
 export const XIANGQI_HARNESS = {
-  version: 1,
+  version: 2,
   board: 'text board + piece lists',
   history: 'move record, coordinates and WXF',
-  legalList: true,
+  /** v2 (Oct 20): the legal moves only on the retry after an illegal or unreadable answer. */
+  legalList: 'retry',
   retries: 1,
   timeoutSec: 90,
   fallback: 'a legal move picked by a hash of the position, marked ⚠',

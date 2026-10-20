@@ -193,8 +193,12 @@ async function main() {
   const checkPos = eng.position(['e2e4', 'f7f6', 'd2d4', 'g7g5'])
   const pr = chessPrompt(eng.position(['e2e4', 'd7d6', 'f1b5']), null)
   ok(pr.includes('You are in CHECK') && pr.includes('White just played Bb5+'), 'prompt: says check and the last move', pr.split('\n').filter(l => /CHECK|just played/.test(l)))
-  ok(chessPrompt(checkPos, null).includes('Your legal moves (all of them): ') && chessPrompt(checkPos, null).includes('Qh5#'), 'prompt: lists every legal move, mate included')
-  ok(!/Nf3|Bxe5/.test(chessPrompt(s0, null).split('Your legal moves')[1].split('\n').slice(1).join('\n')), 'prompt: no example move a model could copy')
+  // Harness v2: no legal list on the first ask; the retry carries all of them.
+  ok(!chessPrompt(checkPos, null).includes('Your legal moves'), 'prompt v2: no legal list on the first ask')
+  const rp = chessPrompt(checkPos, '"Qh9" is not a legal move in this position')
+  ok(rp.includes('Your legal moves (all of them): ') && rp.includes('Qh5#') && rp.indexOf('Your legal moves') < rp.indexOf('rejected'), 'prompt v2: the retry lists every legal move, mate included, before the reason')
+  ok(retry.prompts[0] && !retry.prompts[0].includes('Your legal moves') && retry.prompts[1].includes('Your legal moves'), 'turn v2: the first ask has no list, the retry has it')
+  ok(!/Nf3|Bxe5/.test(chessPrompt(s0, null).split('Reply with ONLY')[1]), 'prompt: no example move a model could copy')
 
   // ── speed: a 200-ply record rebuilt per request ──
   const long200: string[] = []
