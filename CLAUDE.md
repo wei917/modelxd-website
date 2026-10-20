@@ -1115,7 +1115,9 @@ case was found on Sep 3.
 Our own first-party analytics: how long people stay and which ad or link
 brought them. `VisitTracker.tsx` (root layout) reports to `/api/visit`, which
 writes one row per visit through `log_site_visit()` (migration 109). Active
-time = tab in front, pausing 5 minutes after the last input; the
+time = tab in front, pausing a minute after the last real input (a tap,
+a key, a finger or wheel scroll; until Oct 19 it was 5 minutes and any
+scroll, so a self-scrolling chat kept counting); the
 `modelxd_vid` cookie ties a browser's visits together, so a later sign-up
 traces back to its first ad click (`gclid`/`gbraid`/`wbraid`, `utm_*`). No
 IP is stored; nothing runs in the EEA/UK/CH (`lib/consent.ts`). There is no
