@@ -200,7 +200,7 @@ export async function POST(req: Request) {
   const model = await getModelById(body.modelId)
   if (!model || (model as any).enabled === false) return Response.json({ error: 'model not available' }, { status: 400 })
   if (((model as any).blocked_features ?? []).includes('xtell')) {
-    return Response.json({ error: 'model not offered for XTell' }, { status: 400 })
+    return Response.json({ error: 'model not offered for XOracle' }, { status: 400 })
   }
 
   // Search is opt-in AND gated on the model declaring the capability — the
@@ -535,7 +535,7 @@ export async function POST(req: Request) {
                   // put a charge from today in one group with charges from
                   // other rooms and other weeks.)
                   referenceType: 'xtell', referenceId: readingId ?? (model as any).id ?? (model as any).model_name,
-                  description: `XTell ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
+                  description: `XOracle ${daily ? 'daily' : temple} reading (${(model as any).model_name})`,
                   metadata: { temple: daily ? 'daily' : temple, modelName: (model as any).model_name, search, thinking },
                 }).catch(err => {
                   if (err instanceof InsufficientCreditsError) console.warn(`${LOG} insufficient credits (${cents}¢)`)

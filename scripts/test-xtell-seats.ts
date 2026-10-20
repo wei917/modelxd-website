@@ -11,7 +11,7 @@ import { STRINGS } from '../lib/i18n'
 
 let fails = 0
 const check = (name: string, cond: boolean) => { if (!cond) { fails++; console.log('FAIL', name) } else console.log('ok  ', name) }
-const client = fs.readFileSync(path.join(__dirname, '..', 'app/xtell/client.tsx'), 'utf8')
+const client = fs.readFileSync(path.join(__dirname, '..', 'app/xoracle/client.tsx'), 'utf8')
 const css = fs.readFileSync(path.join(__dirname, '..', 'app/globals.css'), 'utf8')
 const S = STRINGS as any
 

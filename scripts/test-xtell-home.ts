@@ -82,11 +82,11 @@ const market: TempleKey[] = ['bazi', 'ziwei', 'zhanxing', 'tarot', 'yixue']
 check('top bar: pins first (newest leftmost), then the market order without them; unknown pins ignored', pinnedFirst(market, ['yixue', 'tarot']).join() === 'yixue,tarot,bazi,ziwei,zhanxing' && pinnedFirst(market, []).join() === market.join() && pinnedFirst(market, ['cookie' as TempleKey]).join() === market.join())
 const navSrc = read('app/components/xtell/XTellNav.tsx'), pinBtn = read('app/components/xtell/PinButton.tsx'), usePinsSrc = read('app/components/xtell/usePins.ts')
 check('the top bar reads the pins and marks the last pinned one (a thin rule after it)', /const order = pinnedFirst\(displayTemples\(lang\), pins \?\? \[\]\)/.test(navSrc) && /data-pinned=/.test(navSrc) && /a\[data-pinned="last"\]::after/.test(read('app/globals.css')))
-check('each room has 釘選 (a toggle with aria-pressed), and the bar follows at once in this tab and others', /<PinButton temple=\{temple\} \/>/.test(read('app/xtell/client.tsx')) && /aria-pressed=\{pinned\}/.test(pinBtn) && /window\.dispatchEvent\(new Event\(PINS_EVENT\)\)/.test(usePinsSrc) && /addEventListener\('storage', onStorage\)/.test(usePinsSrc))
+check('each room has 釘選 (a toggle with aria-pressed), and the bar follows at once in this tab and others', /<PinButton temple=\{temple\} \/>/.test(read('app/xoracle/client.tsx')) && /aria-pressed=\{pinned\}/.test(pinBtn) && /window\.dispatchEvent\(new Event\(PINS_EVENT\)\)/.test(usePinsSrc) && /addEventListener\('storage', onStorage\)/.test(usePinsSrc))
 check('我的常用 is gone: no card, no strings, no styles', !fs.existsSync(path.join(__dirname, '..', 'app/components/xtell/XTellFavorites.tsx')) && !Object.keys(STRINGS).some(k => k.startsWith('xtell.fav.')) && !/xtell-fav/.test(read('app/globals.css')))
 
 // ── The page ───────────────────────────────────────────────────────────────
-const page = read('app/xtell/client.tsx')
+const page = read('app/xoracle/client.tsx')
 check('homepage order: entrance, the guide right under it, today\'s two cards, then the steps', /<XTellHero \/>\s*<XTellAssistant onOpen=\{openFromGuide\} \/>\s*<div className="xtell-home-cards">[\s\S]*?\{almanacSection \?\? <AlmanacCard compact \/>\}\s*<XTellDaily openSignal=\{dailySignal\} onContinue=\{openDaily\} compact \/>\s*<\/div>\s*<XTellHowTo \/>\s*<\/> :/.test(page) && !/XTellExamples|XTellFavorites/.test(page))
 check('one guide on the homepage, never told which temple is on show', (page.match(/<XTellAssistant /g) ?? []).length === 1 && !/<XTellAssistant[^>]*(temple|current)=/.test(page))
 const as = read('app/components/xtell/XTellAssistant.tsx')
@@ -127,10 +127,10 @@ check('the proxy keeps /xtell on a non-door host in www\'s shell (a leftover ?si
   /if \(siteOfHost\(host, null\) === 'modelxd' && isXTellPath\(req\.nextUrl\.pathname\)\) site = 'modelxd'/.test(proxySrc))
 check('www stays behind its password: no /xtell exemption in the gate', !/startsWith\('\/xtell/.test(proxySrc.slice(proxySrc.indexOf('function isBypassed'), proxySrc.indexOf('function isBypassed') + 2000)))
 check('www\'s shell everywhere on www: no copies of its pages under /xtell, no shell switch in the layout',
-  ['profile', 'terms', 'privacy', 'tokushoho', 'login'].every(p => !fs.existsSync(path.join(__dirname, '..', 'app/xtell', p))) && !/XTELL_PATH|isXTellPath|site-base/.test(read('app/layout.tsx')))
+  ['profile', 'terms', 'privacy', 'tokushoho', 'login'].every(p => !fs.existsSync(path.join(__dirname, '..', 'app/xoracle', p))) && !/XTELL_PATH|isXTellPath|site-base/.test(read('app/layout.tsx')))
 check('on www the door\'s content sits under the temples row, links under /xtell, the door\'s footer at the bottom (the left nav has the logo and the account)',
   /const inWww = site !== 'xtell'/.test(page) && /<XTellBaseProvider base=\{inWww \? '\/xtell' : ''\}>/.test(page) && /\{inWww && <XTellNav user=\{null\} embedded \/>\}/.test(page) && /<\/main>\s*<XTellFooter \/>\s*<\/div><\/XTellBaseProvider>/.test(page)
-  && /<XTellClient standalone /.test(read('app/xtell/page.tsx')))
+  && /<XTellClient standalone /.test(read('app/xoracle/page.tsx')))
 check('the embedded row is not .xtell-nav (that switches the page to the door\'s layout), sticks under the phone\'s top bar, in the door\'s colours',
   /if \(embedded\) return <div className="xtell-embedded-bar"><div className="xtell-embedded-inner">\{strip\}<\/div><\/div>/.test(nav) && /\.xtell-embedded-bar \{ position: sticky; top: 0;/.test(css) && /@media \(max-width: 760px\) \{ \.xtell-embedded-bar \{ top: 60px;/.test(css) && /html\[data-site="xtell"\] \.xtell-auth, \.xtell-site\.is-in-www \{/.test(css))
 check('the row lines up with the banner (its 1280px column, 32px gutters); temples centered when they all fit, from the left when not (owner, Oct 4)',

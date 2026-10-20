@@ -29,7 +29,7 @@ check('媽祖, 関帝, 四面仏 and 月老 say who they are, in ja, ko and en',
 })))
 check('the footer and disclaimer no longer say every reading is of a chart', ['xtell.site.footerNote', 'xtell.disclaimer'].every(k => ['ja', 'ko', 'en'].every(l => /カード|card|카드/.test(S[k][l]))))
 check('the omikuji edition has its own line, in five languages, and it claims no throw', ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => S['xtell.qian.random.omikuji']?.[l]?.trim() && !/筊|ポエ|throw|교배|성배/.test(S['xtell.qian.random.omikuji'][l])))
-const client = fs.readFileSync(path.join(__dirname, '..', 'app/xtell/client.tsx'), 'utf8')
+const client = fs.readFileSync(path.join(__dirname, '..', 'app/xoracle/client.tsx'), 'utf8')
 check('the ritual panel uses it when no 筊 is thrown', client.includes("t(jiao ? 'xtell.qian.random' : 'xtell.qian.random.omikuji')"))
 check('link previews carry the same names', Object.entries(XTELL_TEMPLE_NAMES).every(([t, n]) => ['ja', 'ko'].every(l => (n as any)[l] === S[`xtell.site.focus.${t}.name`][l])))
 
@@ -84,16 +84,16 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   check('a city is found by any of its names', find('大阪', 'ja')[0] === 'osaka' && find('osaka', 'en')[0] === 'osaka' && find('오사카', 'ko')[0] === 'osaka' && find('广州', 'zh-Hans')[0] === 'guangzhou' && find('廣州', 'zh-Hant')[0] === 'guangzhou' && find('ニューヨーク', 'ja')[0] === 'newyork' && find('nyc', 'en')[0] === 'newyork' && find('悉尼', 'zh-Hans')[0] === 'sydney' && find('臺北', 'zh-Hant')[0] === 'taipei' && find('さっぽろ', 'ja')[0] === 'sapporo' && find('とう', 'ja', 'JP')[0] === 'tokyo' && find('そうる', 'ja')[0] === 'seoul' && find('にゅーよーく', 'ja')[0] === 'newyork')
   check('names that start with what was typed come first, the visitor\'s country first among them', find('to', 'en', 'JP')[0] === 'tokyo' && find('to', 'en', 'CA')[0] === 'toronto' && find('', 'ja').length === 0 && find('atlantis', 'en').length === 0)
   {
-    const client = read('app/xtell/client.tsx')
+    const client = read('app/xoracle/client.tsx')
     check('the room starts with no birthplace and refuses one until it is picked', client.includes("useState<string>(typeof init.place === 'string' ? init.place : '')") && client.includes("useState<string>(typeof init.place2 === 'string' ? init.place2 : '')") && client.includes("(temple === 'navagraha' || temple === 'zhanxing') && !placeOf(subj?.place)) return 'place_invalid'") && client.includes("!placeOf(subj?.place2)) return 'place2_invalid'"))
-    check('the birthplace is typed and picked, no dropdown of every city; the pages pass the visitor\'s country', (client.match(/<PlacePicker /g) ?? []).length === 4 && !client.includes('function PlaceRow') && read('app/xtell/page.tsx').includes("country={h.get('x-vercel-ip-country')}") && read('app/page.tsx').includes("country={h.get('x-vercel-ip-country')}"))
+    check('the birthplace is typed and picked, no dropdown of every city; the pages pass the visitor\'s country', (client.match(/<PlacePicker /g) ?? []).length === 4 && !client.includes('function PlaceRow') && read('app/xoracle/page.tsx').includes("country={h.get('x-vercel-ip-country')}") && read('app/page.tsx').includes("country={h.get('x-vercel-ip-country')}"))
     check('the picker\'s words in five languages', ['xtell.place.search', 'xtell.place.change', 'xtell.place.nearby', 'xtell.place.matches', 'xtell.place.none'].every(k => ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'].every(l => typeof S[k]?.[l] === 'string' && S[k][l].trim())))
   }
   check('every place has a name in ja, ko and en; twenty Japanese cities', places.PLACES.every((p: any) => ['ja', 'ko', 'en'].every(l => places.placeLabel(p, l) && (l !== 'en' || /^[A-Za-z ().]+$/.test(places.placeLabel(p, l))))) && places.PLACES.filter((p: any) => p.tz === 'Asia/Tokyo').length === 20)
   const names = require('../lib/names')
   check('a new-form kanji shows its old form and strokes; the count stays the written form\'s', names.charInfo('続').strokes === 13 && names.charInfo('続').old.ch === '續' && names.charInfo('続').old.strokes === 21 && !names.charInfo('木').old)
   check('the teacher is told both schools and not to mix the forms', names.nameFacts(names.nameChart('沢', '広'), 'male').includes('舊字體派') && names.ceziFacts(names.charInfo('続'), '').includes('不要把舊字體才有的部件'))
-  const client = read('app/xtell/client.tsx')
+  const client = read('app/xoracle/client.tsx')
   check('signs, planets and relation words come from the page language', client.includes("t(`xtell.sign.${i}`)") && client.includes('relText(lang, d.detail)') && client.includes('lunarLocal(lang, chart.lunar)') && !/PLANET_ZH\[[^\]]* as keyof/.test(client))
   check('the name board\'s labels are strings, the Chinese idioms on Chinese pages only', ['tian', 'ren', 'di', 'wai', 'zong'].every(k => LANGS.every(l => S[`xtell.name.ge.${k}`]?.[l])) && S['xtell.name.ge.zong'].ja === '総格' && client.includes("chinese ? g.shuli.name : ''"))
   check('no 称骨 card on Japanese pages', client.includes("chenggu && lang !== 'ja' && <ChengguCard"))
@@ -134,12 +134,12 @@ check('the link label in five languages', LANGS.every(l => S['nav.tokushoho']?.[
   const q = xt.qianOf(20, 'guanyin', 'gansan')
   check('a stick carries its reading; the 一百籤 edition (Chinese pages) has none', q.ja?.kundoku.length === 4 && !xt.qianOf(20, 'guanyin', 'yibai').ja && xt.qianOf(26, 'guandi').ja && xt.qianOf(59, 'mazu').ja)
   check('a Japanese answer is handed the reading and told not to write its own; other languages are not', xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja').includes(q.ja.kundoku[0]) && /不要自行另作訓讀/.test(xt.guandiFacts(q, '', 'guanyin', 'gansan', 'ja')) && !xt.guandiFacts(q, '', 'guanyin', 'gansan', 'zh-Hant').includes(q.ja.kundoku[0]))
-  check('the card shows both on Japanese pages, labelled as the AI\'s', read('app/xtell/client.tsx').includes("lang === 'ja' && qian.ja") && S['xtell.qian.kundoku'].ja.includes('AI') && S['xtell.qian.modern'].ja.includes('AI'))
+  check('the card shows both on Japanese pages, labelled as the AI\'s', read('app/xoracle/client.tsx').includes("lang === 'ja' && qian.ja") && S['xtell.qian.kundoku'].ja.includes('AI') && S['xtell.qian.modern'].ja.includes('AI'))
 }
 // The live re-test on Sep 30 (signed in, every room in Japanese).
 {
   const xt = require('../lib/xtell')
-  const route = read('app/api/xtell/reading/route.ts'), client = read('app/xtell/client.tsx')
+  const route = read('app/api/xtell/reading/route.ts'), client = read('app/xoracle/client.tsx')
   check('every teacher is told today\'s date: 「今年」 was answered for 2024', (route.match(/\$\{todayLine\(tz\)\}/g) ?? []).length === 2 && /今天的日期（西元，來訪者當地）/.test(route))
   const c = xt.baziChart({ y: 1990, m: 5, d: 15, h: 14, mi: 30, gender: 'male' })
   const next = xt.liuNianFacts(xt.liuNian(c, 1990, 2027), '明年流年')

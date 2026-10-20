@@ -213,7 +213,7 @@ async function routeChecks() {
   const src = read('app/api/xtell/reading/route.ts')
   check('route: the conversation is read with the visitor\'s own session before the service role touches memory', src.indexOf(".from('xtell_readings').select('turns').eq('id', savedId).eq('user_id', user.id)") < src.indexOf('latestMemo(admin, savedId, modelKey)'))
   check('route: the summary runs after the answer is delivered, then the function finishes', /end\(false\)[\s\S]*maybeSummarize\([\s\S]*settle\(\)/.test(src))
-  const page = read('app/xtell/client.tsx')
+  const page = read('app/xoracle/client.tsx')
   check('page: each seat\'s logo sits in a ring filled with what its master read against its own limit, from the finished answer or the stored ones; the numbers are in the dialog', /setMemUse\(u => \(\{ \.\.\.u, \[m\.id\]: j\.inputTokens \}\)\)/.test(page) && /from\('xtell_messages'\)\.select\('model_id, input_tokens'\)\.eq\('reading_id', readingId\)\.eq\('role', 'assistant'\)/.test(page) && /<ContextMeter className="xtell-seat-logo xtell-seat-ring" used=\{memUse\[m\.id\]\} max=\{maxInputOf\(m\)\} point=\{summaryPointOf\(m\)\}/.test(page) && !/className="xtell-seat-mem"/.test(page) && /model_pricing, context_window, output_config/.test(page))
   check('page: beside each master\'s price, its memory as current / max', /<dt>\{t\('xtell\.mem\.label'\)\}<\/dt><dd>\{memUse\[m\.id\] == null \? '~' : ''\}\{formatTokens\(read\)\} \/ \{formatTokens\(maxInputOf\(m\)\)\}<\/dd>/.test(page))
   const dialog = read('app/components/xtell/MemoryDialog.tsx')
@@ -295,7 +295,7 @@ async function nowChecks() {
   const dialog = read('app/components/xtell/MemoryDialog.tsx')
   check('the dialog renders the summary as Markdown, as answers are (### headings, - lists)', /<ReactMarkdown skipHtml remarkPlugins=\{REMARK_PLUGINS\}>\{shown\.text\}<\/ReactMarkdown>/.test(dialog) && /xtell-mem-text markdown-body/.test(dialog))
   check('the dialog: the button shows its price and stays off until two rounds and while an answer is coming in', /disabled=\{!canNow \|\| busy \|\| working\}/.test(dialog) && /<small>~\{price\}<\/small>/.test(dialog) && !/fetch\(/.test(dialog))
-  const page = read('app/xtell/client.tsx')
+  const page = read('app/xoracle/client.tsx')
   check('the page: two answers from that master before the button works', /canNow=\{answers >= 2\}/.test(page) && /busy=\{answering\}/.test(page))
   check('the page runs the press, so closing and reopening the dialog keeps 摘要中… and one press at a time (owner, Oct 3)', /fetch\('\/api\/xtell\/memory'/.test(page) && /if \(summarizingRef\.current\.has\(key\)\) return/.test(page) && /working=\{!!summarizing\[key\]\}/.test(page) && /fresh=\{freshMemo\[key\] \?\? null\}/.test(page))
 }

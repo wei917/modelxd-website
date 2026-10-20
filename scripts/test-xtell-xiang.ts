@@ -79,7 +79,7 @@ const read = (f: string) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8
   check('palm lines are not drawn: only the face has marks', !/LINE_COLOR|LINE_NAMES|\.lines\b/.test(room) && /function marksOf\(f: FaceReading/.test(room))
   check('the other person\'s form asks who they are and for the tick that they agreed', /RELATIONS\.map/.test(room) && /type="checkbox" checked=\{consent\}/.test(room) && /t\('xtell\.xiang\.consent'\)/.test(room))
   // The form's look (Oct 8, owner: "beautify the actual page UI").
-  const css = read('app/globals.css'), page = read('app/xtell/client.tsx'), i18n = read('lib/i18n.tsx')
+  const css = read('app/globals.css'), page = read('app/xoracle/client.tsx'), i18n = read('lib/i18n.tsx')
   check('the photo tiles show GPT Image 2\'s guides by each person\'s gender (a Chinese woman or man), not emoji or hand-drawn ones, and a photo fits whole',
     !/'☺'|'✋'|function (FaceArt|PalmArt)/.test(room) && /src=\{guideOf\(k, gender\)\}/.test(room)
     && ['face', 'palm-left', 'palm-right'].every(n => ['female', 'male'].every(g => fs.existsSync(path.join(__dirname, '..', `public/xtell/xiang/guide-${n}-${g}.avif`))))

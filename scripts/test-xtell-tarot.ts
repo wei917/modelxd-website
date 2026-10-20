@@ -64,7 +64,7 @@ check('no question: the teacher is told to ask first', tarotFacts(tarotChart('on
   check('ritual: still for those who ask for less motion; hover lifts only with a mouse', /@media \(prefers-reduced-motion: reduce\) \{ \.xtell-tr \*/.test(css) && /@media \(hover: hover\) \{ \.xtell-tr-card\.is-fan/.test(css))
   check('ritual: the card back is the owner\'s design D, on every back, the pattern under it until it loads', existsSync('public/xtell/tarot-back.webp')
     && /\.xtell-tr-back \{\s*background:\s*url\('\/xtell\/tarot-back\.webp'\) center \/ 100% 100% no-repeat,\s*radial-gradient/.test(css))
-  const client = readFileSync('app/xtell/client.tsx', 'utf8')
+  const client = readFileSync('app/xoracle/client.tsx', 'utf8')
   check('room: the panel runs the ritual (a new spread starts it again); the old one-press deal is gone', /<TarotRitual key=\{spread\}/.test(client) && !/drawTarot\(cryptoRand/.test(client))
   const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
   const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.tarot.r.'))
@@ -108,7 +108,7 @@ check('no question: the teacher is told to ask first', tarotFacts(tarotChart('on
   check('modern: 死神 reads as change, not death', /轉變|改變|變化/.test(tarotModern('major-13', false)!['zh-Hant']))
   const laid = tarotChart('one', [{ id: 'major-13', reversed: true }], 'x')
   check('modern: a laid card carries the reading for the way it landed; the teacher sees it as ours', laid.cards[0].modern?.['zh-Hant'] === tarotModern('major-13', true)!['zh-Hant'] && tarotFacts(laid).includes('本站的現代解讀'))
-  const client = readFileSync('app/xtell/client.tsx', 'utf8')
+  const client = readFileSync('app/xoracle/client.tsx', 'utf8')
   check('modern: shown under each card in the visitor\'s language, Waite one tap away', /className="xtell-tarot-modern">\{c\.modern\?\.\[lang\] \?\? c\.modern\?\.en\}/.test(client) && /<summary>\{t\('xtell\.tarot\.meaning'\)\}<\/summary>/.test(client))
 }
 

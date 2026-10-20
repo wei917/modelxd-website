@@ -50,7 +50,7 @@ const nextConfig = {
   async redirects() {
     return RENAMED_APPS.flatMap(r => [
       { source: r.from, destination: r.to, permanent: r.permanent },
-      { source: `${r.from}/:path*`, destination: `${r.to}/:path*`, permanent: r.permanent },
+      ...(r.subpaths ? [{ source: `${r.from}/:path*`, destination: `${r.to}/:path*`, permanent: r.permanent }] : []),
     ])
   },
   webpack: (config) => {

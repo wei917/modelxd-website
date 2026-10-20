@@ -13,7 +13,7 @@ import { useFace } from '../../../lib/use-face'
 import { pinnedFirst } from '../../../lib/xtell-pins'
 import { usePins } from './usePins'
 import { useXTellBase } from './XTellBase'
-import { doorHome, templeHref, MAIN_ORIGIN } from '../../../lib/site'
+import { doorHome, templeHref, MAIN_ORIGIN, isStreetPath } from '../../../lib/site'
 import { goToRoom, opensInPlace } from '../../../lib/xtell-room'
 
 /** The wordmark per language (owner, Sep 24): XTell in English, X先知 in
@@ -46,7 +46,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
   // The room you are in is ?t= on the street's page (lib/xtell-room.ts), so
   // the server marks it too.
   const roomParam = useSearchParams()?.get('t') ?? null
-  const activeTemple: TempleKey | null = (pathname === '/' || pathname === '/xtell') && DISPLAY_TEMPLES.includes(roomParam as TempleKey) ? roomParam as TempleKey : null
+  const activeTemple: TempleKey | null = isStreetPath(pathname ?? '') && DISPLAY_TEMPLES.includes(roomParam as TempleKey) ? roomParam as TempleKey : null
   // When the row is wider than the bar (a narrow window, a phone), an arrow
   // on the side that has more temples scrolls it, over a soft fade: without
   // one, a mouse user cannot tell the rest exist (owner, Sep 27). Swiping
@@ -95,7 +95,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
     if (embedded) return
     const brand = t('xtell.site.brand')
     const compute = () => {
-      if (pathname === '/' || pathname === '/xtell') {
+      if (isStreetPath(pathname ?? '')) {
         return activeTemple ? `${t('xtell.site.focus.' + activeTemple + '.name')} | ${brand}` : t('xtell.site.tab')
       }
       if (pathname === '/profile') return `${t('xtell.site.account')} | ${brand}`
@@ -146,7 +146,7 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
       <div className="xtell-nav-inner">
         {/* The wordmark is the way back to the street. Inside a temple it
             leaves the room in place instead of reloading the page. */}
-        <a href={doorHome(base)} aria-label="XTell" onClick={e => {
+        <a href={doorHome(base)} aria-label="XOracle" onClick={e => {
           if (!activeTemple || !opensInPlace(e, doorHome(base))) return
           e.preventDefault(); goToRoom(null); window.scrollTo({ top: 0 })
         }}><XTellMark /></a>

@@ -15,7 +15,7 @@
 
 ## What X先知 is
 
-X先知 (XTell; X占い in Japanese, X운세 in Korean) is a street of temples for
+X先知 (XOracle in English, XTell until Oct 20; X占い in Japanese, X운세 in Korean) is a street of temples for
 Chinese, Western and Vedic fortune-telling traditions. A temple prepares the
 chart, draws the stick or opens the text; then the visitor may ask an AI
 master of their choice to explain it. Readings are for reflection and

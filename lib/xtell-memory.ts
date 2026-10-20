@@ -172,7 +172,7 @@ export function summaryCharge(
     const cents = carried ?? Math.round(usd * 100)
     if (cents > 0) await credits.debitCredits({
       userId: o.userId, amountCents: cents, referenceType: 'xtell', referenceId: o.readingId,
-      description: `XTell summary (${o.model?.model_name})`,
+      description: `XOracle summary (${o.model?.model_name})`,
       metadata: { temple: o.temple, modelName: o.model?.model_name, memory: true },
     }).catch(err => o.warn?.(`summary debit failed: ${err instanceof Error ? err.message : String(err)}`))
   }

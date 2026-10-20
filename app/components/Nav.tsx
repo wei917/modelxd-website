@@ -31,7 +31,7 @@ const ALL_NAV_LINKS = [
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
   // Open like xtell.modelxd.com: the free chart needs no account, sign-in
   // comes at the first question.
-  { href: '/xtell',       i18n: 'nav.xtell',       protected: false, icon: 'game'   },
+  { href: '/xoracle',     i18n: 'nav.xtell',       protected: false, icon: 'game'   },
   // Open like /xtell: the scores are free to look at, sign-in comes when the
   // AI buddy starts talking (it is billed).
   { href: '/xsports',     i18n: 'nav.xsports',     protected: false, icon: 'sports' },
@@ -430,9 +430,9 @@ export default function Nav() {
       show(href)
       return
     }
-    // X先知 from inside one of its temples (/xtell?t=bazi) goes back to the
+    // X先知 from inside one of its temples (/xoracle?t=bazi) goes back to the
     // street in place, as the door's wordmark does (lib/xtell-room.ts).
-    if (href === '/xtell' && pathname === '/xtell' && new URLSearchParams(window.location.search).has('t')) {
+    if (href === '/xoracle' && pathname === '/xoracle' && new URLSearchParams(window.location.search).has('t')) {
       e.preventDefault()
       setMenuOpen(false)
       goToRoom(null)
