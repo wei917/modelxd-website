@@ -1,28 +1,38 @@
 // app/api/xgame/gomoku/route.ts
-// Gomoku for the XGame arena (CC, Aug 6). Werewolf's architecture, second
-// tenant: the server holds the game, one act per request, the client loops.
+// 五子棋 for the XGame arena. Werewolf's architecture, second tenant (Aug 6):
+// the server holds the game, one act per request, the client loops.
 //
-// HOW A MODEL TAKES A TURN — the design question answered concretely:
-//   The ENTIRE state goes out on every ask (rules, the full 15x15 board as
-//   text, the move list) because model calls are stateless and 225 cells is
-//   ~300 tokens — re-describing beats trusting a model's memory of move 30.
-//   The model replies {"move":"H8","why":"..."} and proposes ONLY; the
-//   engine adjudicates. An illegal proposal gets ONE retry carrying the
-//   engine's objection; a second failure or a timeout becomes a marked
-//   fallback move (first empty cell adjacent to the last stone) — a weak
-//   move beats a wedged game, and the badge keeps it honest on the board.
+// Rebuilt Oct 20 (owner: "go ahead on this plan"), on chess's pattern:
+//   • A table is a MATCH of two games with the colours swapped
+//     (lib/gomoku-turn.ts): free-style 五子棋 favours Black. Between the
+//     games the row waits (`match.between`); 'next' starts game 2.
+//   • Every AI move goes through playAiTurn(): a short prompt, a strict
+//     reply schema, 90 s, one retry, a marked fallback (GOMOKU_HARNESS,
+//     published on the table).
+//   • Saves are compare-and-set on the ply count, so a watchdog retry or a
+//     second tab can never play two moves for one side.
+//   • Billing as chess: the wallet is checked before an AI move, each move
+//     is debited at list price, sub-cent charges carried by accrueFraction.
+//
+// Rows from before the rebuild (no `pending.match`) still open and finish as
+// the single game they were, and blind-duel rows keep their masking, thumbs
+// and reveal. XDuel stopped starting blind 五子棋 duels in its redesign; the
+// 'create' with `duel: true` is kept so nothing that still sends it breaks.
 
 export const runtime = 'nodejs'
-export const maxDuration = 120
+export const maxDuration = 200
 
 import { createClient } from '@supabase/supabase-js'
-import { debitCredits } from '@/lib/credits'
+import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { seatThinking } from '@/lib/game-thinking'
-import * as providers from '@/lib/providers'
 import {
-  emptyBoard, place, winAt, isFull, parseCoord, coordName, boardText,
-  fallbackMove, cellAt, SIZE, type Board, type Stone,
+  emptyBoard, place, winAt, isFull, parseCoord, coordName, cellAt,
+  type Board, type Stone,
 } from '@/lib/gomoku-engine'
+import {
+  GOMOKU_HARNESS, playAiTurn, providerAsk, blackSeat, matchScore, matchWinner,
+  type GameResult, type MatchState, type PromptMove,
+} from '@/lib/gomoku-turn'
 
 const LOG = '[xgame:gomoku]'
 
@@ -33,7 +43,13 @@ const svc = () => createClient(
 )
 
 type Player = { stone: Stone; modelId: string | null; name: string; isHuman: boolean; thinking?: string | null }
-type Move = { n: number; stone: Stone; coord: string; why?: string; fallback?: boolean; cost?: number; ms?: number }
+type Move = {
+  n: number; stone: Stone; coord: string
+  /** The match game this move belongs to (rows from Oct 20 on). */
+  g?: 1 | 2
+  why?: string; fallback?: boolean; retried?: boolean; rejected?: string[]; timedOut?: boolean
+  cost?: number; ms?: number
+}
 
 async function getModelById(id: string) {
   const { data } = await svc().from('ai_models')
@@ -42,8 +58,6 @@ async function getModelById(id: string) {
   return data
 }
 
-const MODEL_TIMEOUT_MS = 60_000
-
 // Blind game duels are on the house (no per-move debit), so cap them.
 // Enforced by counting today's duel rows — a soft floor that needs no
 // quota-table migration; the duel_quotas columns are per-prompt-mode.
@@ -51,76 +65,6 @@ const GAME_DUELS_PER_DAY = 3
 // A duel that meanders past this many moves is adjudicated a draw —
 // unbounded AI-vs-AI games are unbounded house spend.
 const DUEL_MOVE_CAP = 60
-
-/** Occupied cells for one color as a compact coordinate list — research
- *  says this is the representation models actually read (a grid must be
- *  counted; a list is just read), so the prompt carries both. */
-function coordList(board: Board, stone: Stone): string {
-  const out: string[] = []
-  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
-    if (cellAt(board, r, c) === stone) out.push(coordName(r, c))
-  }
-  return out.join(', ') || '(none)'
-}
-
-/** One ask: full state out, a coordinate back. Never throws.
- *  Prompt shape follows the LLM-board-game literature (see
- *  docs/research-gomoku-llm.md): coordinate lists alongside the grid,
- *  reasoning BEFORE the move in the reply JSON (move-first is
- *  anti-chain-of-thought — the model commits, then rationalizes), a
- *  forced restatement of live lines including diagonals, and one fixed
- *  few-shot example showing a diagonal block (identical for every model,
- *  so the comparison stays fair). */
-async function askMove(model: any, stone: Stone, board: Board, moves: Move[], objection: string | null, userId: string, thinking: string | null) {
-  const history = moves.map(m => `${m.n}. ${m.stone} ${m.coord}`).join('  ') || '(none — you open)'
-  const prompt = [
-    `You are playing gomoku (five in a row) on a 15x15 board as ${stone === 'B' ? 'B (black)' : 'W (white)'}.`,
-    'Win by making 5 or more of your stones in a row: horizontal, vertical or diagonal. Columns are letters A-O, rows are numbers 1-15; a move is a letter+number like H8. You may only play on an EMPTY cell (shown as "." on the board and listed under neither player).',
-    '',
-    'Check IN THIS ORDER before answering:',
-    '1. Can you complete 5 in a row right now? Play that cell and win.',
-    "2. Can the opponent complete 5 on their next move (they have four in a line with an empty cell — including split patterns like XX.XX or XXX.X)? You MUST block that cell.",
-    '3. Does the opponent have an open three (three in a row with BOTH ends empty)? Block one end now — next turn it becomes an unstoppable four.',
-    '4. Otherwise extend your own strongest line, prefer moves that create TWO threats at once, and stay near the action.',
-    'Scan all four directions (row, column, both diagonals) around the last few moves — diagonal threats are the ones most often missed. A line only counts if the coordinates step uniformly (e.g. E5, F6, G7 is a diagonal; E5, F6, F7 is not) and no opposing stone sits between them.',
-    '', 'Board now:', boardText(board),
-    '',
-    `Black stones: ${coordList(board, 'B')}`,
-    `White stones: ${coordList(board, 'W')}`,
-    `Moves so far: ${history}`,
-    ...(objection ? ['', `Your previous answer was rejected: ${objection}`] : []),
-    '',
-    'Example from a DIFFERENT game (you are B; White has C3, D4, F6 building a diagonal):',
-    '{"lines": "W: C3-D4-F6 diagonal with a gap at E5. B: none of 3+.", "why": "Fill the E5 gap before the diagonal becomes a four.", "move": "E5"}',
-    '',
-    'Reply with ONLY that JSON shape, in that field order: "lines" first — every line of 3 or more stones EITHER player has right now, checking rows, columns and both diagonals against the stone lists above (write "none" if there are none) — then "why" (one short sentence), then "move".',
-  ].join('\n')
-
-  let full = '', cost = 0
-  let timer: ReturnType<typeof setTimeout> | null = null
-  await Promise.race([
-    new Promise<void>(resolve => {
-      providers.streamText(model, [{ role: 'user', content: prompt }], {
-        onDelta: (t: string) => { full += t },
-        onDone:  (r: any) => { cost += r.cost ?? 0; resolve() },
-        onError: (m: string) => { console.warn(`${LOG} ${model.display_name}:`, m); resolve() },
-      }, [], { userId, surface: 'xgame-gomoku' } as any, { thinking, search: false }).catch(() => resolve())
-    }),
-    new Promise<void>(resolve => { timer = setTimeout(() => { console.warn(`${LOG} timeout`); resolve() }, MODEL_TIMEOUT_MS) }),
-  ])
-  if (timer) clearTimeout(timer)
-
-  let move: string | undefined, why: string | undefined
-  try {
-    const o = JSON.parse((/\{[\s\S]*\}/.exec(full) ?? ['{}'])[0])
-    if (typeof o.move === 'string') move = o.move
-    if (typeof o.why  === 'string') why  = o.why.slice(0, 200)
-  } catch {
-    const m = /["']move["']\s*:\s*["']([A-Oa-o]\s*\d{1,2})["']/.exec(full) ?? /\b([A-Oa-o]\d{1,2})\b/.exec(full)
-    if (m) move = m[1]
-  }
-  return { move, why, cost }
-}
 
 export async function POST(req: Request) {
   const { createSupabaseServer } = await import('@/lib/supabase-server')
@@ -154,9 +98,7 @@ export async function POST(req: Request) {
         .select('id, display_name, model_pricing, blocked_features, output_config')
         .eq('enabled', true).contains('output_modalities', ['text'])
       // Same block key as prompt duels, then prefer the cheap end of the
-      // catalog — 40 moves on a frontier model is real house money. Fall
-      // back to the full pool only if the cheap one can't seat a pair.
-      // text_output is a number or { default, by_level } (see admin rows).
+      // catalog. text_output is a number or { default, by_level }.
       const outPrice = (m: any) => {
         const o = m.model_pricing?.tokens?.text_output
         return typeof o === 'number' ? o : typeof o?.default === 'number' ? o.default : null
@@ -165,9 +107,7 @@ export async function POST(req: Request) {
       const cheap = eligible.filter((m: any) => { const p = outPrice(m); return p != null && p > 0 && p <= 8 })
       const from = (cheap.length >= 2 ? cheap : eligible).sort(() => Math.random() - 0.5)
       // Duel seats get a modest thinking level when the model has one:
-      // cheap models with thinking OFF play blind-drunk gomoku (verified
-      // on a live game — it "blocked" a four at the wrong cell), and the
-      // house is paying pennies either way. Lowest declared level wins.
+      // cheap models with thinking OFF play blind-drunk gomoku (Aug 6).
       const pickThinking = (m: any): string | null => {
         const lv = m.output_config?.text?.thinking_levels
         if (!Array.isArray(lv) || lv.length === 0) return null
@@ -176,10 +116,6 @@ export async function POST(req: Request) {
       const play = body.play === true
       if (from.length < (play ? 1 : 2)) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
       if (play) {
-        // PLAY mode (owner, Aug 6): the user sits down against ONE mystery
-        // model — random color, so models get judged from both sides of
-        // the board. The reveal is the payoff either way: "you just beat
-        // GPT-5.6 Luna" or "you lost to a $0.03 model".
         const humanStone: Stone = Math.random() < 0.5 ? 'B' : 'W'
         const human: Player = { stone: humanStone, modelId: null, name: 'You', isHuman: true }
         const rival: Player = { stone: humanStone === 'B' ? 'W' : 'B', modelId: from[0].id, name: from[0].display_name, isHuman: false, thinking: pickThinking(from[0]) }
@@ -193,31 +129,38 @@ export async function POST(req: Request) {
     } else {
       const seats = body.seats ?? {}
       const mk = async (stone: Stone, cfg: any): Promise<Player | null> => {
-        if (cfg?.human) return { stone, modelId: null, name: body.playerName?.slice(0, 40) || 'You', isHuman: true }
+        if (cfg?.human) return { stone, modelId: null, name: String(body.playerName ?? '').slice(0, 40) || 'You', isHuman: true }
         const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
         return m ? {
           stone, modelId: m.id, name: m.display_name, isHuman: false,
           thinking: seatThinking(m, cfg?.thinking),
         } : null
       }
+      // Seat 0 plays Black in game 1, seat 1 in game 2.
       black = await mk('B', seats.black); white = await mk('W', seats.white)
       if (!black || !white) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
       if (black.isHuman && white.isHuman) return Response.json({ error: 'at most one human seat' }, { status: 400 })
-      // The thinking level is part of a player's identity — it changes the
-      // player. "Terra (high)" and "Terra (low)" are different opponents.
-      title = `${black.name}${black.thinking ? ` (${black.thinking})` : ''} ⚫ vs ⚪ ${white.name}${white.thinking ? ` (${white.thinking})` : ''}`
+      // The thinking level is part of a player's identity: "Terra (high)"
+      // and "Terra (low)" are different opponents.
+      const label = (p: Player) => `${p.name}${p.thinking ? ` (${p.thinking})` : ''}`
+      title = `${label(black)} vs ${label(white)}`
     }
+    const match: MatchState | null = isDuelGame ? null : { game: 1, games: [], between: false }
     const { data, error } = await svc().from('xtalk_sessions').insert({
       user_id: user.id, game: 'gomoku', status: 'active',
       human_seat: black.isHuman ? 0 : (white.isHuman ? 1 : null),
       players: [black, white], phase: 'B', day: 0, turn_order: [],
-      transcript: [], pending: { board: emptyBoard(), last: null, ...(isDuelGame ? { duel: { anon: true } } : {}) },
+      transcript: [],
+      pending: {
+        board: emptyBoard(), last: null,
+        ...(isDuelGame ? { duel: { anon: true } } : {}),
+        ...(match ? { match, harness: GOMOKU_HARNESS.version } : {}),
+      },
       title,
     }).select('id').single()
     if (error || !data) {
       console.warn(`${LOG} create failed:`, error?.message)
-      // The likeliest cause is migration 72 not applied (no `game` column).
-      return Response.json({ error: 'Could not create the game — is migration 72 applied?' }, { status: 503 })
+      return Response.json({ error: 'Could not create the game.' }, { status: 503 })
     }
     body.id = data.id; body.action = 'state'
   }
@@ -229,27 +172,27 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Not found' }, { status: 404 })
   }
   const s = row as any
-  const board: Board = s.pending.board
-  const moves: Move[] = s.transcript
-  const players: Player[] = s.players
-  const turn: Player | null = s.status === 'over' ? null : players[s.phase === 'B' ? 0 : 1]
 
-  // view() reads from `s` LIVE, not from the load-time consts — after an
-  // applyMove/save the response must show the move it just applied. (The
-  // load-time consts above are the pre-action state, which is exactly what
-  // the action handlers should reason about.)
-  // Blind duels mask here, server-side: names, per-move cost and the total
-  // never leave the server while the duel is anonymous — a client can't
-  // leak what it never received.
+  const matchOf = (): MatchState | null => s.pending?.match ?? null
+  /** Whose move it is, or null when the game (or the gap between games) has nobody to move. */
+  const turnOf = (): Player | null => {
+    if (s.status === 'over' || matchOf()?.between) return null
+    return (s.players as Player[]).find(p => p.stone === s.phase) ?? null
+  }
+
+  // view() reads `s` LIVE: after an action, the response shows it. Blind
+  // duels mask here, server-side: names, per-move cost and the total never
+  // leave the server while the duel is anonymous.
   const view = () => {
     const d = s.pending.duel ?? null
     const anon = !!d && !d.revealed
     const pl: Player[] = s.players
-    const tp: Player | null = s.status === 'over' ? null : pl[s.phase === 'B' ? 0 : 1]
+    const tp = turnOf()
+    const m = matchOf()
     return Response.json({
       id: s.id, status: s.status, winner: s.winner ?? null,
       board: s.pending.board,
-      moves: anon ? (s.transcript as Move[]).map(m => { const r: any = { ...m }; delete r.cost; return r }) : s.transcript,
+      moves: anon ? (s.transcript as Move[]).map(mv => { const r: any = { ...mv }; delete r.cost; return r }) : s.transcript,
       // Play mode masks only the AI seat (the human knows who they are);
       // watch mode masks both, A/B by stone so the banner stays unambiguous.
       players: anon ? pl.map((p, i) => p.isHuman
@@ -260,88 +203,153 @@ export async function POST(req: Request) {
       winLine: s.pending.winLine ?? null,
       costUsd: anon ? null : Number(s.cost_usd) || 0,
       duel: d ? { anon, revealed: !!d.revealed, thumbs: d.thumbs ?? {} } : null,
+      match: m ? { ...m, score: matchScore(m.games) } : null,
+      harness: m ? GOMOKU_HARNESS : null,
     })
   }
 
-  const save = async (patch: Record<string, any>) => {
+  /** Compare-and-set on the ply count: a second request racing the same
+   *  turn finds the row moved on and changes nothing. `between` guards the
+   *  step from game 1 to game 2 the same way. */
+  const save = async (patch: Record<string, any>, expect: { day: number; between?: boolean }): Promise<boolean> => {
+    let q = svc().from('xtalk_sessions')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', s.id).eq('day', expect.day)
+    if (expect.between !== undefined) q = q.filter('pending->match->>between', 'eq', String(expect.between))
+    const { data } = await q.select('id')
+    if (!data?.length) return false
     Object.assign(s, patch)
-    await svc().from('xtalk_sessions').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', s.id)
+    return true
+  }
+  const reload = async () => {
+    const { data } = await svc().from('xtalk_sessions').select('*').eq('id', s.id).maybeSingle()
+    if (data) Object.assign(s, data)
   }
 
-  const applyMove = async (r: number, c: number, why: string | undefined, fallback: boolean, cost: number, ms?: number) => {
-    const stone = turn!.stone
+  /** The moves of the game being played, for the prompt and the move number. */
+  const gameMoves = (): Move[] => {
+    const m = matchOf()
+    const all: Move[] = s.transcript ?? []
+    return m ? all.filter(mv => (mv.g ?? 1) === m.game) : all
+  }
+
+  const applyMove = async (r: number, c: number, extra: Omit<Move, 'n' | 'stone' | 'coord' | 'g'>): Promise<boolean> => {
+    const turn = turnOf()
+    if (!turn) return false
+    const stone = turn.stone
+    const m = matchOf()
     const isDuel = !!s.pending.duel
+    const board: Board = s.pending.board
     const nextBoard = place(board, r, c, stone)
-    const mv: Move = { n: s.day + 1, stone, coord: coordName(r, c), ...(why ? { why } : {}), ...(fallback ? { fallback: true } : {}), ...(cost ? { cost } : {}), ...(ms != null ? { ms: Math.max(0, Math.round(ms)) } : {}) }
+    const inGame = gameMoves().length + 1
+    const mv: Move = { n: inGame, stone, coord: coordName(r, c), ...(m ? { g: m.game } : {}), ...extra }
     const line = winAt(nextBoard, r, c)
-    const over = !!line || isFull(nextBoard) || (isDuel && s.day + 1 >= DUEL_MOVE_CAP)
-    await save({
-      // Spread the old pending: the duel marker (and anything future) must
-      // survive every move, not just the board fields.
-      pending: {
-        ...s.pending, board: nextBoard, last: [r, c], winLine: line ?? null,
-        // The reveal is the ENDGAME, not a button (owner, Aug 6): the
-        // moment the engine calls it, identities and prices unmask.
-        ...(over && isDuel ? { duel: { ...s.pending.duel, revealed: true } } : {}),
-      },
-      transcript: [...moves, mv], day: s.day + 1,
+    const full = isFull(nextBoard)
+    const cap = m ? inGame >= GOMOKU_HARNESS.plyCap : (isDuel && s.day + 1 >= DUEL_MOVE_CAP)
+    const gameOver = !!line || full || cap
+    const cost = extra.cost ?? 0
+    const pending: any = { ...s.pending, board: nextBoard, last: [r, c], winLine: line ?? null }
+    const patch: Record<string, any> = {
+      transcript: [...(s.transcript ?? []), mv], day: s.day + 1,
       phase: stone === 'B' ? 'W' : 'B',
-      ...(over ? { status: 'over', winner: line ? (stone === 'B' ? 'black' : 'white') : 'draw' } : {}),
-      ...(over && isDuel ? { title: `${players[0].name} ⚫ vs ⚪ ${players[1].name}` } : {}),
       cost_usd: Number(s.cost_usd) + cost,
-    })
-    // Blind duels are on the house — cost_usd still accumulates (it's
-    // shown at the reveal), but the user's wallet is never touched.
+    }
+    if (gameOver && m) {
+      const players: Player[] = s.players
+      const res: GameResult = {
+        winner: line ? (players.findIndex(p => p.stone === stone) as 0 | 1) : null,
+        black: blackSeat(m.game), plies: inGame,
+        reason: line ? 'five' : full ? 'full' : 'cap',
+      }
+      const games = [...m.games, res]
+      const done = games.length >= GOMOKU_HARNESS.games
+      pending.match = { ...m, games, between: !done }
+      if (done) { patch.status = 'over'; patch.winner = matchWinner(games) }
+    } else if (gameOver) {
+      // A row from before the match format: one game, as it always was.
+      patch.status = 'over'
+      patch.winner = line ? (stone === 'B' ? 'black' : 'white') : 'draw'
+      if (isDuel) {
+        // The reveal is the ENDGAME, not a button (owner, Aug 6).
+        pending.duel = { ...s.pending.duel, revealed: true }
+        const pl: Player[] = s.players
+        patch.title = `${pl[0].name} ⚫ vs ⚪ ${pl[1].name}`
+      }
+    }
+    patch.pending = pending
+    const ok = await save(patch, { day: s.day })
+    if (!ok) { await reload(); return false }
+    // Blind duels are on the house: cost_usd still accumulates (shown at the
+    // reveal) but the wallet is never touched.
     if (cost > 0 && !isDuel) {
-      const cents = Math.round(cost * 100)
+      const carried = await accrueFraction(user.id, cost * 1e6)
+      const cents = carried ?? Math.round(cost * 100)
       if (cents > 0) debitCredits({
         userId: user.id, amountCents: cents, referenceType: 'xgame_gomoku',
-        referenceId: s.id, description: 'XGame gomoku move', metadata: {},
-      }).catch(() => {})
+        referenceId: s.id, description: 'XGame gomoku move', metadata: { ply: s.day },
+      }).catch(err => {
+        if (!(err instanceof InsufficientCreditsError)) console.warn(`${LOG} debit failed:`, err)
+      })
     }
+    return true
   }
 
   // ── human move ────────────────────────────────────────────────────────
   if (body.action === 'move') {
+    const turn = turnOf()
     if (!turn?.isHuman) return view()
     const pc = parseCoord(String(body.coord ?? ''))
-    if (!pc || cellAt(board, pc[0], pc[1]) !== '.') {
+    if (!pc || cellAt(s.pending.board, pc[0], pc[1]) !== '.') {
       return Response.json({ error: 'illegal move' }, { status: 400 })
     }
-    // Think time = since the previous move was saved (that save is the
-    // moment this player's turn began). Good to within network jitter.
-    const humanMs = Date.now() - new Date(s.updated_at).getTime()
-    await applyMove(pc[0], pc[1], undefined, false, 0, humanMs)
+    // Think time = since the previous move was saved (when this turn began).
+    const ms = Math.max(0, Date.now() - new Date(s.updated_at).getTime())
+    await applyMove(pc[0], pc[1], { ms })
+    return view()
+  }
+
+  // ── next: game 2 of the match, colours swapped ────────────────────────
+  if (body.action === 'next') {
+    const m = matchOf()
+    if (!m || !m.between || s.status !== 'active') return view()
+    const players = (s.players as Player[]).map(p => ({ ...p, stone: (p.stone === 'B' ? 'W' : 'B') as Stone }))
+    const ok = await save({
+      players, phase: 'B',
+      pending: { ...s.pending, board: emptyBoard(), last: null, winLine: null, match: { ...m, game: 2, between: false } },
+    }, { day: s.day, between: true })
+    if (!ok) await reload()
     return view()
   }
 
   // ── step: one AI move ─────────────────────────────────────────────────
   if (body.action === 'step') {
+    const turn = turnOf()
     if (!turn || turn.isHuman) return view()
+    if (!s.pending.duel) {
+      const { data: wallet } = await svc().from('user_credits').select('balance_cents').eq('user_id', user.id).maybeSingle()
+      if ((Number(wallet?.balance_cents) || 0) < 1) {
+        return Response.json({ error: 'Out of credits: top up to keep the game going.', code: 'no_credits' }, { status: 402 })
+      }
+    }
     const model = await getModelById(turn.modelId!)
-    if (!model) { await save({ status: 'over', winner: 'draw' }); return view() }
-
-    const t0 = Date.now()
-    let totalCost = 0
-    let placed: [number, number] | null = null
-    let why: string | undefined, usedFallback = false
-    let objection: string | null = null
-    for (let attempt = 0; attempt < 2 && !placed; attempt++) {
-      const r = await askMove(model, turn.stone, board, moves, objection, user.id, turn.thinking ?? null)
-      totalCost += r.cost
-      why = r.why ?? why
-      const pc = r.move ? parseCoord(r.move) : null
-      if (pc && cellAt(board, pc[0], pc[1]) === '.') placed = pc
-      else objection = r.move
-        ? `"${r.move}" is ${parseCoord(r.move) ? 'already occupied' : 'not a valid coordinate'}. Pick an EMPTY cell shown as "." on the board.`
-        : 'no move could be read from your reply. Reply with ONLY the JSON.'
+    if (!model) {
+      // The seated model was switched off mid-game: nobody can move for it.
+      if (!await save({ status: 'over', winner: 'draw' }, { day: s.day })) await reload()
+      return view()
     }
-    if (!placed) {
-      placed = fallbackMove(board, s.pending.last)
-      usedFallback = true
-      console.warn(`${LOG} ${model.display_name}: fallback move ${coordName(placed[0], placed[1])}`)
-    }
-    await applyMove(placed[0], placed[1], why, usedFallback, totalCost, Date.now() - t0)
+    const record: PromptMove[] = gameMoves().map(mv => ({ stone: mv.stone, coord: mv.coord }))
+    const r = await playAiTurn(s.pending.board, turn.stone, record, s.pending.last ?? null,
+      providerAsk(model, { userId: user.id, thinking: turn.thinking ?? null }))
+    if (r.fallback) console.warn(`${LOG} ${model.display_name}: fallback ${r.coord} (rejected ${JSON.stringify(r.rejected ?? [])})`)
+    await applyMove(r.at[0], r.at[1], {
+      ...(r.why ? { why: r.why } : {}),
+      ...(r.fallback ? { fallback: true } : {}),
+      ...(r.retried ? { retried: true } : {}),
+      ...(r.rejected ? { rejected: r.rejected } : {}),
+      ...(r.timedOut ? { timedOut: true } : {}),
+      ...(r.cost ? { cost: r.cost } : {}),
+      ms: r.ms,
+    })
     return view()
   }
 
@@ -354,22 +362,22 @@ export async function POST(req: Request) {
     const seat = body.seat === 1 ? 1 : 0
     const up = body.up === true ? true : body.up === false ? false : null
     const thumbs = { ...(d.thumbs ?? {}) }
-    // `blind` records whether the judgment was made before the unmasking —
-    // a pre-reveal thumb is a cleaner signal and the flag keeps them apart.
+    // `blind` records whether the judgment was made before the unmasking.
     if (up === null) delete thumbs[seat]
     else thumbs[seat] = { up, blind: !d.revealed }
-    await save({ pending: { ...s.pending, duel: { ...d, thumbs } } })
+    if (!await save({ pending: { ...s.pending, duel: { ...d, thumbs } } }, { day: s.day })) await reload()
     return view()
   }
   if (body.action === 'duel_reveal') {
     const d = s.pending.duel
     if (!d || s.status !== 'over') return view()
     if (!d.revealed) {
-      await save({
+      const pl: Player[] = s.players
+      if (!await save({
         pending: { ...s.pending, duel: { ...d, revealed: true } },
         // The nav-history row gets the real matchup once it's public.
-        title: `${players[0].name} ⚫ vs ⚪ ${players[1].name}`,
-      })
+        title: `${pl[0].name} ⚫ vs ⚪ ${pl[1].name}`,
+      }, { day: s.day })) await reload()
     }
     return view()
   }

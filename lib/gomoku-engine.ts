@@ -84,3 +84,43 @@ export function fallbackMove(b: Board, lastMove: [number, number] | null): [numb
   }
   return best
 }
+
+// ── Viewer marks (Oct 20) ─────────────────────────────────────────────────
+// For people watching, never for a model (the fairness rule: the harness is
+// the same bare board for every model, so hints would change what is being
+// measured). Two kinds of point, each for the side that would play there:
+//   'win'  — a stone here makes five (or more): wins next move.
+//   'four' — a stone here makes an OPEN four (.XXXX.), which cannot be
+//            stopped: the ends of an open three, or the gap in a split one.
+
+export type Threat = { stone: Stone; kind: 'win' | 'four'; at: [number, number] }
+
+const DIRS = [[0, 1], [1, 0], [1, 1], [1, -1]] as const
+
+/** Run of `stone` through (row, col) in one direction, both ways, and whether
+ *  each end is an empty point on the board. */
+function runThrough(b: Board, row: number, col: number, dr: number, dc: number, stone: Stone) {
+  let len = 1
+  const ends: boolean[] = []
+  for (const sign of [1, -1]) {
+    let r = row + dr * sign, c = col + dc * sign
+    while (r >= 0 && r < SIZE && c >= 0 && c < SIZE && cellAt(b, r, c) === stone) { len++; r += dr * sign; c += dc * sign }
+    ends.push(r >= 0 && r < SIZE && c >= 0 && c < SIZE && cellAt(b, r, c) === '.')
+  }
+  return { len, open: ends[0] && ends[1] }
+}
+
+export function threats(b: Board): Threat[] {
+  const out: Threat[] = []
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+    if (cellAt(b, r, c) !== '.') continue
+    for (const stone of ['B', 'W'] as Stone[]) {
+      const tried = place(b, r, c, stone)
+      if (winAt(tried, r, c)) { out.push({ stone, kind: 'win', at: [r, c] }); continue }
+      if (DIRS.some(([dr, dc]) => { const x = runThrough(tried, r, c, dr, dc, stone); return x.len === 4 && x.open })) {
+        out.push({ stone, kind: 'four', at: [r, c] })
+      }
+    }
+  }
+  return out
+}
