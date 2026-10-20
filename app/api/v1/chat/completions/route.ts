@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   const tok = await resolveApiToken(req.headers.get('authorization'))
   if (!tok) {
     return fail(401,
-      'Pass a ModelXD API key: Authorization: Bearer xd_… (mint one at modelxd.com/xdev).',
+      'Pass a ModelXD API key: Authorization: Bearer xd_… (mint one at modelxd.com/xkit).',
       'invalid_api_key', 'authentication_error')
   }
 
@@ -95,7 +95,7 @@ export async function POST(req: Request) {
   // Reserve against the key's cap BEFORE spending anything upstream.
   if (!(await reserveTokenSpend(tok, CAP_RESERVE_USD))) {
     return fail(402,
-      `This API key has reached its spend cap ($${(tok.spendCapUsd ?? 0).toFixed(2)}). Raise it at modelxd.com/xdev.`,
+      `This API key has reached its spend cap ($${(tok.spendCapUsd ?? 0).toFixed(2)}). Raise it at modelxd.com/xkit.`,
       'spend_cap_reached', 'insufficient_quota')
   }
   let settled = false

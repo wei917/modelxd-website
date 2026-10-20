@@ -1,7 +1,7 @@
 'use client'
 
 import RouterTuner from '@/app/components/RouterTuner'
-// app/xdev/client.tsx — XDev: API keys + the MCP connect guide.
+// app/xkit/client.tsx — XKit (XDev until Oct 20): API keys + the MCP connect guide.
 //
 // Two halves. KEYS: mint / cap / revoke, list via owner-read RLS (the
 // browser client reads api_tokens directly, same pattern as user_credits).
@@ -88,7 +88,7 @@ export default function XDevClient() {
   useEffect(() => { load() }, [])
 
   const mint = async () => {
-    if (signedIn === false) { showAuth('/xdev'); return }
+    if (signedIn === false) { showAuth('/xkit'); return }
     setMinting(true); setErr(null)
     try {
       const res = await fetch('/api/xdev/tokens', {
@@ -176,7 +176,7 @@ export default function XDevClient() {
     // scrolls). Same override the standalone docs page needed.
     <div className="xduel-page" style={{ overflowY: 'visible' }}>
       <div className="arena xcreate-arena" style={{ maxWidth: 1100 }}>
-        <span className="prompt-label eyebrow">XDEV</span>
+        <span className="prompt-label eyebrow">XKIT</span>
         <h1 className="page-headline" style={{ marginBottom: 8 }}>{t('xdev.subtitle')}</h1>
         <p style={{ color: 'var(--muted)', fontSize: lang === 'ja' ? 16 : 14, lineHeight: 1.75, maxWidth: 640, marginBottom: 26 }}>
           {l<React.ReactNode>(<>Mint an API key and use it two ways: an OpenAI-compatible text API for your code and
@@ -215,7 +215,7 @@ export default function XDevClient() {
 
           {signedIn === false ? (
             <div style={{ color: 'var(--muted2)', fontSize: lang === 'ja' ? 14 : 12.5 }}>
-              <button onClick={() => showAuth('/xdev')} style={{
+              <button onClick={() => showAuth('/xkit')} style={{
                 border: 'none', background: 'var(--red)', color: '#fff', borderRadius: 999,
                 padding: '7px 18px', fontWeight: 800, fontSize: lang === 'ja' ? 14 : 12.5, cursor: 'pointer', marginRight: 10,
               }}>{t('xdev.signin.createkey')}</button>

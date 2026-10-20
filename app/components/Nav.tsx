@@ -36,7 +36,7 @@ const ALL_NAV_LINKS = [
   // AI buddy starts talking (it is billed).
   { href: '/xsports',     i18n: 'nav.xsports',     protected: false, icon: 'sports' },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
-  { href: '/xdev',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
+  { href: '/xkit',        i18n: 'nav.xdev',        protected: false,  icon: 'dev' },
 ]
 // A hidden app (lib/hidden-apps), whichever its level, is not in the menu.
 const NAV_LINKS = ALL_NAV_LINKS.filter(l => !isHiddenHref(l.href))

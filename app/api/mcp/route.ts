@@ -247,7 +247,7 @@ async function callTool(name: string, args: any, ctx: Ctx): Promise<any> {
 export async function POST(req: Request) {
   const tok = await resolveApiToken(req.headers.get('authorization'))
   if (!tok) {
-    return new Response(JSON.stringify({ error: 'invalid_token', message: 'Pass a ModelXD API key: Authorization: Bearer xd_… (mint one on /xdev).' }), {
+    return new Response(JSON.stringify({ error: 'invalid_token', message: 'Pass a ModelXD API key: Authorization: Bearer xd_… (mint one on /xkit).' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json', 'WWW-Authenticate': 'Bearer realm="ModelXD MCP"' },
     })

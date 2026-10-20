@@ -1,4 +1,5 @@
 const path = require('path')
+const { RENAMED_APPS } = require('./lib/renamed-apps')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -43,6 +44,14 @@ const nextConfig = {
     '/api/xcreate/remake/fan': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/xcreate/remake/fan/*': ['./node_modules/ffmpeg-static/ffmpeg'],
     '/api/xgame/chess': ['./node_modules/ffish/ffish.js', './node_modules/ffish/ffish.wasm'],
+  },
+  // Old app addresses forward to the new ones, path and query kept
+  // (lib/renamed-apps.js: /xdev → /xkit, …).
+  async redirects() {
+    return RENAMED_APPS.flatMap(r => [
+      { source: r.from, destination: r.to, permanent: r.permanent },
+      { source: `${r.from}/:path*`, destination: `${r.to}/:path*`, permanent: r.permanent },
+    ])
   },
   webpack: (config) => {
     config.watchOptions = {

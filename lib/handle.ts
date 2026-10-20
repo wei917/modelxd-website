@@ -33,7 +33,7 @@ const RESERVED = new Set([
   'abuse', 'report', 'verify', 'verified', 'login', 'logout', 'signin', 'signup', 'register', 'account',
   'accounts', 'settings', 'profile', 'home', 'news', 'blog', 'press', 'jobs', 'status',
   'xtell', 'xcreate', 'xsports', 'xduel', 'xtalk', 'xgame', 'xpersona', 'xvote', 'xboard', 'xdirect', 'xcut',
-  'xworld', 'xarch', 'xdev', 'xeval', 'xchat',
+  'xworld', 'xarch', 'xdev', 'xeval', 'xchat', 'xkit', 'xoracle', 'xfilm',
   'gemini', 'grok', 'qwen', 'kimi', 'luna', 'sol', 'terra', 'astra', 'fable', 'opus', 'sonnet', 'haiku', 'deepseek',
   'minimax', 'hailuo', 'seedance', 'happyhorse', 'wan', 'veo', 'runway', 'midjourney', 'llama', 'mistral', 'sora',
   'nanobanana', 'commentator',

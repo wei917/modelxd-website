@@ -1,5 +1,5 @@
 'use client'
-// app/xdev/UsagePanel.tsx — API usage on the XDev page: spend over time, by
+// app/xkit/UsagePanel.tsx — API usage on the XKit page: spend over time, by
 // model, by key, and the request log. Everything comes from GET
 // /api/v1/usage (session auth here; developers call the same endpoint with a
 // key), so the page and the API can never disagree.

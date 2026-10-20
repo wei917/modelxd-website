@@ -1,4 +1,4 @@
-// app/xdev/page.tsx — XDev server shell: THE developer page. Public since
+// app/xkit/page.tsx — XKit (XDev until Oct 20) server shell: THE developer page. Public since
 // Sep 1 (owner: docs must be readable before signup; one page, not two) —
 // the reference renders for everyone, key management asks for sign-in
 // inline. Money safety never depended on gating this page: a key spends
@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
 import XDevClient from './client'
 
 export const metadata: Metadata = {
-  title: 'XDev — API keys & docs | ModelXD',
+  title: 'XKit — API keys & docs | ModelXD',
   description: 'The ModelXD developer page: mint API keys and read the full reference — OpenAI-compatible chat completions with vote-based routing, async image & video generation, and MCP for agent clients.',
 }
 

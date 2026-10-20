@@ -496,7 +496,7 @@ export default function HomeClient() {
               <div className="hm-stat-num" style={{ color: 'var(--green)' }}>~$7,800</div>
               <div className="hm-stat-period">{t('home.aud.dev.period')}</div>
               <p className="hm-stat-desc">{t('home.aud.dev.desc')}</p>
-              <a href="/xdev" className="hm-link">XDev · {t('home.surf.xdev')}</a>
+              <a href="/xkit" className="hm-link">XKit · {t('home.surf.xdev')}</a>
             </div>
             <div className="hm-stat">
               <div className="hm-stat-label">{t('home.aud.user')}</div>

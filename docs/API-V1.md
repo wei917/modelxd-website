@@ -125,7 +125,7 @@ Params: `from`/`to` (default last 30 days, max 366), `group_by=day|model|key|
 surface|none`, `key=<id>|self`, `surface=chat|image|video|3d`, and for
 `none` a cursor page (`limit` ≤ 500, `next_cursor`/`has_more`; cursor is
 `created_at|id`, stable while new rows arrive). `totals` always cover the
-whole window. A key sees ALL its owner's keys, like XDev does. The XDev page's
+whole window. A key sees ALL its owner's keys, like XKit does. The XKit page's
 Usage panel reads the same endpoint with the session.
 
 `GET /api/v1/models` also carries `pricing_usd_per_output` for image models
@@ -146,7 +146,7 @@ from openai import OpenAI
 client = OpenAI(base_url="https://www.modelxd.com/api/v1", api_key="xd_…")
 ```
 
-Keys are minted at `/xdev`. The three env vars a game server needs map
+Keys are minted at `/xkit`. The three env vars a game server needs map
 directly: `MODELXD_API_BASE_URL`, `MODELXD_API_KEY`, `MODELXD_MODEL`.
 
 ## Naming a model
@@ -211,7 +211,7 @@ GET /api/v1/router/preview?quality=0.2&cost=0.7&speed=0.1
 
 Returns the ranked candidates with the axis values behind each score — what
 would answer, and why — without calling a model or spending anything. This is
-what the tuning panel on `/xdev` uses; a preset returns that route's own
+what the tuning panel on `/xkit` uses; a preset returns that route's own
 weights, so the preview cannot disagree with the live route.
 
 ## Structured output — the reason this exists
