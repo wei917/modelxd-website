@@ -25,6 +25,7 @@ export const runtime = 'nodejs'
 import { createClient } from '@supabase/supabase-js'
 import { signAudioSlots } from '@/lib/xduel-audio'
 import { withModelNames } from '@/lib/model-names'
+import { recipeOfDuel } from '@/lib/xduel-recipes'
 
 function serviceClient() {
   return createClient(
@@ -79,6 +80,8 @@ export async function GET(req: Request) {
       mode:        duel.mode,
       prompt:      duel.prompt,
       input_media: duel.input_media ?? null,
+      // A video duel's kind (migration 142; older ones read from their input).
+      recipe:      recipeOfDuel(duel),
       created_at:  duel.created_at,
       // Whether the viewer made this duel; the id itself stays server-side (104).
       is_owner:    !!user && duel.user_id === user.id,

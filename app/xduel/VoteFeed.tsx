@@ -66,7 +66,7 @@ function latestOrder(duels: Duel[]): Duel[] {
   return [...shuffled(byNew.slice(0, LATEST_POOL)), ...blendedOrder(byNew.slice(LATEST_POOL))]
 }
 
-export default function VoteFeed({ mode }: { mode: Mode }) {
+export default function VoteFeed({ mode, recipe = null }: { mode: Mode; recipe?: string | null }) {
   const t = useT()
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -133,8 +133,9 @@ export default function VoteFeed({ mode }: { mode: Mode }) {
         <div style={{ color: 'var(--muted)', fontSize: 13, padding: '40px 0' }}>{t('common.loading')}</div>
       ) : (
         <FeedSection
-          key={mode}
+          key={`${mode}:${recipe ?? ''}`}
           mode={mode}
+          recipe={recipe}
           userId={userId}
           votedIds={votedIds}
           search={search}
@@ -194,7 +195,8 @@ function blendedOrder(duels: Duel[]): Duel[] {
     .map(x => x.d)
 }
 
-function FeedSection({ mode, userId, votedIds, search, sort, onSelect }: {
+function FeedSection({ mode, recipe, userId, votedIds, search, sort, onSelect }: {
+  recipe: string | null
   mode: Mode
   userId: string | null
   votedIds: Set<string>
@@ -215,7 +217,8 @@ function FeedSection({ mode, userId, votedIds, search, sort, onSelect }: {
     // Redacted server-side: a direct `duels` select from the browser would
     // hand every voter the model names it is about to hide from them.
     try {
-      const res = await fetch(`/api/xduel/feed?mode=${mode}`)
+      // A video kind's own duels (owner, Oct 19: "feed follows the chip").
+      const res = await fetch(`/api/xduel/feed?mode=${mode}${recipe ? `&recipe=${recipe}` : ''}`)
       const json = await res.json()
       setDuels(latestOrder((json?.duels ?? []) as Duel[]))
     } catch {
@@ -226,7 +229,7 @@ function FeedSection({ mode, userId, votedIds, search, sort, onSelect }: {
     // what this user has voted on, and the render filters the rest, so
     // keeping it here would refetch and reshuffle the whole feed on every
     // single vote. userId stays — the feed needs an authenticated read.
-  }, [mode, userId])
+  }, [mode, recipe, userId])
 
   useEffect(() => { fetchDuels() }, [fetchDuels])
 

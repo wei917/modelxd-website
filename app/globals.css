@@ -5117,8 +5117,41 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 
 /* A saved duel (/xduel/<id>): its input under the headline, and the
    loading / not-found note. */
-.xduel-input { margin-top: 14px; }
+.xduel-inputs { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.xduel-input { margin: 0; }
 .xduel-input img, .xduel-input video { display: block; max-width: 200px; max-height: 120px; border-radius: 7px; border: 1px solid var(--border2); cursor: zoom-in; }
+.xduel-input audio { display: block; width: min(320px, 100%); }
+.xduel-input figcaption { margin-top: 4px; font-size: 12px; color: var(--muted); }
+/* 影片's kinds as a "Mode:" row (Oct 19, owner's reference): icon + name
+   buttons, the chosen one in red, arrow buttons at the ends, a fade where
+   the row goes on. Phones swipe; the arrows step aside there. */
+.xduel-modebar { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; min-width: 0; }
+.xduel-modebar-label { flex: 0 0 auto; font: 600 15px var(--font-body), sans-serif; color: var(--xtell-ink, var(--white)); }
+.xduel-modebar-arrow {
+  flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
+  border: 1px solid var(--border2); border-radius: 12px; background: var(--surface); color: var(--xtell-ink, var(--white)); cursor: pointer;
+}
+.xduel-modebar-arrow:disabled { opacity: .45; cursor: default; }
+.xduel-modebar-arrow:not(:disabled):hover { border-color: var(--red); color: var(--red); }
+.xduel-modebar-row { flex: 1; min-width: 0; display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.xduel-modebar-row::-webkit-scrollbar { display: none; }
+.xduel-modebar-row.fade-r { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent); }
+.xduel-modebar-row.fade-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px); mask-image: linear-gradient(90deg, transparent, #000 48px); }
+.xduel-modebar-row.fade-l.fade-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(90deg, transparent, #000 48px, #000 calc(100% - 48px), transparent); }
+.xduel-modebar-row button {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 10px; height: 46px; padding: 0 20px;
+  border: 1px solid var(--border2); border-radius: 13px; background: var(--surface); color: var(--xtell-ink, var(--white));
+  font: 500 15px var(--font-body), sans-serif; white-space: nowrap; cursor: pointer;
+}
+.xduel-modebar-row button:hover { border-color: var(--red); }
+.xduel-modebar-row button.on { border-color: var(--red); background: var(--red-dim); color: var(--red); }
+@media (max-width: 560px) {
+  .xduel-modebar { gap: 8px; }
+  .xduel-modebar-arrow { display: none; }
+  .xduel-modebar-label { font-size: 14px; }
+  .xduel-modebar-row { gap: 8px; }
+  .xduel-modebar-row button { height: 42px; padding: 0 14px; gap: 8px; font-size: 14.5px; }
+}
 .xduel-resume { padding: 60px 0; text-align: center; color: var(--muted); font-size: 15px; }
 .xduel-resume p { margin: 0 0 18px; color: var(--white); }
 /* Out of free duels for the day (no counts are shown before that). */
@@ -5145,6 +5178,7 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
    tall, and the scores, prices, notes and picks sit level (owner, Oct 19:
    "two cards are not aligned"). 260 px fits most names in two lines; on a
    phone the cards stack. */
+.xduel-xt .xduel-refhint { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 .xduel-xt .xduel-public { margin: -14px 0 24px; text-align: right; font-size: 12px; line-height: 1.5; color: var(--muted); }
 @media (max-width: 560px) { .xduel-xt .xduel-public { text-align: left; } }
 .xduel-xt .xduel-report .mr-cards { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(0, 260px)); justify-content: center; gap: 14px; }

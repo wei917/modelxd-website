@@ -19,6 +19,9 @@ import { sanitizeProviderError, providerErrorKind, ACCOUNT_LIMIT, SAFETY, NOTFOU
 import * as providers                     from '@/lib/providers'
 import { modePriceLabel }                 from '@/lib/providers/pricing'
 import { XDUEL_AUDIO_BUCKET }             from '@/lib/xduel-audio'
+import { portSchemaFor, assignPorts }     from '@/lib/ports'
+import { rewriteRefTokens }              from '@/lib/reference-tokens'
+import { isVideoRecipe, recipeSpec, fitsRecipe, type VideoRecipe } from '@/lib/xduel-recipes'
 
 const LOG = '[duel]'
 
@@ -136,6 +139,26 @@ const withDeadline = (p: Promise<SlotOutput | SlotFailure>, ms: number, onExpire
     )
   })
 
+/** A video length this model takes at 720p, as near `want` as it allows:
+ *  the catalog lists exact lengths (Veo: 4, 6, 8) or a range, and a
+ *  provider refuses any other (same rule as XCreate's clamp). */
+function videoSeconds(model: ModelInfo, want: number): number {
+  const byRes = (model.output_config as any)?.video?.durations_by_resolution
+  const keys = byRes ? Object.keys(byRes) : []
+  const key = keys.find(k => k.startsWith('720')) ?? keys[0]
+  const allowed = key ? byRes[key] : null
+  if (Array.isArray(allowed) && allowed.length) {
+    return [...allowed].sort((a: number, b: number) => Math.abs(a - want) - Math.abs(b - want) || a - b)[0]
+  }
+  if (allowed && typeof allowed === 'object') {
+    let v = want
+    if (Number.isFinite(Number(allowed.min))) v = Math.max(v, Number(allowed.min))
+    if (Number.isFinite(Number(allowed.max))) v = Math.min(v, Number(allowed.max))
+    return v
+  }
+  return want
+}
+
 async function runSlot(
   index:       number,
   model:       ModelInfo,
@@ -145,6 +168,7 @@ async function runSlot(
   duelId:      string,
   controller:  ReadableStreamDefaultController,
   userId:      string,
+  recipe:      VideoRecipe | null = null,
 ): Promise<SlotOutput | SlotFailure> {
   const callContext: providers.CallContext = { userId }
   const start = Date.now()
@@ -276,17 +300,26 @@ async function runSlot(
       console.log(`${LOG} Slot[${index}] VIDEO START model=${model.provider}/${model.model_name}`)
       controller.enqueue(sse(`delta:${index}`, { index, isVideo: true, generating: true }))
 
+      // Each file on its labelled input (first / last frame, references,
+      // the source video, the audio), as XCreate does; the kind of task
+      // tells Veo whether pictures are frames or references.
+      const wired = assignPorts(portSchemaFor(model), attachments)
+      // 圖1 / 圖2 in the prompt, in this model's own words for its reference
+      // pictures (lib/reference-tokens.ts); the duel keeps what was typed.
+      const refCount = wired.filter(a => a.port === 'reference_image').length
+      const modelPrompt = refCount ? rewriteRefTokens(prompt, model, refCount) : prompt
+      if (modelPrompt !== prompt) console.log(`${LOG} Slot[${index}] reference names → ${modelPrompt.slice(0, 120)}`)
       let result
       try {
         result = await providers.generateVideo(
-          model, prompt, '1280x720', 8, attachments,
+          model, modelPrompt, '1280x720', videoSeconds(model, 8), wired,
           (pct) => controller.enqueue(sse(`progress:${index}`, { index, pct })),
           callContext,
           // Default watermark off in duels — we want models judged on their
           // actual output, and a vendor watermark stamped on the video would
           // both leak the model identity (defeating the blind vote) and
           // distract from the comparison. Matches XCreate's default.
-          { watermark: false },
+          { watermark: false, mode: recipe },
         )
       } catch (genErr: any) {
         console.error(`${LOG} Slot[${index}] VIDEO GEN FAILED model=${model.model_name} err=${genErr?.message ?? genErr}`)
@@ -300,15 +333,26 @@ async function runSlot(
       const ext  = result.mediaType.split('/')[1] ?? 'mp4'
       const path = `${duelId}_slot${index}.${ext}`
 
+      // Up to three tries: a ~10 MB video sometimes loses its connection
+      // mid-upload ("fetch failed"), and the video is already made and paid
+      // for (Veo and HappyHorse, XDuel test Oct 19), so giving up at once
+      // threw it away.
       let uploadError: any = null
-      try {
-        const { error } = await sb.storage.from('xduel-ai-videos').upload(path, result.buffer, { contentType: result.mediaType, upsert: false })
-        uploadError = error
-      } catch (uploadEx: any) {
-        // Some upload failures throw instead of returning { error } (e.g.
-        // network-level fetch failures from undici).
-        console.error(`${LOG} Slot[${index}] VIDEO UPLOAD THREW path=${path} err=${uploadEx?.message ?? uploadEx} cause=${uploadEx?.cause?.message ?? ''}`)
-        throw new Error(`Video upload failed (threw): ${uploadEx?.message ?? uploadEx}`)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const { error } = await sb.storage.from('xduel-ai-videos').upload(path, result.buffer, { contentType: result.mediaType, upsert: attempt > 1 })
+          uploadError = error
+        } catch (uploadEx: any) {
+          // Some upload failures throw instead of returning { error } (e.g.
+          // network-level fetch failures from undici).
+          console.error(`${LOG} Slot[${index}] VIDEO UPLOAD THREW (try ${attempt}) path=${path} err=${uploadEx?.message ?? uploadEx} cause=${uploadEx?.cause?.message ?? ''}`)
+          uploadError = { message: uploadEx?.message ?? String(uploadEx) }
+        }
+        if (!uploadError) break
+        if (attempt < 3) {
+          console.warn(`${LOG} Slot[${index}] VIDEO UPLOAD retry ${attempt} after: ${uploadError.message}`)
+          await new Promise(r => setTimeout(r, attempt * 2000))
+        }
       }
       if (uploadError) {
         console.error(`${LOG} Slot[${index}] VIDEO UPLOAD ERROR path=${path} err=${uploadError.message}`)
@@ -365,7 +409,20 @@ export async function POST(req: Request) {
   }
 
 
-  const { prompt, mode = 'text', count = 2, attachment: attachmentInput = null, lang: bodyLang = null } = await req.json()
+  const { prompt, mode = 'text', count = 2, attachment: oneAttachment = null, attachments: manyAttachments = null, recipe: bodyRecipe = null, lang: bodyLang = null } = await req.json()
+  // The inputs, in slot order, each with its port when the page names one
+  // (video kinds, lib/xduel-recipes.ts). An old tab sends one `attachment`.
+  type InputFile = { storagePath: string; bucket: string; mediaType: string; fileName?: string | null; fileSize?: number | null; port?: string }
+  const inputs: InputFile[] = (Array.isArray(manyAttachments) ? manyAttachments : oneAttachment ? [oneAttachment] : [])
+    .filter((a: any) => a && typeof a.storagePath === 'string' && typeof a.bucket === 'string' && typeof a.mediaType === 'string')
+    .slice(0, 4)
+  const attachmentInput: InputFile | null = inputs[0] ?? null
+  // A video duel's kind (owner, Oct 19). An old tab names none: read it from
+  // what it sent.
+  const recipe: VideoRecipe | null = mode !== 'video' ? null
+    : isVideoRecipe(bodyRecipe) ? bodyRecipe
+    : !attachmentInput ? 'text_to_video'
+    : attachmentInput.mediaType.startsWith('video/') ? 'video_to_video' : 'image_to_video'
   // The page language of whoever starts the duel (migration 141, owner,
   // Oct 19: "based on users' language"): the vote feed shows a viewer the
   // duels in their own language first. The language cookie when the page
@@ -378,9 +435,32 @@ export async function POST(req: Request) {
   // to drive generation, so the prompt-length check is relaxed when an
   // attachment is present.
   const promptTooShort = !prompt?.trim() || prompt.trim().length < 3
-  const promptIsOptional = (mode === 'video' || mode === 'image') && !!attachmentInput?.storagePath
+  const promptIsOptional = recipe
+    ? recipeSpec(recipe).promptOptional && inputs.length > 0
+    : mode === 'image' && !!attachmentInput?.storagePath
   if (promptTooShort && !promptIsOptional) {
     return Response.json({ error: 'Prompt too short' }, { status: 400 })
+  }
+  // A video kind's inputs: each file on one of its slots and of that slot's
+  // type, every required slot filled, nothing extra. Text and image duels
+  // keep one file at most.
+  if (recipe) {
+    const slots = recipeSpec(recipe).slots
+    const typeOf = (t: string) => t.split('/')[0]
+    const fits = inputs.length <= slots.length && inputs.every((f, i) => {
+      const slot = f.port ? slots.find(s => s.port === f.port) : slots[i]
+      return !!slot && typeOf(f.mediaType) === slot.type
+    })
+    const filled = (port: string) => inputs.filter((f, i) => (f.port ?? slots[i]?.port) === port).length
+    const required = slots.filter(s => s.required)
+    const missing = required.some(s => filled(s.port) < required.filter(r => r.port === s.port).length)
+    if (!fits || missing) {
+      return Response.json({ error: 'These files do not fit this kind of video duel.', code: 'inputs_mismatch' }, { status: 400 })
+    }
+    // Every file gets its slot's port, so each model reads it in that role.
+    inputs.forEach((f, i) => { if (!f.port) f.port = slots[i].port })
+  } else if (inputs.length > 1) {
+    return Response.json({ error: 'One file at most for this duel.' }, { status: 400 })
   }
   // Cap prompt size (client enforces maxLength=8000; this is the backstop).
   // Long text belongs in a .txt attachment — folded server-side with a 200k-char guardrail.
@@ -443,10 +523,13 @@ export async function POST(req: Request) {
   if (mode === 'audio') pool = pool.filter(m => (m.modes ?? []).includes('text_to_speech'))
   if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
-  // Match the pool to the attachment the user actually sent.
+  // Match the pool to the task. A video duel draws only models that do its
+  // kind (lib/xduel-recipes.ts); the others match the one file sent.
   const hasAttachment = !!attachmentInput?.storagePath
-  const attKind = hasAttachment ? attachmentKind(attachmentInput.mediaType ?? '') : null
-  if (!hasAttachment) {
+  const attKind = hasAttachment ? attachmentKind(attachmentInput!.mediaType ?? '') : null
+  if (recipe) {
+    pool = pool.filter(m => fitsRecipe(m, recipe))
+  } else if (!hasAttachment) {
     pool = pool.filter(m => !requiresAttachment(m))
   } else {
     pool = pool.filter(m => acceptsAttachment(m, attKind!))
@@ -454,9 +537,9 @@ export async function POST(req: Request) {
   if (pool.length < 2) {
     refundQuota()
     return Response.json({
-      error: attKind
+      error: attKind && !recipe
         ? `Not enough ${mode} models accept a ${attKind} attachment. Try a different file, or run without one.`
-        : `Not enough models for mode: ${mode}`,
+        : `Not enough models for mode: ${mode}${recipe ? ` (${recipe})` : ''}`,
     }, { status: 400 })
   }
 
@@ -483,33 +566,44 @@ export async function POST(req: Request) {
   const duelId = crypto.randomUUID()
 
 
-  // Process attachment (duel still uses single attachment from client)
+  // Process the inputs, in slot order, each keeping its port.
   const attachments: providers.Attachment[] = []
   let attachmentId: string | null = null
-  if (attachmentInput?.storagePath) {
+  for (const f of inputs) {
     try {
-      const result = await processAttachment(user.id, attachmentInput.bucket, attachmentInput.storagePath, attachmentInput.mediaType, attachmentInput.fileName, attachmentInput.fileSize)
-      const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType }
-      // Providers get the RESIZED copy's signed URL — capped at 1920px
-      // server-side, so oversized uploads never hit the model raw.
-      if (result.mediaType.startsWith('image/')) {
-        attach.url = result.resizedUrl
-      }
+      const result = await processAttachment(user.id, f.bucket, f.storagePath, f.mediaType, f.fileName ?? f.storagePath.split("/").pop() ?? "file", f.fileSize ?? 0)
+      const attach: providers.Attachment = { buffer: result.buffer, mediaType: result.mediaType, ...(f.port ? { port: f.port } : {}) }
+      // Providers get a signed URL where they want one: the RESIZED copy
+      // for pictures (capped at 1920px server-side), the file itself for
+      // video and audio (Alibaba takes those by URL only).
+      attach.url = result.resizedUrl
       attachments.push(attach)
-      attachmentId = result.attachmentId
-    } catch (err) { console.warn(`${LOG} attachment failed:`, err) }
+      attachmentId ??= result.attachmentId
+    } catch (err) {
+      console.warn(`${LOG} attachment failed:`, err)
+      // A video kind cannot run without its inputs; the others always could.
+      if (recipe) {
+        refundQuota()
+        return Response.json({ error: 'Could not read one of the files. Please try again.' }, { status: 400 })
+      }
+    }
   }
   // Public URL of the input for XVote / replay display (July 19). XDuel
   // user buckets are public (duels are public by design), so this URL is
   // stable — unlike the 1h signed URL above.
-  let inputMedia: { url: string; mediaType: string; fileName: string | null } | null = null
+  // A video kind with several inputs keeps them all (`all`, in slot order
+  // with their ports) so voters see every frame, reference or clip; the
+  // first stays at the top level for every older reader.
+  let inputMedia: { url: string; mediaType: string; fileName: string | null; all?: { url: string; mediaType: string; port: string | null }[] } | null = null
   if (attachmentInput?.storagePath) {
     // Public-bucket URL is deterministic — no client/signing needed.
     const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const publicUrl = (f: InputFile) => `${base}/storage/v1/object/public/${f.bucket}/${f.storagePath}`
     inputMedia = {
-      url:       `${base}/storage/v1/object/public/${attachmentInput.bucket}/${attachmentInput.storagePath}`,
+      url:       publicUrl(attachmentInput),
       mediaType: attachmentInput.mediaType,
       fileName:  attachmentInput.fileName ?? null,
+      ...(recipe ? { all: inputs.map(f => ({ url: publicUrl(f), mediaType: f.mediaType, port: f.port ?? null })) } : {}),
     }
   }
 
@@ -562,7 +656,7 @@ export async function POST(req: Request) {
             enqueue: (chunk: Uint8Array) => { if (live) controller.enqueue(chunk) },
           } as unknown as ReadableStreamDefaultController
           const r = await withDeadline(
-            runSlot(i, current, mode, prompt, attachments, duelId, gate, user.id),
+            runSlot(i, current, mode, prompt, attachments, duelId, gate, user.id, recipe),
             deadlineAt - Date.now(),
             () => { live = false },
           )
@@ -636,9 +730,16 @@ export async function POST(req: Request) {
         slots, attachment_id: attachmentId,
         input_media: inputMedia,
       }
-      let { error: saveErr } = await sb.from('duels').insert(lang ? { ...row, lang } : row)
-      // Until migration 141 adds the column, save the duel without it.
-      if (saveErr && lang && /lang/.test(saveErr.message)) ({ error: saveErr } = await sb.from('duels').insert(row))
+      // `lang` (migration 141) and `recipe` (142): a column the database
+      // does not have yet is left out and the save tried again.
+      const extra: Record<string, unknown> = { ...(lang ? { lang } : {}), ...(recipe ? { recipe } : {}) }
+      let { error: saveErr } = await sb.from('duels').insert({ ...row, ...extra })
+      for (let i = 0; saveErr && i < 2; i++) {
+        const missing = Object.keys(extra).find(k => saveErr!.message.includes(`'${k}'`) || saveErr!.message.includes(`.${k}`))
+        if (!missing) break
+        delete extra[missing]
+        ;({ error: saveErr } = await sb.from('duels').insert({ ...row, ...extra }))
+      }
       if (saveErr) console.error(`${LOG} saving the duel failed: ${saveErr.message}`)
 
       const duelCostCents = Math.round(slots.reduce((sum, sl) => sum + (sl.cost ?? 0), 0) * 100)

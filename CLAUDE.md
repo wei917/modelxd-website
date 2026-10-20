@@ -69,6 +69,12 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `142_duel_recipe.sql` applied 2026-10-19 by the owner (the first run
+  never reached the database; the second did): `duels.recipe` and the
+  public `xduel-user-audio` bucket. Checked live: 'Bad Value' refused
+  (23514, row unchanged); the bucket is public, 25 MB, audio only (a PNG
+  gets 415); the publishable key can neither list it nor upload (RLS); a
+  server upload is served at its public address (test file removed).
   `141_duel_lang.sql` applied 2026-10-19 by the owner: `duels.lang`, the
   starter's page language (one of the five, or null). Checked live: 'fr'
   refused (23514, row unchanged), the publishable key reads no duels, and a
@@ -280,6 +286,32 @@ found Anthropic's web search news "so bad"; X's Taiwan trends had no Taiwan
 topics; Google News RSS is for personal, non-commercial use
 (docs/XNEWS-PLAN.md).
 **No web search here by design** — it's meant to be a clean like-for-like test.
+**Video duels by kind (Oct 19, owner):** a "模式：" row under 影片 (`?recipe=`,
+`app/xduel/RecipeBar.tsx`) with X創作's own modes, order, names
+(`recipefrom.<id>`) and icons, read from `app/xcreate/recipes.tsx` (moved
+out of client.tsx so the two cannot drift): 文字 / 圖片 / 用提示詞編輯 / 頭尾幀
+/ 參考圖片 (1-3) / 音訊／音樂. Left out: 延長影片 and 用參考圖編輯 (one model each
+can take an upload). `lib/xduel-recipes.ts` holds each kind's inputs by
+typed port, whether the prompt may be empty, and `fitsRecipe` (the
+declared mode, as X創作's picker filters).
+**圖N names a reference picture (Oct 19, owner):** users write 圖1 / 图1 /
+画像1 / 이미지1 / image 1 in slot order (a hint says so under XDuel's and
+beside X創作's reference slots); `lib/reference-tokens.ts` rewrites it per
+model just before the call, in XDuel's and X創作's video runs, and the saved
+prompt keeps what was typed. Confirmed forms only: HappyHorse R2V `[Image N]`
+(Alibaba docs), Seedance `[ImageN]` (Replicate's page); every other model
+(Wan 2.7 R2V, Wan 3.0, MiniMax H3, Gemini Omni, Veo, Grok) gets plain words
+in the prompt's language (第一張參考圖) until one test call confirms its own
+form.
+Both models get the same files on the same ports (`assignPorts`), Veo is told
+the kind (`mode`), each model's length is clamped like XCreate's. The duel
+saves `recipe` (migration 142, applied, which also adds the public
+`xduel-user-audio` bucket for 配樂's clip)
+and `input_media.all` (every input, so voters see both frames or every
+reference); the vote feed follows the chip (`recipeOfDuel` reads old duels'
+kind from their input). 延長影片 is left out: Veo extends only its own
+videos from the last 2 days, so an upload has one taker. 配樂・對嘴 has two
+models (Wan 3.0, MiniMax H3), always that pair.
 Each new duel saves the starter's page language (`duels.lang`, migration 141,
 Oct 19; the route saves and the feed reads without it where the column is
 missing), and the vote feed shows the viewer's language first.

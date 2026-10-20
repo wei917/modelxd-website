@@ -62,7 +62,8 @@ const MAX_FILES = 5
 
 function getBucket(mediaType: string, context: 'xduel' | 'xcreate'): string {
   const isVideo = mediaType.startsWith('video/')
-  if (context === 'xduel') return isVideo ? 'xduel-user-videos'  : 'xduel-user-images'
+  // A 配樂/對嘴 duel's song or voice clip: its own public bucket (migration 142).
+  if (context === 'xduel') return isVideo ? 'xduel-user-videos' : mediaType.startsWith('audio/') ? 'xduel-user-audio' : 'xduel-user-images'
   if (isVideo) return 'xcreate-user-videos'
   if (mediaType.startsWith('image/')) return 'xcreate-user-images'
   // Everything else — PDF, audio, text, future document types — is an

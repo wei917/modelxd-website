@@ -13,7 +13,9 @@ import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import MatchResult from '../components/MatchResult'
 import XDuelBar, { type DuelKind } from './XDuelBar'
 import VoteFeed from './VoteFeed'
+import RecipeBar from './RecipeBar'
 import { DUEL_MODELS } from '../../lib/duel-allowance'
+import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe } from '../../lib/xduel-recipes'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 import { isSubmitEnter } from '../../lib/ime'
@@ -97,6 +99,12 @@ function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
 /** A saved slot with no answer; shown in the reader's language (errText). */
 const DID_NOT_FINISH = 'This model did not finish.'
 
+/** The label under a judged input, by the port it fed (lib/xduel-recipes.ts). */
+const PORT_LABEL: Record<string, string> = {
+  first_frame: 'xduel.slot.first', last_frame: 'xduel.slot.last',
+  reference_image: 'xduel.slot.ref', video_in: 'xduel.slot.video', reference_audio: 'xduel.slot.audio',
+}
+
 function slotsToModels(slots: any[], revealed: boolean): ModelState[] {
   return (Array.isArray(slots) ? slots : []).filter(Boolean).map((s: any) => {
     const isImage = !!s.isImage, isVideo = !!s.isVideo, isAudio = !!s.isAudio
@@ -156,7 +164,11 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
   const [resume,     setResume]     = useState<'loading' | 'missing' | null>(resumeId ? 'loading' : null)
   // The duel's own input photo/video, shown to whoever judges a saved duel
   // (owner, Sep 14: a voter judging "animate this photo" needs the photo).
-  const [inputMedia, setInputMedia] = useState<{ url: string; mediaType: string; fileName?: string } | null>(null)
+  const [inputMedia, setInputMedia] = useState<{ url: string; mediaType: string; fileName?: string; all?: { url: string; mediaType: string; port: string | null }[] } | null>(null)
+  // A video duel's kind (owner, Oct 19): 文字生成 / 首幀 / 首尾幀 / 參考圖 /
+  // 改編影片 / 配樂・對嘴, each with its own inputs (lib/xduel-recipes.ts).
+  const [recipe, setRecipe] = useState<VideoRecipe>(DEFAULT_VIDEO_RECIPE)
+  const spec = recipeSpec(recipe)
   const [prompt,     setPrompt]     = useState('')
   const [loading,    setLoading]    = useState(false)
   const [apiError,   setApiError]   = useState<string | null>(null)
@@ -189,6 +201,8 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       const mm: Mode = m === 'text' || m === 'video' || m === 'audio' ? m : 'image'
       if (q) seed.current = { q: q.slice(0, 2000), m: mm }
       if (mm !== mode) setMode(mm)
+      const r = url.searchParams.get('recipe')
+      if (mm === 'video' && isVideoRecipe(r)) setRecipe(r)
     } catch { /* no window */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -283,8 +297,9 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
         setViewer(role)
         setDuelId(d.id)
         if (d.mode === 'text' || d.mode === 'image' || d.mode === 'video' || d.mode === 'audio') setMode(d.mode)
+        if (isVideoRecipe(d.recipe)) setRecipe(d.recipe)
         setPrompt(d.prompt ?? '')
-        setInputMedia(d.input_media?.url && /^(image|video)\//.test(d.input_media.mediaType ?? '') ? d.input_media : null)
+        setInputMedia(d.input_media?.url && /^(image|video|audio)\//.test(d.input_media.mediaType ?? '') ? d.input_media : null)
         setModels(slotsToModels(d.slots, !!j.revealed))
         setVote1(v1); setVote2(v2)
         const judged = role === 'other' ? !!j.revealed : v1 !== null && v2 !== null
@@ -310,12 +325,13 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
     : msg === DID_NOT_FINISH ? t('xduel.err.other')
     : msg
 
-  const setAddress = (id: string | null, kind: string = mode) => {
+  const setAddress = (id: string | null, kind: string = mode, rec: VideoRecipe = recipe) => {
     try {
       const u = new URL(window.location.href)
       u.pathname = id ? `/xduel/${id}` : '/xduel'
       u.search = ''
       if (!id) u.searchParams.set('mode', kind)
+      if (!id && kind === 'video' && rec !== DEFAULT_VIDEO_RECIPE) u.searchParams.set('recipe', rec)
       window.history.replaceState(window.history.state, '', u)
     } catch { /* no window */ }
   }
@@ -333,11 +349,16 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       // Attachments are held in the browser until submit — upload now.
       const committed = await commitAttachments(attachments)
       if (committed !== attachments) setAttachments(committed)
-      const a0 = committed[0]
+      // Every file in slot order; a video kind names each one's port (首幀,
+      // 尾幀, 參考圖, 原影片, 音訊) so both models read it in the same role.
+      const files = committed.map((a, i) => ({
+        storagePath: a.storagePath, bucket: a.bucket, mediaType: a.mediaType, fileName: a.fileName, fileSize: a.fileSize,
+        ...(mode === 'video' && spec.slots[a.slotIndex ?? i] ? { port: spec.slots[a.slotIndex ?? i].port } : {}),
+      }))
       const res = await fetch('/api/xduel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, count, lang, attachment: a0 ? { storagePath: a0.storagePath, bucket: a0.bucket, mediaType: a0.mediaType, fileName: a0.fileName, fileSize: a0.fileSize } : null }),
+        body: JSON.stringify({ prompt, mode, count, lang, ...(mode === 'video' ? { recipe } : {}), attachments: files }),
       })
 
       if (!res.ok || !res.body) {
@@ -643,6 +664,14 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
     if (k === 'text' || k === 'audio') setAttachments([])
     setAddress(null, k)
   }
+  // A video kind picked from its chips: its own inputs, so the files staged
+  // for another kind go.
+  const pickRecipe = (r: VideoRecipe) => {
+    if (r === recipe) return
+    setRecipe(r)
+    setAttachments([])
+    setAddress(null, 'video', r)
+  }
 
   // Prompt chars ≈ /3; attached .txt files count too (≈ bytes/4) —
   // they're folded into the prompt server-side, so they cost real tokens.
@@ -676,6 +705,12 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
   // duels were tried and removed July 19; XCreate is the paid path).
   const quotaLeft = quota ? quota.left[mode] : Infinity
   const limitNote = quotaLeft === 0 ? t('xduel.limit') : null
+  // Start waits for what the task needs: every required input of a video
+  // kind, and a prompt unless the kind's inputs carry the task.
+  const missingInputs = mode === 'video' && spec.slots.some((s, i) => s.required && !attachments.some((a, j) => (a.slotIndex ?? j) === i))
+  const canStart = quotaLeft !== 0 && !missingInputs && (
+    prompt.trim().length >= 3 || (mode === 'video' && spec.promptOptional && attachments.length > 0)
+  )
   // Image / video models are billed per generation in fractional dollars
   // (e.g. $0.04). Math.round() on a $14.10 figure was fine, but the previous
   // version used Math.round on $0.04, which floored to $0. Switch to two-
@@ -819,12 +854,20 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                 ? `"${prompt.substring(0,80)}${prompt.length>80?'…':''}"`
                 : revealHeadline}
             </h1>
-            {/* A saved duel's input, for whoever judges it. */}
+            {/* A saved duel's inputs, for whoever judges it: every frame,
+                reference, clip or song a video kind was made from. */}
             {inputMedia && (step === 2 || step === 4) && (
-              <div className="xduel-input">
-                {inputMedia.mediaType.startsWith('image/')
-                  ? <img src={inputMedia.url} alt="" onClick={() => setLightbox(inputMedia.url)} />
-                  : <video src={inputMedia.url} controls muted playsInline />}
+              <div className="xduel-inputs">
+                {(inputMedia.all ?? [{ ...inputMedia, port: null }]).map((f, i) => (
+                  <figure key={i} className="xduel-input">
+                    {f.mediaType.startsWith('image/')
+                      ? <img src={f.url} alt="" onClick={() => setLightbox(f.url)} />
+                      : f.mediaType.startsWith('audio/')
+                      ? <audio src={f.url} controls preload="metadata" />
+                      : <video src={f.url} controls muted playsInline />}
+                    {f.port && <figcaption>{t(PORT_LABEL[f.port] ?? 'xduel.slot.ref1')}</figcaption>}
+                  </figure>
+                ))}
               </div>
             )}
           </div>
@@ -854,9 +897,30 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                   accepts documents only (PDF / txt): the router feeds the PDF
                   natively to pdf_to_text-capable models and folds extracted
                   text into the prompt for the rest — keeping the duel fair. */}
+              {/* 影片's kinds (owner, Oct 19): a Mode row above the box they shape. */}
+              {mode === 'video' && <RecipeBar recipe={recipe} onPick={pickRecipe} t={t} />}
               <div className="prompt-box framed">
-                {/* A speech duel reads the text; nothing is attached, so no row. */}
-                {mode !== 'audio' && <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                {/* A video kind's own labelled inputs (none for 文字生成). */}
+                {mode === 'video' && spec.slots.length > 0 && <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
+                  <LabeledSlotsPicker
+                    key={recipe}
+                    slots={spec.slots.map(s => ({ label: t(s.label), hint: t(s.hint) }))}
+                    attachments={attachments}
+                    onChange={setAttachments}
+                    context="xduel"
+                    compact
+                    arrows={!!spec.arrows}
+                    accept={spec.slots[0].type === 'audio'
+                      ? 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/webm,audio/flac'
+                      : spec.slots[0].type === 'video'
+                      ? 'video/mp4,video/quicktime,video/webm'
+                      : 'image/jpeg,image/png,image/gif,image/webp'}
+                    {...(spec.slots[0].type === 'audio' ? { audioMaxSeconds: 15 } : {})}
+                  />
+                </div>}
+                {/* A speech duel reads the text; nothing is attached, so no row.
+                    Video's inputs come from its kind, above. */}
+                {mode !== 'audio' && mode !== 'video' && <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
                   <LabeledSlotsPicker
                     slots={[{ label: t('xduel.attach'), hint: mode === 'text' ? t('xduel.attach.hint.doc') : t('xduel.attach.hint') }]}
                     attachments={attachments}
@@ -865,23 +929,26 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                     compact
                     accept={mode === 'text'
                       ? 'application/pdf,text/plain'
-                      : 'image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm'}
+                      : 'image/jpeg,image/png,image/gif,image/webp'}
                   />
                 </div>}
                 <textarea
                   className="prompt-textarea"
                   maxLength={mode === 'audio' ? 300 : 8000}
-                  placeholder={t('xduel.ph.' + mode)}
+                  placeholder={t(mode === 'video' ? 'xduel.ph.video.' + recipe : 'xduel.ph.' + mode)}
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
                     if (isSubmitEnter(e, { requireModifier: true })) {
                       e.preventDefault()
-                      if (prompt.trim().length >= 3) startDuel()
+                      if (canStart) startDuel()
                     }
                   }}
                 />
               </div>
+              {/* 圖1 / 圖2 name the reference pictures; each model gets them
+                  in its own words (lib/reference-tokens.ts). */}
+              {mode === 'video' && recipe === 'reference_frames' && <p className="xduel-refhint">{t('ref.howto')}</p>}
               <div className="duel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
                 <span className="prompt-counter">
                   {mode === 'audio'
@@ -893,7 +960,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                 {/* Improve prompt (owner, Sep 16): secondary, beside Start;
                     a suggestion the user confirms, never a duel start. */}
                 {refiner.action}
-                <button className="btn-battle" onClick={startDuel} disabled={prompt.trim().length < 3 || quotaLeft === 0}>
+                <button className="btn-battle" onClick={startDuel} disabled={!canStart}>
                   ⚔️ {t('xduel.cta')} →
                 </button>
               </div>
@@ -905,7 +972,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
 
               {/* Other people's duels of this type to vote on (XVote's
                   feed, folded in Oct 17 in place of the 熱門 starters). */}
-              <VoteFeed mode={mode} />
+              <VoteFeed mode={mode} recipe={mode === 'video' ? recipe : null} />
               </>
             </div>
           )}

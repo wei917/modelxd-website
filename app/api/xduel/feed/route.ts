@@ -26,6 +26,7 @@ export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
 import { DUEL_MODELS } from '@/lib/duel-allowance'
+import { isVideoRecipe, recipeOfDuel } from '@/lib/xduel-recipes'
 import { signAudioDuels } from '@/lib/xduel-audio'
 
 const MODES = new Set(['text', 'image', 'video', 'audio'])
@@ -67,6 +68,8 @@ export async function GET(req: Request) {
 
   const url  = new URL(req.url)
   const mode = MODES.has(url.searchParams.get('mode') ?? '') ? url.searchParams.get('mode')! : 'text'
+  // Video: the chosen kind's duels only (owner, Oct 19: "feed follows the chip").
+  const recipe = mode === 'video' && isVideoRecipe(url.searchParams.get('recipe')) ? url.searchParams.get('recipe') : null
 
   const sb = serviceClient()
 
@@ -76,11 +79,11 @@ export async function GET(req: Request) {
   const { data: voted } = await sb.from('duel_votes').select('duel_id').eq('user_id', user.id)
   const votedIds = new Set((voted ?? []).map((r: any) => r.duel_id))
 
-  // `lang` (migration 141) is read when the column exists, so the feed works
-  // on either side of it.
+  // `lang` (migration 141) and `recipe` (142) are read when the columns
+  // exist, so the feed works on either side of them.
   const columns = 'id, mode, prompt, slots, vote2, community_vote_count, created_at, input_media'
-  let withLang = true
-  const base = () => { const cols: string = withLang ? `${columns}, lang` : columns; return sb.from('duels').select(cols).eq('mode', mode).is('deleted_at', null) }
+  const optional = ['lang', 'recipe']
+  const base = () => { const cols: string = [columns, ...optional].join(', '); return sb.from('duels').select(cols).eq('mode', mode).is('deleted_at', null) }
 
   // Two windows, merged. blendedOrder on the client weighs recency against
   // popularity, but it can only rank what it is handed — a single created_at
@@ -92,7 +95,12 @@ export async function GET(req: Request) {
           .order('created_at', { ascending: false }).limit(POPULAR_LIMIT),
   ])
   let [recentRes, popularRes] = await read()
-  if (recentRes.error && /lang/.test(recentRes.error.message)) { withLang = false; [recentRes, popularRes] = await read() }
+  for (let i = 0; recentRes.error && i < 2; i++) {
+    const missing = optional.find(c => recentRes.error!.message.includes(`.${c}`))
+    if (!missing) break
+    optional.splice(optional.indexOf(missing), 1)
+    ;[recentRes, popularRes] = await read()
+  }
 
   let rows: any[] | null = null
   if (recentRes.error) {
@@ -115,6 +123,7 @@ export async function GET(req: Request) {
     // 1v1 only (owner, Oct 18): the 3- and 4-model duels from before stay
     // in the database and on their links, but take no more votes here.
     .filter(d => Array.isArray(d.slots) && d.slots.length === DUEL_MODELS)
+    .filter(d => !recipe || recipeOfDuel(d) === recipe)
     .map(d => ({
       id: d.id, mode: d.mode, prompt: d.prompt,
       vote2: d.vote2 ?? null,
