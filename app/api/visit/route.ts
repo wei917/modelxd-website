@@ -73,6 +73,11 @@ const text = (x: unknown, max: number): string | null =>
   typeof x === 'string' && x.trim() ? x.trim().slice(0, max) : null
 const count = (x: unknown, max: number): number =>
   typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(max, Math.round(x))) : 0
+/** A time zone name this runtime knows ('Asia/Taipei'), else null. */
+const zoneName = (x: unknown): string | null => {
+  if (typeof x !== 'string' || x.length > 64 || !/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/.test(x)) return null
+  try { new Intl.DateTimeFormat('en-US', { timeZone: x }); return x } catch { return null }
+}
 
 const service = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -195,6 +200,10 @@ export async function POST(req: NextRequest) {
     const city = req.headers.get('x-vercel-ip-city')
     let cityName: string | null = null
     try { cityName = city ? decodeURIComponent(city).slice(0, 100) : null } catch { cityName = city?.slice(0, 100) ?? null }
+    // The visitor's own time zone (supabase/145; owner, Oct 20: "you should
+    // record timezone, not UTC"): the browser's, else Vercel's guess for the
+    // connection. The visit keeps the first one it gets.
+    const timeZone = zoneName(b.tz) ?? zoneName(req.headers.get('x-vercel-ip-timezone'))
 
     const { error } = await service().rpc('log_site_visit', {
       p_id:             b.id,
@@ -210,6 +219,7 @@ export async function POST(req: NextRequest) {
       p_device:         deviceOf(ua),
       p_pages:          Math.max(1, count(b.pages, 5000)),
       p_active_seconds: count(b.active, 86400),
+      p_time_zone:      timeZone,
     })
     if (error && !warned) { warned = true; console.warn(`${LOG} log_site_visit failed: ${error.message}`) }
 

@@ -96,10 +96,15 @@ function newPage(): Page {
   return { id: uuid(), key: currentPageKey(), activeMs: 0 }
 }
 
+/** The visitor's own time zone, from the device's clock (supabase/145). */
+function timeZone(): string {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone ?? '' } catch { return '' }
+}
+
 function send(v: Visit, leaving: boolean) {
   const body = JSON.stringify({
     id: v.id, landing: v.landing, referrer: v.referrer, ad: v.ad,
-    pages: v.pages, active: Math.round(v.activeMs / 1000),
+    pages: v.pages, active: Math.round(v.activeMs / 1000), tz: timeZone(),
     ...(v.page ? { page: { id: v.page.id, key: v.page.key, active: Math.round(v.page.activeMs / 1000) } } : {}),
   })
   try {
