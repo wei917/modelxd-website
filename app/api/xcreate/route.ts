@@ -23,6 +23,8 @@ import { XCREATE_PROMPT_MAX }           from '@/lib/xcreate-limits'
 import * as providers                   from '@/lib/providers'
 import { createClient }                 from '@supabase/supabase-js'
 import { debitCredits, grantCredits, InsufficientCreditsError, getUserCredits, formatCents } from '@/lib/credits'
+import { claimFirstUse, MINE_PREFIX, resolveVoice } from '@/lib/xcreate-voices'
+import { VOICE_CLONE_USD } from '@/lib/providers/minimax'
 import { estimateCost, searchRate, supportsWebSearch, resolveTokenRate } from '@/lib/providers/pricing'
 import { sanitizeProviderError } from '@/lib/provider-errors'
 import { portSchemaFor, assignPorts, toWires } from '@/lib/ports'
@@ -289,12 +291,19 @@ async function runSlot(
       const cfg = model.output_config?.audio ?? {}
       const voice = typeof options.voice === 'string' ? options.voice : null
       const format = typeof options.format === 'string' ? options.format : null
+      // Your own voice (X創作's 我的聲音, migration 144): `mine:<row>` →
+      // MiniMax's id, only for the account that made it.
+      const mine = voice?.startsWith(MINE_PREFIX) ? await resolveVoice(sb, userId, voice) : null
+      if (voice?.startsWith(MINE_PREFIX)) {
+        if (!mine) throw new Error('USERMSG: This voice is no longer available. Record it again under My voice.')
+        if (model.provider !== mine.provider) throw new Error('USERMSG: Only MiniMax speech models can speak with your own voice.')
+      }
       // The time shown is the provider's call alone: our upload and signing
       // below are not the model's (owner, Oct 1: "remove our parts").
       const callAt = Date.now()
       const result = await providers.generateSpeech(
         model, prompt,
-        { voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null, seconds: options.seconds ?? null },
+        { voice: mine ? mine.voice_id : voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null, seconds: options.seconds ?? null },
         callContext,
       )
       const callEnd = Date.now()
@@ -315,12 +324,15 @@ async function runSlot(
       }, `xcreate-ai-audio/${path}`)
 
       const rt = callEnd - callAt
-      await patch({ text: signed.signedUrl, streaming: false, done: true, cost: result.cost, response_time: rt, progress: 100 })
-      console.log(`${LOG} Slot[${index}] spoke ${result.durationSeconds?.toFixed(1) ?? '?'}s with ${voice ?? (cfg.voices ?? [])[0]?.id ?? 'default'} ($${result.cost.toFixed(4)})`)
+      // MiniMax charged its $1.50 for the voice's first words just now;
+      // whichever seat claims the first use carries it (once per voice).
+      const cost = result.cost + (mine && await claimFirstUse(sb, mine.id) ? VOICE_CLONE_USD : 0)
+      await patch({ text: signed.signedUrl, streaming: false, done: true, cost, response_time: rt, progress: 100 })
+      console.log(`${LOG} Slot[${index}] spoke ${result.durationSeconds?.toFixed(1) ?? '?'}s with ${mine ? `own voice ${mine.id}` : voice ?? (cfg.voices ?? [])[0]?.id ?? 'default'} ($${cost.toFixed(4)})`)
       return {
         text: signed.signedUrl, isImage: false, isVideo: false, isAudio: true,
         durationSeconds: result.durationSeconds ?? null, voice: voice ?? null,
-        responseTime: rt, cost: result.cost,
+        responseTime: rt, cost,
       }
     }
 
@@ -744,9 +756,20 @@ export async function POST(req: Request) {
         thinkingLevel: o.thinking_level ?? null,
       })
     }, 0)
+    // A voice of your own (`mine:<id>`, lib/xcreate-voices.ts) costs
+    // MiniMax's fee the first time it speaks: reserve it once when this run
+    // may be that time. A voice that is not yours fails in its slot.
+    let voiceFeeEst = 0
+    const mineOpt = mode === 'audio'
+      ? (modelOptions as any[]).find(o => typeof o?.voice === 'string' && o.voice.startsWith(MINE_PREFIX))
+      : null
+    if (mineOpt) {
+      const v = await resolveVoice(serviceClient(), user.id, mineOpt.voice).catch(() => null)
+      if (v && !v.first_used_at) voiceFeeEst = VOICE_CLONE_USD
+    }
     // Mock runs cost nothing, so they must not reserve anything either —
     // otherwise a test would still move the balance and then refund it.
-    const estCents = mockEnabled() ? 0 : Math.round(estDollars * 100 * (1 - discountFor(models.length)))
+    const estCents = mockEnabled() ? 0 : Math.round((estDollars + voiceFeeEst) * 100 * (1 - discountFor(models.length)))
     if (estCents > 0) {
       // RESERVE, don't just check. Runs are concurrent now, so a plain
       // balance check would let N simultaneous requests each see the same

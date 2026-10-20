@@ -120,6 +120,15 @@ voices take a delivery instruction (the ⚙ settings under the model: accent,
 mood, pace). For a Taiwanese Mandarin accent, pick Gemini 3.8 Flash TTS and
 write 「用台灣腔的國語說，溫暖親切。」. The MiniMax voices speak standard accents.
 
+**My voice (我的聲音).** In Audio, pick From → My voice to have scripts read
+in your own voice. Record yourself once reading the passage shown on the page
+(10 to 30 seconds, your own voice only; a recording of someone else will not
+pass the check), then any script is spoken in it by the MiniMax Speech 2.8
+models. Making the voice is free; the first time it speaks costs $1.50
+(MiniMax's fee), then the normal per-character price. You can keep 5 voices
+and delete any; a voice not used within 7 days is deleted by MiniMax. The
+recording itself is not kept.
+
 **Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** The fifth
 type in XCreate's top bar: describe a short film (what it is
 for, what happens, the feel, any words that must appear), pick the shape

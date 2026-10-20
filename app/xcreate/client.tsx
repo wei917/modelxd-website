@@ -13,6 +13,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useAuthModal } from '../../lib/AuthModalContext'
+import MyVoices, { type MyVoice } from './MyVoices'
 import { useLang, tOr } from '../../lib/i18n'
 import { isStudioType, onStudioTypeRequest, publishStudioType, type StudioType } from '../components/xcreate/studio-type'
 import StandaloneTrending from './StandaloneTrending'
@@ -126,7 +127,7 @@ function modeMatchesMode(modePattern: string, m: Mode): boolean {
   // Speech and music are both the Audio tab: one writes a script, the
   // other a song, and the slot card tells them apart by the options the
   // row declares (a music row has no voices, so no voice picker).
-  if (m === 'audio') return modePattern === 'text_to_speech' || modePattern === 'text_to_music'
+  if (m === 'audio') return modePattern === 'text_to_speech' || modePattern === 'text_to_music' || modePattern === 'voice_clone'
   if (m === 'text')  return (
     modePattern === 'text_to_text'  ||
     modePattern === 'image_to_text' ||
@@ -1133,6 +1134,13 @@ function CreateStudio() {
   // for the current output type. `catalog` holds the enabled models' modes so
   // we can hide recipes no model supports.
   const [recipeMode, setRecipeMode] = useState<ModelMode>('text_to_video')
+  // 我的聲音 (Oct 20): the voice of your own the run speaks in (a row of
+  // xcreate_voices, sent as `mine:<id>`), your list and MiniMax's fee for a
+  // voice's first words, for the estimate.
+  const [myVoiceId, setMyVoiceId] = useState<string | null>(null)
+  const [myVoices, setMyVoices] = useState<MyVoice[]>([])
+  const [myVoiceFee, setMyVoiceFee] = useState(0)
+  const ownVoiceRun = mode === 'audio' && recipeMode === 'voice_clone'
   const [catalog, setCatalog] = useState<{ modes: ModelMode[]; output_modalities: string[] }[]>([])
 
   // validateOpts is the single source of truth for "what options are valid
@@ -2346,6 +2354,7 @@ function CreateStudio() {
     const promptOkForGen = runPrompt.trim().length >= 1 ||
       ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachmentForGen)
     if (!promptOkForGen || activeModels.length === 0 || phase === 'generating') return
+    if (ownVoiceRun && !myVoiceId) return
     // A previous failure's banner (moderation refusal, upload error, 402)
     // must not sit above the fresh run it prompted the user to fire.
     setLoadError(null); setNeedsTopUp(false)
@@ -2410,7 +2419,9 @@ function CreateStudio() {
         // voice and format pickers rendered, saved and were dropped here, so
         // every run spoke in the row's first voice whatever you picked. If
         // you add a control to the ⚙ panel, add it to THIS list too.
-        voice:          opts.voice ?? (mode === 'audio' ? autoVoice((m.output_config as any)?.audio?.voices ?? [], opts.language, prompt, lang) : null),
+        // 我的聲音: every seat speaks in the voice picked in the box.
+        voice:          ownVoiceRun ? (myVoiceId ? `mine:${myVoiceId}` : null)
+          : opts.voice ?? (mode === 'audio' ? autoVoice((m.output_config as any)?.audio?.voices ?? [], opts.language, prompt, lang) : null),
         format:         opts.format ?? null,
         language:       opts.language ?? null,
         style:          mode === 'audio' && typeof opts.style === 'string' && opts.style.trim() ? opts.style.trim() : null,
@@ -3900,7 +3911,7 @@ function CreateStudio() {
     : (prompt.trim().length >= 3 ||
       ((mode === 'video' || mode === 'image' || recipeMode === 'audio_to_text') && hasAttachment)) &&
       promptRequiredBy.length === 0
-  const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample
+  const canGenerate = promptOk && activeModels.length > 0 && phase !== 'generating' && !attachingSample && (!ownVoiceRun || !!myVoiceId)
 
   // Once the user fires a generation, every setup control (mode tabs,
   // model picker, per-slot options, prompt, attachment) freezes — we
@@ -3932,6 +3943,8 @@ function CreateStudio() {
       const d = estimateSlotDollars(m, mode, slotOptions[i], prompt.length, docTokens)
       if (d != null) { total += d; anyKnown = true }
     }
+    // A voice of your own pays MiniMax's fee once, at its first words.
+    if (anyKnown && ownVoiceRun && myVoices.some(v => v.id === myVoiceId && !v.used)) total += myVoiceFee
     return anyKnown ? total : null
   })()
 
@@ -4002,6 +4015,13 @@ function CreateStudio() {
                   boxShadow: promptFlash ? '0 0 0 3px rgba(214,59,50,0.30)' : 'none',
                   transition: 'box-shadow 0.4s ease, border-color 0.2s',
                 }}>
+                  {ownVoiceRun && (
+                    <MyVoices t={t} lang={lang} signedIn={!!userId}
+                      onSignIn={() => showAuth('/xcreate?type=audio')}
+                      value={myVoiceId} onChange={setMyVoiceId}
+                      onVoices={(list, fee) => { setMyVoices(list); setMyVoiceFee(fee) }}
+                      disabled={isLocked} />
+                  )}
                   {(() => {
                     const activeTemplate = activeTemplateId ? XCREATE_TEMPLATES.find(x => x.id === activeTemplateId) : null
                     const templateSlots = activeTemplate?.attachmentSlots?.map((sl, si) => ({
@@ -4051,8 +4071,9 @@ function CreateStudio() {
                     // handleComposerAttachments).
                     const generic = !slots || slots.length === 0
                     // 影片 has none: its Mode row says what is uploaded, and
-                    // 文字 takes nothing (as XDuel's).
-                    if (generic && mode === 'video') return null
+                    // 文字 takes nothing (as XDuel's). 我的聲音 takes no file
+                    // either: the voice above is its input.
+                    if (generic && (mode === 'video' || ownVoiceRun)) return null
                     if (generic) {
                       slots = [{ label: t('xc.slot.attach'), hint: t('xc.slot.optional') }]
                     }
@@ -4956,7 +4977,7 @@ function CreateStudio() {
                           // behavior unless the user explicitly overrides.
                           const showArV   = mode === 'video' && vidArs.length > 0
                           const showQual  = mode === 'image' && imgQualities.length > 1
-                          const showVoice = mode === 'audio' && audVoices.length > 0
+                          const showVoice = mode === 'audio' && audVoices.length > 0 && !ownVoiceRun
                           const showStyle = mode === 'audio' && takesSpeechStyle(model as any)
                           const showLang  = mode === 'audio' && audLangs.length > 1
                           const showFormat = mode === 'audio' && audFormats.length > 1

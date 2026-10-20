@@ -502,6 +502,29 @@ MiniMax takes none. Taiwanese Mandarin comes from here: MiniMax has no such
 voice (all 332 checked), and Gemini told 「用台灣腔的國語說，溫暖親切。」 is
 the one the owner's ear picked. The film's speak tool routes the same way.
 
+**我的聲音 / My voice (Oct 20; owner: "clone voice and ask the ai to speak
+some text with cloned voice", then "go ahead to do it").** A second From pick
+on 語音 (`voice_clone` in `modes`, declared by MiniMax Speech 2.8 HD and
+Turbo). Own voice only: the person reads a passage shown in the page's
+language (`lib/voice-passages.ts`), Whisper transcribes it and the server
+compares it with the same passage (character-pair Dice, pass at 0.6; a full
+reading scored 0.92-1.00, other speech 0.02-0.36), so a clip of somebody
+else cannot pass; they tick "this is my own voice". MiniMax's own
+`text_validation` is not used: probed Oct 20, it refuses the RIGHT passage in
+Japanese and Korean even at accuracy 0.1. Then MiniMax clones it (free) and a
+row goes in `xcreate_voices` (migration 144, service key only); the page
+knows only the row id (`mine:<id>` in a slot's voice), never MiniMax's id,
+and the route speaks with a voice only for its own account
+(`lib/xcreate-voices.ts`). MiniMax charges $1.50 the first time a voice
+speaks and deletes one unused for 7 days: the seat that claims the first use
+(`first_used_at`, atomic) carries the $1.50, the reserve and the estimate
+include it. The recording is never stored. Caps: 5 voices, 10 tries a day
+(Whisper is house-paid, ~$0.003 a try). `/api/xcreate/voices` (GET / POST
+multipart / DELETE), the panel is `app/xcreate/MyVoices.tsx` (chips and an
+in-place recorder: browser recording → mono WAV, 10-30 s). Deleting an
+account deletes its voices at MiniMax. X角色 keeps text-designed voices only
+(Aug 8 rule, `app/api/xcharacter/tts/route.ts`).
+
 **The canvas board** (`WorkflowCanvas.tsx`)
 is a ComfyUI-style node editor: source photos, generated angles, resulting
 videos, wired together. Multi-select nodes to feed several images into one

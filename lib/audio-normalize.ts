@@ -26,7 +26,9 @@ export interface NormalizedAudio {
 /** Decode + (re)encode `file` so video models accept it. Returns null when
  *  the browser can't decode the file at all — caller keeps the original
  *  and lets the provider report. */
-export async function normalizeAudioForVideo(file: File, maxSeconds = 15): Promise<NormalizedAudio | null> {
+/** `mono`: one channel (X創作's 我的聲音: a voice needs one, and 30 s of
+ *  stereo 48 kHz WAV would pass the 4.5 MB request limit). */
+export async function normalizeAudioForVideo(file: File, maxSeconds = 15, opts?: { mono?: boolean }): Promise<NormalizedAudio | null> {
   let buf: AudioBuffer
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
   try {
@@ -45,7 +47,7 @@ export async function normalizeAudioForVideo(file: File, maxSeconds = 15): Promi
     return { file, trimmed: false, durationSeconds: duration }
   }
 
-  const channels = Math.min(2, buf.numberOfChannels)
+  const channels = opts?.mono ? 1 : Math.min(2, buf.numberOfChannels)
   const frames   = Math.min(buf.length, Math.floor(maxSeconds * buf.sampleRate))
   const wav      = encodeWavPcm16(buf, channels, frames)
   const base     = file.name.replace(/\.[^.]+$/, '')

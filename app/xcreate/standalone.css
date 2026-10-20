@@ -704,3 +704,41 @@
 
 /* 圖1 / 圖2 hint beside the From button for reference runs (Oct 19). */
 .xcs-ref-hint { font-size: 12.5px; color: var(--xc-secondary); margin-left: 4px; }
+
+/* 我的聲音 (Oct 20): your voices and the recorder, inside the prompt box
+   (app/xcreate/MyVoices.tsx). Phone first: chips wrap, the recorder is one
+   column. */
+.xcs-voices { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--xc-rule); }
+.xcs-voices-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.xcs-voices-label { font-size: 13px; font-weight: 700; color: var(--xc-ink); margin-right: 2px; }
+.xcs-voices-note { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--xc-secondary); }
+.xcs-voices-chip { display: inline-flex; align-items: center; min-height: 36px; border-radius: 999px; border: 1px solid var(--xc-rule); background: var(--xc-paper); color: var(--xc-ink); font: 600 14px var(--xc-font); }
+.xcs-voices-chip > button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 6px 0 12px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.xcs-voices-chip > button.x { padding: 0 12px 0 4px; font-size: 17px; color: var(--xc-secondary); }
+.xcs-voices-chip.on { border-color: var(--xc-accent); background: var(--xc-accent-soft); color: var(--xc-accent); }
+.xcs-voices-chip.add { padding: 0 14px; border-style: dashed; color: var(--xc-secondary); cursor: pointer; }
+.xcs-voices-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--xc-ink); }
+.xcs-voices-confirm button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--xc-rule); background: var(--xc-paper); font: 600 13px var(--xc-font); cursor: pointer; }
+.xcs-voices-confirm button.danger { border-color: var(--xc-accent); color: var(--xc-accent); }
+
+.xcs-rec { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--xc-radius); background: var(--xc-soft); }
+.xcs-rec-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; color: var(--xc-ink); }
+.xcs-rec-close { width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; font-size: 20px; color: var(--xc-secondary); cursor: pointer; }
+.xcs-rec-rule { margin: 0; font-size: 13px; line-height: 1.55; color: var(--xc-secondary); }
+.xcs-rec-passage { margin: 0; padding: 12px 14px; border-left: 3px solid var(--xc-accent); border-radius: 8px; background: var(--xc-paper); font-size: 17px; line-height: 1.75; color: var(--xc-ink); }
+.xcs-rec-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.xcs-rec-btn { min-height: 44px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--xc-accent); background: var(--xc-paper); color: var(--xc-accent); font: 700 15px var(--xc-font); cursor: pointer; }
+.xcs-rec-btn.stop { background: var(--xc-accent); color: #fff; }
+.xcs-rec-time { font: 600 14px var(--font-mono), monospace; color: var(--xc-secondary); }
+.xcs-rec-time.live { color: var(--xc-accent); }
+.xcs-rec-hint { margin: -4px 0 0; font-size: 12.5px; color: var(--xc-secondary); }
+.xcs-rec-play { width: 100%; height: 40px; }
+.xcs-rec-consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.5; color: var(--xc-ink); cursor: pointer; }
+.xcs-rec-consent input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; accent-color: var(--xc-accent); }
+.xcs-rec-name { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--xc-secondary); }
+.xcs-rec-name input { flex: 1; min-width: 0; min-height: 38px; padding: 0 12px; border: 1px solid var(--xc-rule); border-radius: 10px; background: var(--xc-paper); font: 15px var(--xc-font); color: var(--xc-ink); }
+.xcs-rec-err { margin: 0; font-size: 13px; line-height: 1.5; color: var(--xc-accent); }
+.xcs-rec-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.xcs-rec-make { min-height: 44px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--xc-accent); color: #fff; font: 700 15px var(--xc-font); cursor: pointer; }
+.xcs-rec-make:disabled { opacity: 0.45; cursor: default; }
+.xcs-rec-fee { font-size: 12.5px; line-height: 1.5; color: var(--xc-secondary); }

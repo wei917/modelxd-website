@@ -30,6 +30,7 @@ export type ModelMode =
   | 'text_to_video' | 'image_to_video' | 'video_to_video' | 'video_edit' | 'extend_video' | 'audio_to_video'
   | 'text_to_speech'
   | 'text_to_music'
+  | 'voice_clone'
   | 'start_end_frames' | 'reference_frames'
 
 /** Deliberately loose: both call sites have their own richer row types, and

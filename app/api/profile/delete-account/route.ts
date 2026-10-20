@@ -119,6 +119,16 @@ export async function POST() {
     }
   }
 
+  // Voices cloned of this person (X創作's 我的聲音, migration 144) live at
+  // MiniMax: delete them there; the rows go with the auth user (cascade).
+  {
+    const { data: voices } = await sb.from('xcreate_voices').select('voice_id').eq('user_id', user.id).is('deleted_at', null)
+    if (voices?.length) {
+      const { deleteVoice } = await import('@/lib/providers/minimax')
+      for (const v of voices) await deleteVoice((v as any).voice_id).catch(() => false)
+    }
+  }
+
   // ── 4. Delete the auth user ──
   const { error: userErr } = await sb.auth.admin.deleteUser(user.id)
   if (userErr) {
