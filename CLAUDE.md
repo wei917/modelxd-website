@@ -69,6 +69,10 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `143_reserve_app_handles.sql` applied 2026-10-20 by the owner: xkit,
+  xoracle and xfilm join `handle_is_reserved()` (the new app names; lib/handle.ts
+  has the same). Checked live: xkit, x.oracle_2, xfi1m and xtell reserved,
+  swift_otter_482 not; the publishable key is refused (401).
   `142_duel_recipe.sql` applied 2026-10-19 by the owner (the first run
   never reached the database; the second did): `duels.recipe` and the
   public `xduel-user-audio` bucket. Checked live: 'Bad Value' refused
