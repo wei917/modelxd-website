@@ -28,6 +28,11 @@ export const HIDDEN_APPS: readonly HiddenApp[] = [
     why: 'feeds not licensed for commercial use',
     paths: ['/xsports', '/api/xsports'],
   },
+  // Oct 20 (owner: "can you hide XWORLD and XARCH"): out of sight, not shut.
+  // Anyone with a world or a floor plan keeps reaching it from the Library
+  // or a saved link.
+  { key: 'xworld', level: 'unlisted', why: 'owner: hidden for now', paths: ['/xworld'] },
+  { key: 'xarch', level: 'unlisted', why: 'owner: hidden for now', paths: ['/xarch'] },
 ]
 
 /** The hidden app a path belongs to (the path itself or anything under it). */

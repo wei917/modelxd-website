@@ -240,6 +240,7 @@ FINAL CUT node on the source board, in your history, and as a download.
 Exporting is free — it is compute, not a model. Available to every
 signed-in account.
 
+<!-- app:xworld -->
 ### XWorld — `/xworld`
 Make 3D things. Two tabs:
 - **3D World** (World Labs Marble): describe a place, or give one photo,
@@ -258,6 +259,9 @@ A failed generation is refunded in full. You can leave the page while it
 builds; everything you make is listed on XWorld and on your Profile.
 Available to every signed-in account.
 
+<!-- /app:xworld -->
+
+<!-- app:xarch -->
 ### XArch — `/xarch`
 X建築設計: floor plans and interior design with AI architects. Upload a photo
 or scan of a floor plan (JPG, PNG or WebP) and an architect reads it into an
@@ -280,6 +284,7 @@ $0.30). Both bill list price for what they actually use.
 Results are design drafts: structural changes still need a licensed architect
 or engineer before a permit or construction. Available to every signed-in
 account; projects are listed on XArch and on your Profile.
+<!-- /app:xarch -->
 
 ### XPersona（X角色）— `/xpersona`
 The home for your AI characters. Create, edit and delete them here: a name
