@@ -4255,12 +4255,15 @@ function CreateStudio() {
                   {/* The From dropdown sits in the prompt box (owner, Oct 3:
                       "put the source drop down to inside the prompt box like
                       what others do"). */}
-                    {mode !== 'video' && <div className="xcs-prompt-tools">
+                    {/* 影片 keeps it too, beside the Mode row above (owner,
+                        Oct 20: "we can still have the dropdown in the prompt
+                        box"); both set the same mode. */}
+                    <div className="xcs-prompt-tools">
                       <div className="xcs-source" ref={fromRef}>
                         <button type="button" className="xcs-source-btn" disabled={isLocked}
                           aria-haspopup="listbox" aria-expanded={fromOpen}
                           onClick={() => !isLocked && setFromOpen(o => !o)}>
-                          <span className="xcs-source-label">{t('xcreate.from')}</span>
+                          <span className="xcs-source-label">{t(mode === 'video' ? 'xduel.recipe.mode' : 'xcreate.from')}</span>
                           {t('recipefrom.' + recipeMode)}
                           <span aria-hidden className="xcs-source-caret">▾</span>
                         </button>
@@ -4269,9 +4272,8 @@ function CreateStudio() {
                       {/* 圖1 / 圖2 name the reference pictures; each model
                           gets them in its own words (lib/reference-tokens.ts). */}
                       {recipeMode === 'reference_frames' && <span className="xcs-ref-hint">{t('ref.howto')}</span>}
-                    </div>}
+                    </div>
                 </div>
-                {mode === 'video' && recipeMode === 'reference_frames' && <p className="xcs-ref-note">{t('ref.howto')}</p>}
     </>
   )
 

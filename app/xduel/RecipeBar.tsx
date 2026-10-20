@@ -78,3 +78,49 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
     </div>
   )
 }
+
+/** The same choice as a dropdown inside the prompt box (owner, Oct 20: "we
+ *  can still have the dropdown in the prompt box"; "a dropdown is much
+ *  easier to select"), kept in step with the row: both read and set one
+ *  mode. Closes on a press outside or Escape. */
+export function ModeDropdown<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, disabled }: {
+  recipe: K
+  onPick: (r: K) => void
+  t: (k: string) => string
+  kinds?: readonly K[]
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const down = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false) }
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', down)
+    document.addEventListener('keydown', key)
+    return () => { document.removeEventListener('pointerdown', down); document.removeEventListener('keydown', key) }
+  }, [open])
+  const list = kinds ?? (KINDS as readonly string[] as readonly K[])
+  return (
+    <div className="xduel-modedrop" ref={box}>
+      <button type="button" className="xduel-modedrop-btn" aria-haspopup="listbox" aria-expanded={open}
+        disabled={disabled} onClick={() => setOpen(o => !o)}>
+        <span className="xduel-modedrop-label">{t('xduel.recipe.mode')}</span>
+        <InputIcon kind={RECIPE_ICONS[recipe]?.[0] ?? 'video'} size={16} />
+        <span>{t('recipefrom.' + recipe)}</span>
+        <span aria-hidden className="xduel-modedrop-caret">▾</span>
+      </button>
+      {open && (
+        <div className="xduel-modedrop-menu" role="listbox" aria-label={t('xduel.recipe.label')}>
+          {list.map(k => (
+            <button key={k} type="button" role="option" aria-selected={k === recipe}
+              className={k === recipe ? 'on' : ''} onClick={() => { onPick(k); setOpen(false) }}>
+              <InputIcon kind={RECIPE_ICONS[k]?.[0] ?? 'video'} size={18} />
+              <span>{t('recipefrom.' + k)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

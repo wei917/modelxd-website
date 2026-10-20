@@ -5145,6 +5145,28 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 }
 .xduel-modebar-row button:hover { border-color: var(--red); }
 .xduel-modebar-row button.on { border-color: var(--red); background: var(--red-dim); color: var(--red); }
+/* The same mode as a dropdown inside the prompt box (Oct 20, owner). */
+.xduel-xt .xduel-prompt-tools { display: flex; align-items: center; gap: 8px; padding: 0 14px 12px; }
+.xduel-modedrop { position: relative; }
+.xduel-modedrop-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--border2); border-radius: 999px; background: var(--surface); color: var(--xtell-ink, var(--white));
+  font: 500 13.5px var(--font-body), sans-serif; cursor: pointer; white-space: nowrap;
+}
+.xduel-modedrop-btn:hover, .xduel-modedrop-btn[aria-expanded="true"] { border-color: var(--red); }
+.xduel-modedrop-label { color: var(--muted); }
+.xduel-modedrop-caret { color: var(--muted); font-size: 11px; }
+.xduel-modedrop-menu {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 40; min-width: 220px; padding: 6px;
+  display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--border2); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .12);
+}
+.xduel-modedrop-menu button {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 8px;
+  background: none; color: var(--xtell-ink, var(--white)); font: 500 14px var(--font-body), sans-serif; text-align: left; cursor: pointer;
+}
+.xduel-modedrop-menu button:hover { background: var(--surface2); }
+.xduel-modedrop-menu button.on { background: var(--red-dim); color: var(--red); }
 @media (max-width: 560px) {
   .xduel-modebar { gap: 8px; }
   .xduel-modebar-arrow { display: none; }
