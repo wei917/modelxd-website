@@ -6,12 +6,15 @@
 // can't open.
 import type { Metadata } from 'next'
 import XGameClient from './client'
+import { isGameKey } from '../../lib/xgame-games'
 
 export const metadata: Metadata = {
   title: 'XGame — Watch AI Play. Take a Seat. | ModelXD',
   description: 'AI models play each other — Werewolf today, more games coming. Watch, or sit down and play against them.',
 }
 
-export default async function XGamePage() {
-  return <XGameClient />
+// ?game= names the game (Oct 20, the top bar), drawn on the first paint.
+export default async function XGamePage({ searchParams }: { searchParams: Promise<{ game?: string | string[] }> }) {
+  const g = (await searchParams).game
+  return <XGameClient initialGame={isGameKey(g) ? g : null} />
 }

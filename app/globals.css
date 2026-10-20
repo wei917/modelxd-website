@@ -5020,6 +5020,23 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 @media (max-width: 1100px) { .xduel-bar-icon { width: 34px; height: 34px; } }
 @media (max-width: 700px) { .xduel-bar-icon { width: clamp(28px, 8.4vw, 36px); height: clamp(28px, 8.4vw, 36px); } }
 
+/* XGame's top bar (owner, Oct 20: "the same as xtell ... a list of games
+   (icon + text)"): X先知's row with the games as its rooms, on XDuel's paper
+   (.xduel-xt). No approved per-game icons yet: each is a square cut from the
+   game's own lobby art, rounded, at XDuel's sizes. */
+.xgame-bar-icon { display: block; width: 40px; height: 40px; border-radius: 9px; background: center / cover no-repeat var(--xtell-tint); box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.xgame-bar .xtell-temple-nav { gap: 28px; }
+@media (max-width: 1100px) { .xgame-bar .xtell-temple-nav { gap: 20px; } .xgame-bar-icon { width: 34px; height: 34px; } }
+@media (max-width: 700px) {
+  .xgame-bar .xtell-temple-nav { gap: clamp(6px, 3.4vw, 18px); }
+  .xgame-bar .xtell-temple-nav a { font-size: clamp(11px, 3.1vw, 13px); }
+  .xgame-bar-icon { width: clamp(28px, 8.4vw, 36px); height: clamp(28px, 8.4vw, 36px); border-radius: 8px; }
+}
+/* The chosen game's own header under the bar: its line and blurb. */
+.xgame-intro { margin: -14px 0 18px; max-width: 720px; }
+.xgame-intro .xgame-tag { font-size: 15px; font-weight: 600; color: var(--xtell-ink); }
+.xgame-intro .xgame-blurb { margin-top: 4px; font-size: 14px; line-height: 1.65; color: var(--xtell-secondary); }
+
 /* Header: X先知's room header (red spaced eyebrow, serif headline). */
 .xduel-xt .arena { padding-top: 30px; }
 .xduel-xt .prompt-header { margin-bottom: 26px; }
