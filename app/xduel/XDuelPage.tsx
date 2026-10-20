@@ -13,7 +13,7 @@ import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import MatchResult from '../components/MatchResult'
 import XDuelBar, { type DuelKind } from './XDuelBar'
 import VoteFeed from './VoteFeed'
-import RecipeBar from './RecipeBar'
+import RecipeBar, { ModeDropdown } from './RecipeBar'
 import { DUEL_MODELS } from '../../lib/duel-allowance'
 import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe } from '../../lib/xduel-recipes'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
@@ -945,6 +945,13 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                     }
                   }}
                 />
+                {/* The same mode as the row above, as a dropdown in the box
+                    (owner, Oct 20: "a dropdown is much easier to select"). */}
+                {mode === 'video' && (
+                  <div className="xduel-prompt-tools">
+                    <ModeDropdown recipe={recipe} onPick={pickRecipe} t={t} />
+                  </div>
+                )}
               </div>
               {/* 圖1 / 圖2 name the reference pictures; each model gets them
                   in its own words (lib/reference-tokens.ts). */}
