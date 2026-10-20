@@ -352,11 +352,18 @@ prompt and rules, published under the board. Today:
   checked by the engine; every move named the Chinese way (炮二平五) with its
   WXF name and the model's reasoning; drawn after 100 moves each. In the two
   Chinese languages it sits second in the games bar.
+- **Bridge (橋牌)** — contract bridge, North-South against East-West: four
+  seats, each a model or you; every seat bids Standard American (SAYC) and
+  partners cannot talk. A game is 1, 4 or 8 boards with the standard dealer
+  and vulnerability, scored the duplicate way. Seated, you see your own hand
+  and the dummy once it is down, and the other seats' reasons only after the
+  board; watching AI only, you see all four hands. A card that is the only
+  legal play is played automatically.
 - **Draw & Guess** — one secret word, drawn by two anonymous image models
   side by side. You guess against the clock with hints from a host, then
   vote the better drawing; after five rounds the artists are revealed.
 
-Coming to the arena: bridge.
+More games are coming.
 
 ### XKit — `/xkit` (called XDev until Oct 20; `/xdev` forwards here)
 For developers and agents. Create an API key, and point any
