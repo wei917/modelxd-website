@@ -40,43 +40,50 @@ export async function POST(req: Request) {
   try { body = await req.json() } catch { return Response.json({ error: 'Bad JSON' }, { status: 400 }) }
 
   const db = svc()
-  const r = await handlePoker(body, {
-    userId: user.id,
-    store: {
-      async insert(row) {
-        const { data, error } = await db.from('xtalk_sessions').insert({
-          ...row, game: 'poker', phase: 'poker', turn_order: [], transcript: [],
-        }).select('id').single()
-        if (error) console.warn(`${LOG} create failed:`, error.message)
-        return data?.id ?? null
+  let r: { status: number; body: any }
+  try {
+    r = await handlePoker(body, {
+      userId: user.id,
+      store: {
+        async insert(row) {
+          const { data, error } = await db.from('xtalk_sessions').insert({
+            ...row, game: 'poker', phase: 'poker', turn_order: [], transcript: [],
+          }).select('id').single()
+          if (error) console.warn(`${LOG} create failed:`, error.message)
+          return data?.id ?? null
+        },
+        async load(id) {
+          const { data } = await db.from('xtalk_sessions').select(COLS).eq('id', id).maybeSingle()
+          // Another game's row is not a poker table, whoever owns it.
+          if (!data || (data as any).game !== 'poker') return null
+          return data as unknown as PokerRow
+        },
+        async save(id, version, patch) {
+          const { data, error } = await db.from('xtalk_sessions')
+            .update({ ...patch, updated_at: new Date().toISOString() })
+            .eq('id', id).eq('day', version).select('id')
+          if (error) console.warn(`${LOG} save failed:`, error.message)
+          return !error && (data?.length ?? 0) === 1
+        },
       },
-      async load(id) {
-        const { data } = await db.from('xtalk_sessions').select(COLS).eq('id', id).maybeSingle()
-        // Another game's row is not a poker table, whoever owns it.
-        if (!data || (data as any).game !== 'poker') return null
-        return data as unknown as PokerRow
+      getModel: id => getModelById(id),
+      async bill(usd, tableId, model) {
+        const carried = await accrueFraction(user.id, usd * 1e6)
+        const cents = carried ?? Math.round(usd * 100)
+        if (cents > 0) await debitCredits({
+          userId: user.id, amountCents: cents, referenceType: 'xgame_poker', referenceId: tableId,
+          description: 'XGame poker action', metadata: { model: model.model_name, provider: model.provider, costUsd: usd },
+        })
       },
-      async save(id, version, patch) {
-        const { data, error } = await db.from('xtalk_sessions')
-          .update({ ...patch, updated_at: new Date().toISOString() })
-          .eq('id', id).eq('day', version).select('id')
-        if (error) console.warn(`${LOG} save failed:`, error.message)
-        return !error && (data?.length ?? 0) === 1
+      async canSpend() {
+        const c = await getUserCredits(user.id).catch(() => null)
+        return (c?.balance_cents ?? 0) > 0
       },
-    },
-    getModel: id => getModelById(id),
-    async bill(usd, tableId, model) {
-      const carried = await accrueFraction(user.id, usd * 1e6)
-      const cents = carried ?? Math.round(usd * 100)
-      if (cents > 0) await debitCredits({
-        userId: user.id, amountCents: cents, referenceType: 'xgame_poker', referenceId: tableId,
-        description: 'XGame poker action', metadata: { model: model.model_name, provider: model.provider, costUsd: usd },
-      })
-    },
-    async canSpend() {
-      const c = await getUserCredits(user.id).catch(() => null)
-      return (c?.balance_cents ?? 0) > 0
-    },
-  })
+    })
+  } catch (e: any) {
+    // A replay that cannot be made is a broken table, never a misdeal.
+    console.error(`${LOG} ${body?.action} ${body?.id ?? ''} failed:`, e?.message ?? e)
+    return Response.json({ error: 'The table hit an error. Try again, or start a new game.' }, { status: 500 })
+  }
   return Response.json(r.body, { status: r.status })
 }
