@@ -22,6 +22,7 @@ import { createClient } from '@supabase/supabase-js'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { chessEngine, type ChessEnd, type ChessEngine, type ChessPosition } from '@/lib/chess-engine'
 import { playAiTurn, providerAsk, CHESS_HARNESS } from '@/lib/chess-turn'
+import { seatThinking } from '@/lib/game-thinking'
 
 const LOG = '[xgame:chess]'
 
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
       const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
       return m ? {
         color, modelId: m.id, name: m.display_name, isHuman: false,
-        thinking: typeof cfg?.thinking === 'string' ? cfg.thinking : null,
+        thinking: seatThinking(m, cfg?.thinking),
       } : null
     }
     const white = await mk('w', seats.white), black = await mk('b', seats.black)

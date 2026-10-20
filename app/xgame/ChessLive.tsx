@@ -65,6 +65,8 @@ export default function ChessLive({ models, resumeId, onExit }: {
   const t = useT()
   const router = useRouter()
   const [g, setG] = useState<GameView | null>(null)
+  // Resign asks on the page, not in a browser confirm box (Oct 20, owner).
+  const [askResign, setAskResign] = useState(false)
   const [seats, setSeats] = useState<{ w: SeatAssign; b: SeatAssign }>({ w: null, b: null })
   const [pickerFor, setPickerFor] = useState<Color | null>(null)
   const [seatOpts, setSeatOpts] = useState<Record<string, SeatOpts>>({})
@@ -172,7 +174,8 @@ export default function ChessLive({ models, resumeId, onExit }: {
   }
 
   const resign = async () => {
-    if (!g || !window.confirm(t('ch.resign.confirm'))) return
+    if (!g) return
+    setAskResign(false)
     await post({ action: 'resign', id: g.id })
   }
 
@@ -375,10 +378,21 @@ export default function ChessLive({ models, resumeId, onExit }: {
           <button onClick={onExit} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
             ← {t('gm.newgame')}
           </button>
-          {g.status === 'active' && meIdx >= 0 && (
-            <button onClick={resign} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>
+          {g.status === 'active' && meIdx >= 0 && !askResign && (
+            <button onClick={() => setAskResign(true)} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>
               {t('ch.resign')}
             </button>
+          )}
+          {g.status === 'active' && meIdx >= 0 && askResign && (
+            <span role="group" aria-label={t('ch.resign.confirm')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '4px 4px 4px 12px', border: '1px solid var(--red)', borderRadius: 9, background: 'var(--red-dim)' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--white)', fontWeight: 600 }}>{t('ch.resign.confirm')}</span>
+              <button onClick={resign} style={{ background: 'var(--red)', border: 'none', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
+                {t('ch.resign')}
+              </button>
+              <button onClick={() => setAskResign(false)} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 7, padding: '6px 14px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
+                {t('ch.cancel')}
+              </button>
+            </span>
           )}
         </div>
         <HarnessNote />

@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getModelById } from '@/lib/models'
 import { debitCredits } from '@/lib/credits'
 import { runInference } from '@/lib/inference'
+import { seatThinking } from '@/lib/game-thinking'
 import {
   dealRoles, alive, wolves, winner, redact, forModel, dayOrder, tally, resolveSeat,
   type Seat, type Turn, type Phase,
@@ -337,12 +338,11 @@ export async function POST(req: Request) {
     }
     metas.forEach((m, i) => {
       const o = rawOpts[m!.id] ?? {}
-      const levels = m!.output_config?.text?.thinking_levels ?? []
       const caps   = m!.output_config?.text?.capabilities ?? []
       seats.push({
         seat: i, modelId: m!.id, name: uniqueName(m!.display_name), provider: m!.provider,
         role: roles[i], alive: true, isHuman: false,
-        thinking: typeof o.thinking === 'string' && levels.includes(o.thinking) ? o.thinking : null,
+        thinking: seatThinking(m, o.thinking),
         search:   o.search === true && caps.includes('web_search'),
       })
     })

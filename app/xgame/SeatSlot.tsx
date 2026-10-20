@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { DEFAULT_SEAT_OPTS, type SeatOpts } from '../xtalk/SeatConfig'
+import { seatThinking } from '../../lib/game-thinking'
 import type { Speaker } from '../xtalk/templates'
 
 export type SeatAssign = 'me' | { modelId: string; name: string } | null
@@ -38,6 +39,10 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
   const model: any = assign && assign !== 'me' ? models.find((m: any) => m.id === assign.modelId) : null
   const levels: string[] = model?.output_config?.text?.thinking_levels ?? []
   const cur = model ? (seatOpts[model.id]?.thinking ?? null) : null
+  // A row with its own game default (Qwen: thinking off) shows that level
+  // selected instead of 自動, so the seat says what the table will send.
+  const dflt = model ? seatThinking(model, null) : null
+  const shown = cur ?? dflt
   const label = assign === 'me' ? t('gm.me') : assign ? assign.name : t('gm.pickseat')
 
   const randomModel = (): SeatAssign => {
@@ -75,7 +80,7 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>{label}</span>
         {model && levels.length > 0 && (
           <span style={{ fontSize: 10, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', flexShrink: 0 }}>
-            {cur ?? t('gm.auto')}
+            {shown ?? t('gm.auto')}
           </span>
         )}
       </button>
@@ -98,8 +103,8 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
                 {t('gm.configmodel')} · {t('xcreate.thinking')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {[null, ...levels].map(lv => {
-                  const on = cur === lv
+                {(dflt ? levels : [null, ...levels]).map(lv => {
+                  const on = shown === lv
                   return (
                     <button key={lv ?? 'auto'} type="button"
                       onClick={() => onSeatOpts({ ...seatOpts, [model.id]: { ...(seatOpts[model.id] ?? DEFAULT_SEAT_OPTS), thinking: lv } })}
