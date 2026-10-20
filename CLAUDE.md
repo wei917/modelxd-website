@@ -73,6 +73,11 @@ rating system (XDRating) surfaced on XBoard.
   xoracle and xfilm join `handle_is_reserved()` (the new app names; lib/handle.ts
   has the same). Checked live: xkit, x.oracle_2, xfi1m and xtell reserved,
   swift_otter_482 not; the publishable key is refused (401).
+  `144_xcreate_voices.sql` applied 2026-10-20 by the owner: X創作's
+  我的聲音 voices (`xcreate_voices`). Checked live: 42501 for the
+  publishable key on select and insert; with the service key an empty name,
+  a voice id starting with a digit and lang 'fr' get 23514, a valid row for
+  a made-up account 23503; nothing stored.
   `142_duel_recipe.sql` applied 2026-10-19 by the owner (the first run
   never reached the database; the second did): `duels.recipe` and the
   public `xduel-user-audio` bucket. Checked live: 'Bad Value' refused
