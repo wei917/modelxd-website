@@ -20,6 +20,7 @@ const ICON: Record<GameKey, string> = {
   chess: '/xgame/chess-banner.svg',
   poker: '/xgame/poker-banner.svg',
   xiangqi: '/xgame/xiangqi-icon.svg',
+  bridge: '/xgame/bridge-icon.svg',
 }
 
 /** Where the square sits in a banner, when its centre is not the subject. */

@@ -19,7 +19,7 @@ const DECISIONS = { low: 1.3, high: 3.5 }
 const promptTokens = (seats: number) => ({ low: 700 + 40 * seats, high: 1500 + 90 * seats })
 
 /** Reply tokens (reasoning included, it is billed as output) by thinking level. */
-function replyTokens(level: string | null, levels: string[]): { low: number; high: number } {
+export function replyTokens(level: string | null, levels: string[]): { low: number; high: number } {
   if (!levels.length) return { low: 120, high: 400 }
   switch (level) {
     case 'none': case 'minimal': case 'thinking_false': return { low: 80, high: 300 }
