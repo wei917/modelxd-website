@@ -58,6 +58,26 @@ const MODEST = ' An elegant, modest fashion photo: the outfit covers the body we
  *  client waits 10 per try before it gives up). */
 const PICTURE_WAIT_MS = 240_000
 const TIMED_OUT = 'picture timed out'
+/** A dropped line, not the maker's answer (Oct 21: OpenAI's connection broke
+ *  mid-run, "Connection error." over "fetch failed ... bad record mac", and
+ *  one outfit picture ended a whole 風扇變裝 run). The call goes once more;
+ *  the maker may bill both. */
+function lostConnection(e: unknown): boolean {
+  for (let x: any = e, depth = 0; x && depth < 4; x = x.cause, depth++) {
+    if (/APIConnectionError|Connection error|fetch failed|ECONNRESET|ETIMEDOUT|EPIPE|ECONNREFUSED|EAI_AGAIN|UND_ERR_SOCKET|socket hang up|other side closed|bad record mac/i.test(`${x?.name ?? ''} ${x?.code ?? ''} ${x?.message ?? ''}`)) return true
+  }
+  return false
+}
+/** The call, and once more if the line dropped. */
+async function onceMore<T>(what: string, call: () => Promise<T>): Promise<T> {
+  try { return await call() }
+  catch (e) {
+    if (!lostConnection(e)) throw e
+    console.warn(`[remake:produce] ${what} lost the connection; once more: ${String((e as Error)?.message ?? e).slice(0, 120)}`)
+    await new Promise(r => setTimeout(r, 3000))
+    return call()
+  }
+}
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined
   return Promise.race([p, new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error(`${TIMED_OUT} after ${ms / 1000}s`)), ms) })])
@@ -78,25 +98,26 @@ export function sizeFor(model: ModelInfo, aspect: Aspect): { size: string; optio
 }
 
 /** One picture on the first model that does not refuse it (or take too
- *  long): the next maker gets the same words, and once all of them have
- *  refused, the last one gets the picture toned down. Any other error stops
- *  at once. */
+ *  long, or lose the connection twice): the next maker gets the same words,
+ *  and once all of them have refused, the last one gets the picture toned
+ *  down. Any other error stops at once. */
 export async function picture(models: ModelInfo[], prompt: string, attachments: any[], aspect: Aspect, ctx: ProduceContext, quality: 'medium' | 'high', gen: typeof generateImage = generateImage, waitMs = PICTURE_WAIT_MS): Promise<Made> {
   const tries: [ModelInfo, string][] = [...models.map(m => [m, prompt] as [ModelInfo, string]), [models[models.length - 1], prompt + MODEST]]
   let last: unknown
   for (const [i, [model, words]] of tries.entries()) {
     const { size, options } = sizeFor(model, aspect)
     try {
-      const r: any = await withTimeout(gen(model, words, quality as any, size, attachments, null, null, { userId: ctx.userId, surface: ctx.surface } as any, options), waitMs)
+      const r: any = await onceMore(`${model.model_name} picture`, () => withTimeout(gen(model, words, quality as any, size, attachments, null, null, { userId: ctx.userId, surface: ctx.surface } as any, options), waitMs))
       if (i > 0) console.log(`[remake:produce] picture made by ${model.model_name}${words !== prompt ? ', toned down' : ''} after a refusal`)
       return { buffer: r.buffer, cost: r.cost ?? 0 }
     } catch (e) {
       const slow = String((e as Error)?.message ?? '').startsWith(TIMED_OUT)
-      if (!refused(e) && !slow) throw e
-      console.warn(`[remake:produce] ${model.model_name} ${slow ? 'took too long on' : 'refused'} a picture: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
+      const dropped = lostConnection(e)
+      if (!refused(e) && !slow && !dropped) throw e
+      console.warn(`[remake:produce] ${model.model_name} ${slow ? 'took too long on' : dropped ? 'lost the connection twice on' : 'refused'} a picture: ${String((e as Error)?.message ?? e).slice(0, 160)}`)
       last = e
-      // A slow maker gets no toned-down second try: the next maker goes on.
-      if (slow && i === tries.length - 2) break
+      // A slow or unreachable maker gets no toned-down second try: the next maker goes on.
+      if ((slow || dropped) && i === tries.length - 2) break
     }
   }
   throw last
@@ -180,8 +201,8 @@ export async function makeClip(ctx: ProduceContext, shot: PlanShot, firstFrame: 
   if (opts.lastFrame) atts.push({ buffer: opts.lastFrame, mediaType: 'image/jpeg', url: await ctx.sign(opts.lastFrame, `shot-${shot.n}-last-${Date.now()}.jpg`), port: 'last_frame' })
   const call = { userId: ctx.userId, surface: ctx.surface } as any
   try {
-    const r: any = await generateVideo(opts.videoModel ?? ctx.videoModel, prompt, '720p', shot.clip_seconds, atts, undefined, call,
-      { ...(opts.lastFrame ? { mode: 'start_end_frames' } : { aspect_ratio: aspect, mode: 'image_to_video' }), generate_audio: opts.audio ?? true, prompt_extend: false, watermark: false } as any)
+    const r: any = await onceMore(`shot ${shot.n} clip`, () => generateVideo(opts.videoModel ?? ctx.videoModel, prompt, '720p', shot.clip_seconds, atts, undefined, call,
+      { ...(opts.lastFrame ? { mode: 'start_end_frames' } : { aspect_ratio: aspect, mode: 'image_to_video' }), generate_audio: opts.audio ?? true, prompt_extend: false, watermark: false } as any))
     return { buffer: r.buffer, cost: r.cost ?? 0 }
   } catch (e) {
     // Another maker's image-to-video model from the first frame alone (its
