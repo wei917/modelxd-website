@@ -18,7 +18,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 export const BASE_RATING = 1000
 const BT_ITERATIONS = 50
 // 'audio' (Oct 19): XDuel's 語音 duels, text to speech, in a pool of their own.
-const MODES = ['text', 'image', 'video', 'audio'] as const
+// 'music' (Oct 21): XDuel's 音樂 duels, mode 'audio' + recipe text_to_music
+// on the row, pooled apart by xd_pool (supabase/146).
+const MODES = ['text', 'image', 'video', 'audio', 'music'] as const
 // Search duels rate in their own pool (supabase/62_search_rating_pool.sql).
 // Fitted like any other mode, but deliberately NOT folded into 'all': a
 // combined score that mixes "answered from memory" with "answered after
@@ -240,7 +242,10 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
   const baseMode   = searchPool ? mode.slice(0, -'_search'.length) : mode
 
   let duelQ = sb.from('duels').select('mode, slots, vote1, vote2, vote1_model_id, vote2_model_id, vote_changed')
-  if (mode !== 'all') duelQ = duelQ.eq('mode', baseMode)
+  // 'music' is audio duels whose recipe is text_to_music; 'audio' the rest.
+  if (mode === 'music') duelQ = duelQ.eq('mode', 'audio').eq('recipe', 'text_to_music')
+  else if (mode === 'audio') duelQ = duelQ.eq('mode', 'audio').or('recipe.is.null,recipe.neq.text_to_music')
+  else if (mode !== 'all') duelQ = duelQ.eq('mode', baseMode)
   if (mode !== 'all') duelQ = duelQ.eq('search', searchPool)
   else duelQ = duelQ.eq('search', false)
   const { data: duels } = await duelQ

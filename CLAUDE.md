@@ -296,6 +296,21 @@ $/min (`speechPricePerMinute`). Counted in duel_quotas' text column (the
 allowance is the sum; no migration). Rating pool 'audio' in
 `lib/xdrating.ts` MODES (no constraint on the rating tables); XBoard has an
 Audio tab ($/min). The game duels (GameDuel.tsx) were deleted from XDuel.
+**音樂 joined 音訊 (Oct 21; owner: "do we have music generation models? we
+should do that duel too", then "do it in one tab"):** the 音訊 tab has a
+Mode row and an in-box dropdown, 語音 / 音樂 (`RecipeBar` with `names` /
+`icons`; `?recipe=text_to_music`). A music duel is mode 'audio' with
+`duels.recipe = 'text_to_music'` (old audio duels, recipe null, are
+speech; `audioKindOf`), drawn from the `text_to_music` rows: Lyria 3.5 and
+ElevenLabs Music 2.5, so every music duel is that pair. The description is
+sent as written (up to 500 characters); Lyria 3.5 always makes about a
+minute (probed Oct 21: three ways of asking for 30 s all came back 62-63 s),
+so ElevenLabs gets `seconds: 60` (`MUSIC_SECONDS`). Priced per song (Lyria
+$0.08, ElevenLabs $0.15 for the minute; ~$0.23 a duel, house-paid, inside
+the same 10 a day). The vote feed follows the Mode row. Music rates in its
+own pool 'music' (`xd_pool`, migration 146) and XBoard has a Music tab
+($/song); XBoard's Audio tab is now labelled Speech. X創作's 語音 picks still
+feed 'audio' whatever the models (`xd_xcreate_pool` unchanged).
 **No news ideas** (Oct 18-19): a button that turned the news into prompt
 ideas was built and removed (owner: "stop this feature. let's clean this
 up"). Why, for whoever tries again: Google Search grounding may not be

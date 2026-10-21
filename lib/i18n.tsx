@@ -2874,6 +2874,12 @@ export const STRINGS: Record<string, Entry> = {
   'xd.failed':           { en: 'Generation failed', 'zh-Hant': '生成失敗', 'zh-Hans': '生成失败', ja: '生成に失敗', ko: '생성 실패' },
   'xd.generating.image': { en: 'Generating image…', 'zh-Hant': '圖片生成中…', 'zh-Hans': '图片生成中…', ja: '画像を生成中…', ko: '이미지 생성 중…' },
   'xd.generating.video': { en: 'Generating video…', 'zh-Hant': '影片生成中…', 'zh-Hans': '视频生成中…', ja: '動画を生成中…', ko: '동영상 생성 중…' },
+  // 音訊's Mode row (Oct 21): 語音 / 音樂 (app/xduel/XDuelPage.tsx).
+  'xduel.audio.speech': { en: 'Speech', 'zh-Hant': '語音', 'zh-Hans': '语音', ja: '音声', ko: '음성' },
+  'xduel.audio.music':  { en: 'Music', 'zh-Hant': '音樂', 'zh-Hans': '音乐', ja: '音楽', ko: '음악' },
+  'xduel.ph.music':     { en: 'Describe a song for both models to make: genre, mood, instruments, or lyrics (about a minute each)…', 'zh-Hant': '描述一首歌讓兩個模型來做：曲風、氣氛、樂器或歌詞（各約 1 分鐘）…', 'zh-Hans': '描述一首歌让两个模型来做：曲风、氛围、乐器或歌词（各约 1 分钟）…', ja: '2つのモデルに作ってもらう曲を説明してください：ジャンル、雰囲気、楽器、歌詞など（各約1分）…', ko: '두 모델이 만들 노래를 설명하세요: 장르, 분위기, 악기, 가사 (각각 약 1분)…' },
+  'xd.generating.music': { en: 'Composing music…', 'zh-Hant': '音樂生成中…', 'zh-Hans': '音乐生成中…', ja: '音楽を生成中…', ko: '음악 생성 중…' },
+  'xd.basis.music':      { en: '1K songs', 'zh-Hant': '1,000 首歌', 'zh-Hans': '1,000 首歌', ja: '1,000曲', ko: '노래 1,000곡' },
   'xd.generating.audio': { en: 'Generating speech…', 'zh-Hant': '語音生成中…', 'zh-Hans': '语音生成中…', ja: '音声を生成中…', ko: '음성 생성 중…' },
   'xd.basis.audio':      { en: '1K minutes of speech', 'zh-Hant': '1,000 分鐘語音', 'zh-Hans': '1,000 分钟语音', ja: '音声1,000分', ko: '음성 1,000분' },
   'xduel.ph.audio':      { en: 'Type a short text for both models to read aloud (up to 300 characters)…', 'zh-Hant': '輸入一段短文，讓兩個模型唸出來（最多 300 字）…', 'zh-Hans': '输入一段短文，让两个模型读出来（最多 300 字）…', ja: '2つのモデルに読み上げてもらう短い文章を入力（300文字まで）…', ko: '두 모델이 읽어 줄 짧은 글을 입력하세요 (최대 300자)…' },

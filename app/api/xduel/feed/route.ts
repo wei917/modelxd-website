@@ -26,7 +26,7 @@ export const runtime = 'nodejs'
 
 import { createClient } from '@supabase/supabase-js'
 import { DUEL_MODELS } from '@/lib/duel-allowance'
-import { isVideoRecipe, recipeOfDuel } from '@/lib/xduel-recipes'
+import { audioKindOf, isAudioKind, isVideoRecipe, recipeOfDuel } from '@/lib/xduel-recipes'
 import { signAudioDuels } from '@/lib/xduel-audio'
 
 const MODES = new Set(['text', 'image', 'video', 'audio'])
@@ -69,7 +69,10 @@ export async function GET(req: Request) {
   const url  = new URL(req.url)
   const mode = MODES.has(url.searchParams.get('mode') ?? '') ? url.searchParams.get('mode')! : 'text'
   // Video: the chosen kind's duels only (owner, Oct 19: "feed follows the chip").
-  const recipe = mode === 'video' && isVideoRecipe(url.searchParams.get('recipe')) ? url.searchParams.get('recipe') : null
+  const asked = url.searchParams.get('recipe')
+  // 影片's kinds, and 音訊's 語音 / 音樂 (Oct 21): the feed follows the Mode row.
+  const recipe = mode === 'video' && isVideoRecipe(asked) ? asked
+    : mode === 'audio' && isAudioKind(asked) ? asked : null
 
   const sb = serviceClient()
 
@@ -123,7 +126,7 @@ export async function GET(req: Request) {
     // 1v1 only (owner, Oct 18): the 3- and 4-model duels from before stay
     // in the database and on their links, but take no more votes here.
     .filter(d => Array.isArray(d.slots) && d.slots.length === DUEL_MODELS)
-    .filter(d => !recipe || recipeOfDuel(d) === recipe)
+    .filter(d => !recipe || (mode === 'audio' ? audioKindOf(d) : recipeOfDuel(d)) === recipe)
     .map(d => ({
       id: d.id, mode: d.mode, prompt: d.prompt,
       vote2: d.vote2 ?? null,

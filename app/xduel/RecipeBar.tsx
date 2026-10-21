@@ -11,7 +11,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { VIDEO_RECIPES, type VideoRecipe } from '@/lib/xduel-recipes'
-import { RECIPES, RECIPE_ICONS, InputIcon } from '../xcreate/recipes'
+import { RECIPES, RECIPE_ICONS, InputIcon, type InputKind } from '../xcreate/recipes'
+
+/** Per-kind words and icons where the default (X創作's `recipefrom.<id>`
+ *  and its icon) does not fit, e.g. 音訊's 語音 / 音樂 (Oct 21). */
+type Overrides = { names?: Partial<Record<string, string>>; icons?: Partial<Record<string, InputKind>> }
+const nameKey = (k: string, o: Overrides) => o.names?.[k] ?? 'recipefrom.' + k
+const iconOf = (k: string, o: Overrides): InputKind => o.icons?.[k] ?? RECIPE_ICONS[k]?.[0] ?? 'video'
 
 const KINDS = RECIPES.video.map(r => r.id).filter((id): id is VideoRecipe => VIDEO_RECIPES.some(v => v.key === id))
 
@@ -19,13 +25,13 @@ const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: numbe
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 )
 
-export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPick, t, kinds }: {
+export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, names, icons }: {
   recipe: K
   onPick: (r: K) => void
   t: (k: string) => string
   /** The kinds offered, in order; a duel's own when left out. */
   kinds?: readonly K[]
-}) {
+} & Overrides) {
   const row = useRef<HTMLDivElement>(null)
   const [ends, setEnds] = useState({ left: false, right: false })
 
@@ -67,8 +73,8 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
         {(kinds ?? (KINDS as readonly string[] as readonly K[])).map(k => (
           <button key={k} type="button" role="tab" aria-selected={k === recipe}
             className={k === recipe ? 'on' : ''} onClick={() => onPick(k)}>
-            <InputIcon kind={RECIPE_ICONS[k]?.[0] ?? 'video'} size={20} />
-            <span>{t('recipefrom.' + k)}</span>
+            <InputIcon kind={iconOf(k, { icons })} size={20} />
+            <span>{t(nameKey(k, { names }))}</span>
           </button>
         ))}
       </div>
@@ -83,13 +89,13 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
  *  can still have the dropdown in the prompt box"; "a dropdown is much
  *  easier to select"), kept in step with the row: both read and set one
  *  mode. Closes on a press outside or Escape. */
-export function ModeDropdown<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, disabled }: {
+export function ModeDropdown<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, disabled, names, icons }: {
   recipe: K
   onPick: (r: K) => void
   t: (k: string) => string
   kinds?: readonly K[]
   disabled?: boolean
-}) {
+} & Overrides) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -106,8 +112,8 @@ export function ModeDropdown<K extends string = VideoRecipe>({ recipe, onPick, t
       <button type="button" className="xduel-modedrop-btn" aria-haspopup="listbox" aria-expanded={open}
         disabled={disabled} onClick={() => setOpen(o => !o)}>
         <span className="xduel-modedrop-label">{t('xduel.recipe.mode')}</span>
-        <InputIcon kind={RECIPE_ICONS[recipe]?.[0] ?? 'video'} size={16} />
-        <span>{t('recipefrom.' + recipe)}</span>
+        <InputIcon kind={iconOf(recipe, { icons })} size={16} />
+        <span>{t(nameKey(recipe, { names }))}</span>
         <span aria-hidden className="xduel-modedrop-caret">▾</span>
       </button>
       {open && (
@@ -115,8 +121,8 @@ export function ModeDropdown<K extends string = VideoRecipe>({ recipe, onPick, t
           {list.map(k => (
             <button key={k} type="button" role="option" aria-selected={k === recipe}
               className={k === recipe ? 'on' : ''} onClick={() => { onPick(k); setOpen(false) }}>
-              <InputIcon kind={RECIPE_ICONS[k]?.[0] ?? 'video'} size={18} />
-              <span>{t('recipefrom.' + k)}</span>
+              <InputIcon kind={iconOf(k, { icons })} size={18} />
+              <span>{t(nameKey(k, { names }))}</span>
             </button>
           ))}
         </div>

@@ -15,7 +15,7 @@ import XDuelBar, { type DuelKind } from './XDuelBar'
 import VoteFeed from './VoteFeed'
 import RecipeBar, { ModeDropdown } from './RecipeBar'
 import { DUEL_MODELS } from '../../lib/duel-allowance'
-import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe } from '../../lib/xduel-recipes'
+import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe, AUDIO_KINDS, DEFAULT_AUDIO_KIND, isAudioKind, audioMaxChars, type AudioKind } from '../../lib/xduel-recipes'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 import { isSubmitEnter } from '../../lib/ime'
@@ -99,6 +99,10 @@ function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
 /** A saved slot with no answer; shown in the reader's language (errText). */
 const DID_NOT_FINISH = 'This model did not finish.'
 
+/** 音訊's Mode row (Oct 21): 語音 and 音樂, not X創作's "From: 文字". */
+const AUDIO_NAMES = { text_to_speech: 'xduel.audio.speech', text_to_music: 'xduel.audio.music' }
+const AUDIO_ICONS = { text_to_speech: 'mic', text_to_music: 'audio' } as const
+
 /** The label under a judged input, by the port it fed (lib/xduel-recipes.ts). */
 const PORT_LABEL: Record<string, string> = {
   first_frame: 'xduel.slot.first', last_frame: 'xduel.slot.last',
@@ -168,6 +172,8 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
   // A video duel's kind (owner, Oct 19): 文字生成 / 首幀 / 首尾幀 / 參考圖 /
   // 改編影片 / 配樂・對嘴, each with its own inputs (lib/xduel-recipes.ts).
   const [recipe, setRecipe] = useState<VideoRecipe>(DEFAULT_VIDEO_RECIPE)
+  // 音訊's kind (Oct 21; owner: "do it in one tab"): 語音 or 音樂.
+  const [audioKind, setAudioKind] = useState<AudioKind>(DEFAULT_AUDIO_KIND)
   const spec = recipeSpec(recipe)
   const [prompt,     setPrompt]     = useState('')
   const [loading,    setLoading]    = useState(false)
@@ -203,6 +209,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       if (mm !== mode) setMode(mm)
       const r = url.searchParams.get('recipe')
       if (mm === 'video' && isVideoRecipe(r)) setRecipe(r)
+      if (mm === 'audio' && isAudioKind(r)) setAudioKind(r)
     } catch { /* no window */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -298,6 +305,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
         setDuelId(d.id)
         if (d.mode === 'text' || d.mode === 'image' || d.mode === 'video' || d.mode === 'audio') setMode(d.mode)
         if (isVideoRecipe(d.recipe)) setRecipe(d.recipe)
+        if (d.mode === 'audio') setAudioKind(isAudioKind(d.recipe) ? d.recipe : DEFAULT_AUDIO_KIND)
         setPrompt(d.prompt ?? '')
         setInputMedia(d.input_media?.url && /^(image|video|audio)\//.test(d.input_media.mediaType ?? '') ? d.input_media : null)
         setModels(slotsToModels(d.slots, !!j.revealed))
@@ -325,13 +333,14 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
     : msg === DID_NOT_FINISH ? t('xduel.err.other')
     : msg
 
-  const setAddress = (id: string | null, kind: string = mode, rec: VideoRecipe = recipe) => {
+  const setAddress = (id: string | null, kind: string = mode, rec: VideoRecipe = recipe, ak: AudioKind = audioKind) => {
     try {
       const u = new URL(window.location.href)
       u.pathname = id ? `/xduel/${id}` : '/xduel'
       u.search = ''
       if (!id) u.searchParams.set('mode', kind)
       if (!id && kind === 'video' && rec !== DEFAULT_VIDEO_RECIPE) u.searchParams.set('recipe', rec)
+      if (!id && kind === 'audio' && ak !== DEFAULT_AUDIO_KIND) u.searchParams.set('recipe', ak)
       window.history.replaceState(window.history.state, '', u)
     } catch { /* no window */ }
   }
@@ -358,7 +367,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       const res = await fetch('/api/xduel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode, count, lang, ...(mode === 'video' ? { recipe } : {}), attachments: files }),
+        body: JSON.stringify({ prompt, mode, count, lang, ...(mode === 'video' ? { recipe } : mode === 'audio' ? { recipe: audioKind } : {}), attachments: files }),
       })
 
       if (!res.ok || !res.body) {
@@ -672,6 +681,12 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
     setAttachments([])
     setAddress(null, 'video', r)
   }
+  // 語音 / 音樂: the same box, a different task.
+  const pickAudioKind = (k: AudioKind) => {
+    if (k === audioKind) return
+    setAudioKind(k)
+    setAddress(null, 'audio', recipe, k)
+  }
 
   // Prompt chars ≈ /3; attached .txt files count too (≈ bytes/4) —
   // they're folded into the prompt server-side, so they cost real tokens.
@@ -725,12 +740,12 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
   const monthlyRaw =
     mode === 'video' ? delta * VIDEO_SECONDS * 1000   // 1K clips × 8s
     : mode === 'image' ? delta * 1000                 // 1K images
-    : mode === 'audio' ? delta * 1000                 // 1K minutes of speech ($/min)
+    : mode === 'audio' ? delta * 1000                 // 1K minutes of speech ($/min), or 1K songs
     : delta * 100                                     // 100M tokens
   const monthly = isMediaMode
     ? Math.round(monthlyRaw * 100) / 100
     : Math.round(monthlyRaw)
-  const monthlyLabel = t(mode === 'video' ? 'xd.basis.video' : mode === 'image' ? 'xd.basis.image' : mode === 'audio' ? 'xd.basis.audio' : 'xd.basis.text')
+  const monthlyLabel = t(mode === 'video' ? 'xd.basis.video' : mode === 'image' ? 'xd.basis.image' : mode === 'audio' ? (audioKind === 'text_to_music' ? 'xd.basis.music' : 'xd.basis.audio') : 'xd.basis.text')
 
   // ── Price-reveal framing (CC, July 29) ─────────────────────────────────
   // The headline is the pitch, so it should state what THIS duel actually
@@ -899,6 +914,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                   text into the prompt for the rest — keeping the duel fair. */}
               {/* 影片's kinds (owner, Oct 19): a Mode row above the box they shape. */}
               {mode === 'video' && <RecipeBar recipe={recipe} onPick={pickRecipe} t={t} />}
+              {mode === 'audio' && <RecipeBar recipe={audioKind} kinds={AUDIO_KINDS} names={AUDIO_NAMES} icons={AUDIO_ICONS} onPick={pickAudioKind} t={t} />}
               <div className="prompt-box framed">
                 {/* A video kind's own labelled inputs (none for 文字生成). */}
                 {mode === 'video' && spec.slots.length > 0 && <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
@@ -934,8 +950,8 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                 </div>}
                 <textarea
                   className="prompt-textarea"
-                  maxLength={mode === 'audio' ? 300 : 8000}
-                  placeholder={t(mode === 'video' ? 'xduel.ph.video.' + recipe : 'xduel.ph.' + mode)}
+                  maxLength={mode === 'audio' ? audioMaxChars(audioKind) : 8000}
+                  placeholder={t(mode === 'video' ? 'xduel.ph.video.' + recipe : mode === 'audio' && audioKind === 'text_to_music' ? 'xduel.ph.music' : 'xduel.ph.' + mode)}
                   value={prompt}
                   onChange={e => setPrompt(e.target.value)}
                   onKeyDown={e => {
@@ -952,6 +968,11 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                     <ModeDropdown recipe={recipe} onPick={pickRecipe} t={t} />
                   </div>
                 )}
+                {mode === 'audio' && (
+                  <div className="xduel-prompt-tools">
+                    <ModeDropdown recipe={audioKind} kinds={AUDIO_KINDS} names={AUDIO_NAMES} icons={AUDIO_ICONS} onPick={pickAudioKind} t={t} />
+                  </div>
+                )}
               </div>
               {/* 圖1 / 圖2 name the reference pictures; each model gets them
                   in its own words (lib/reference-tokens.ts). */}
@@ -959,7 +980,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
               <div className="duel-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 10, marginBottom: 24 }}>
                 <span className="prompt-counter">
                   {mode === 'audio'
-                    ? `${prompt.length} / 300`
+                    ? `${prompt.length} / ${audioMaxChars(audioKind)}`
                     : prompt.length > 7000
                     ? `${prompt.length.toLocaleString()} / 8,000 — for longer text, attach a .txt file`
                     : approxTokens > 0 ? `~${approxTokens.toLocaleString()} tokens${attachTruncated ? ' (large file — first 200k characters used)' : ''}` : ''}
@@ -979,7 +1000,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
 
               {/* Other people's duels of this type to vote on (XVote's
                   feed, folded in Oct 17 in place of the 熱門 starters). */}
-              <VoteFeed mode={mode} recipe={mode === 'video' ? recipe : null} />
+              <VoteFeed mode={mode} recipe={mode === 'video' ? recipe : mode === 'audio' ? audioKind : null} />
               </>
             </div>
           )}
@@ -1108,7 +1129,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                           : (m.isImage || m.isVideo || m.isAudio) && !m.text
                           ? <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:'60px 20px',color:'var(--muted2)',fontSize:13,gap:8}}>
                               <div className="loading-dot"/><div className="loading-dot"/><div className="loading-dot"/>
-                              <span style={{marginLeft:8}}>{t(m.isImage ? 'xd.generating.image' : m.isAudio ? 'xd.generating.audio' : 'xd.generating.video')}</span>
+                              <span style={{marginLeft:8}}>{t(m.isImage ? 'xd.generating.image' : m.isAudio ? (audioKind === 'text_to_music' ? 'xd.generating.music' : 'xd.generating.audio') : 'xd.generating.video')}</span>
                             </div>
                           : <><div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS} components={{a: ({href, children}) => { if (!href || (!href.startsWith('http://') && !href.startsWith('https://'))) return <span>{children}</span>; return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a> }}}>{m.text}</ReactMarkdown></div>{m.streaming && <span className="stream-cursor">▋</span>}</>
                         }

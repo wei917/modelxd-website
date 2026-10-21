@@ -17,11 +17,11 @@ import { isLang, savedLang, LANG_COOKIE, type Lang } from '@/lib/lang'
 import { processAttachment }              from '@/lib/attachment'
 import { sanitizeProviderError, providerErrorKind, ACCOUNT_LIMIT, SAFETY, NOTFOUND } from '@/lib/provider-errors'
 import * as providers                     from '@/lib/providers'
-import { modePriceLabel }                 from '@/lib/providers/pricing'
+import { modePriceLabel, musicPricePerSong } from '@/lib/providers/pricing'
 import { XDUEL_AUDIO_BUCKET }             from '@/lib/xduel-audio'
 import { portSchemaFor, assignPorts }     from '@/lib/ports'
 import { rewriteRefTokens }              from '@/lib/reference-tokens'
-import { isVideoRecipe, recipeSpec, fitsRecipe, type VideoRecipe } from '@/lib/xduel-recipes'
+import { isVideoRecipe, recipeSpec, fitsRecipe, type VideoRecipe, isAudioKind, DEFAULT_AUDIO_KIND, MUSIC_SECONDS, audioMaxChars, type AudioKind } from '@/lib/xduel-recipes'
 
 const LOG = '[duel]'
 
@@ -169,6 +169,7 @@ async function runSlot(
   controller:  ReadableStreamDefaultController,
   userId:      string,
   recipe:      VideoRecipe | null = null,
+  audioKind:   AudioKind | null = null,
 ): Promise<SlotOutput | SlotFailure> {
   const callContext: providers.CallContext = { userId }
   const start = Date.now()
@@ -268,8 +269,12 @@ async function runSlot(
     } else if (mode === 'audio') {
       // 語音 (Oct 19): both models read the same text aloud at their own
       // default voice, the way XCreate's 語音 runs (no style, no voice pick).
+      // 音樂 (Oct 21): both make a song from the same description, about a
+      // minute each (lib/xduel-recipes.ts MUSIC_SECONDS).
       controller.enqueue(sse(`delta:${index}`, { index, isAudio: true, generating: true }))
-      const result = await providers.generateSpeech(model, prompt, { format: 'mp3' }, callContext)
+      const result = audioKind === 'text_to_music'
+        ? await providers.generateSpeech(model, prompt, { format: 'mp3', seconds: MUSIC_SECONDS }, callContext)
+        : await providers.generateSpeech(model, prompt, { format: 'mp3' }, callContext)
       const responseTime = Date.now() - start
       const ext = result.mediaType.includes('wav') ? 'wav'
         : result.mediaType.includes('flac') ? 'flac'
@@ -287,7 +292,7 @@ async function runSlot(
       }
       if (!uploaded) throw new Error(`Upload failed: ${lastErr?.message ?? 'unknown'} [path=${path}]`)
       const { data: signed } = await sb.storage.from(XDUEL_AUDIO_BUCKET).createSignedUrl(path, 60 * 60 * 24)
-      if (!signed?.signedUrl) throw new Error('Failed to sign the speech file')
+      if (!signed?.signedUrl) throw new Error('Failed to sign the audio file')
       providers.logMediaUrl(result.requestId, {
         provider: model.provider, model_name: model.model_name, model_id: model.id ?? null,
         mode: 'audio', user_id: callContext?.userId ?? null,
@@ -423,6 +428,9 @@ export async function POST(req: Request) {
     : isVideoRecipe(bodyRecipe) ? bodyRecipe
     : !attachmentInput ? 'text_to_video'
     : attachmentInput.mediaType.startsWith('video/') ? 'video_to_video' : 'image_to_video'
+  // 音訊's kind (Oct 21): 語音 or 音樂; an old tab names none, so speech.
+  const audioKind: AudioKind | null = mode !== 'audio' ? null
+    : isAudioKind(bodyRecipe) ? bodyRecipe : DEFAULT_AUDIO_KIND
   // The page language of whoever starts the duel (migration 141, owner,
   // Oct 19: "based on users' language"): the vote feed shows a viewer the
   // duels in their own language first. The language cookie when the page
@@ -477,13 +485,15 @@ export async function POST(req: Request) {
     return Response.json({ error: `Invalid mode: ${mode}` }, { status: 400 })
   }
   // 語音: a short text read aloud, nothing attached (owner, Oct 19: up to
-  // 300 characters; it bounds both the cost and the listening).
+  // 300 characters; it bounds both the cost and the listening). 音樂: a
+  // song's description, up to 500.
   if (mode === 'audio') {
-    if (typeof prompt === 'string' && prompt.length > 300) {
-      return Response.json({ error: 'Text too long for a speech duel (max 300 characters).' }, { status: 400 })
+    const max = audioMaxChars(audioKind!)
+    if (typeof prompt === 'string' && prompt.length > max) {
+      return Response.json({ error: `Text too long for this duel (max ${max} characters).` }, { status: 400 })
     }
     if (attachmentInput?.storagePath) {
-      return Response.json({ error: 'Speech duels take text only.' }, { status: 400 })
+      return Response.json({ error: 'Audio duels take text only.' }, { status: 400 })
     }
   }
   // duel_quotas keeps text / image / video counters; the allowance is their
@@ -518,9 +528,10 @@ export async function POST(req: Request) {
   // whatever getModelsByMode returned, so blocking a model from XDuel did
   // nothing at all. Same gap as Discussion's picker (known debt #2).
   pool = allowedFor(pool, FEATURE.xduel)
-  // Speech only: Lyria and ElevenLabs Music also output audio, and a song
-  // against a reading is not a fair duel.
-  if (mode === 'audio') pool = pool.filter(m => (m.modes ?? []).includes('text_to_speech'))
+  // One kind per duel: a song against a reading is not a fair duel. 音樂's
+  // pool is the catalog's text_to_music rows (Lyria 3.5, ElevenLabs Music
+  // 2.5 on Oct 21: every music duel is that pair).
+  if (mode === 'audio') pool = pool.filter(m => (m.modes ?? []).includes(audioKind!))
   if (pool.length < 2) { refundQuota(); return Response.json({ error: `Not enough models for mode: ${mode}` }, { status: 400 }) }
 
   // Match the pool to the task. A video duel draws only models that do its
@@ -656,7 +667,7 @@ export async function POST(req: Request) {
             enqueue: (chunk: Uint8Array) => { if (live) controller.enqueue(chunk) },
           } as unknown as ReadableStreamDefaultController
           const r = await withDeadline(
-            runSlot(i, current, mode, prompt, attachments, duelId, gate, user.id, recipe),
+            runSlot(i, current, mode, prompt, attachments, duelId, gate, user.id, recipe, audioKind),
             deadlineAt - Date.now(),
             () => { live = false },
           )
@@ -702,6 +713,12 @@ export async function POST(req: Request) {
       const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       // Build price label per model (matches what the SSE meta event sends)
       const slotPrices = models.map(m => {
+        // A song is priced per song of the duel's length (Lyria bills per
+        // song, ElevenLabs per second), not per minute like speech.
+        if (audioKind === 'text_to_music') {
+          const rate = musicPricePerSong(m, MUSIC_SECONDS)
+          return { priceLabel: rate > 0 ? `$${parseFloat(rate.toFixed(4))} / song` : '—', outputPrice: rate }
+        }
         const { label, rate } = modePriceLabel(m, mode as 'text'|'image'|'video'|'audio')
         return { priceLabel: label, outputPrice: rate }
       })
@@ -732,7 +749,7 @@ export async function POST(req: Request) {
       }
       // `lang` (migration 141) and `recipe` (142): a column the database
       // does not have yet is left out and the save tried again.
-      const extra: Record<string, unknown> = { ...(lang ? { lang } : {}), ...(recipe ? { recipe } : {}) }
+      const extra: Record<string, unknown> = { ...(lang ? { lang } : {}), ...(recipe ? { recipe } : audioKind ? { recipe: audioKind } : {}) }
       let { error: saveErr } = await sb.from('duels').insert({ ...row, ...extra })
       for (let i = 0; saveErr && i < 2; i++) {
         const missing = Object.keys(extra).find(k => saveErr!.message.includes(`'${k}'`) || saveErr!.message.includes(`.${k}`))
