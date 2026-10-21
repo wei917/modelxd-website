@@ -307,7 +307,9 @@ export default function Nav() {
   // Werewolf games are server-held sessions with owner-read RLS, so the
   // browser client lists them the same way it lists xcreates. Discussions
   // aren't here: they live in client state and have no row to link to.
-  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string; title: string | null }>>([])
+  // `shared`: a table someone else created and this account joined by its
+  // link (Oct 21, /api/xgame/shared); it is the host's to rename or delete.
+  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string; title: string | null; shared?: boolean; at?: string }>>([])
   useEffect(() => {
     if (!onXgame || !user) { setRecentGames([]); return }
     let cancelled = false
@@ -316,9 +318,15 @@ export default function Nav() {
     const gsel = (cols: string) => supabase.from('xtalk_sessions')
       .select(cols).eq('user_id', user.id).neq('game', 'discussion')
       .order('updated_at', { ascending: false }).limit(10)
-    gsel('id, status, day, winner, created_at, title').then(async res => {
+    const joined = fetch('/api/xgame/shared').then(r => r.ok ? r.json() : { tables: [] }).catch(() => ({ tables: [] }))
+    gsel('id, status, day, winner, created_at, updated_at, title').then(async res => {
       const r = res.error ? await gsel('id, status, day, winner, created_at') : res
-      if (!cancelled) setRecentGames(((r.data ?? []) as any[]).map(g => ({ ...g, title: g.title ?? null })))
+      const own = ((r.data ?? []) as any[]).map(g => ({ ...g, title: g.title ?? null, at: g.updated_at ?? g.created_at }))
+      const guest = (((await joined).tables ?? []) as any[]).map(g => ({
+        id: g.id, status: g.status, day: 0, winner: null, created_at: g.created_at, title: g.title ?? null, shared: true, at: g.updated_at,
+      }))
+      const all = [...own, ...guest].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 10)
+      if (!cancelled) setRecentGames(all)
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -617,7 +625,7 @@ export default function Nav() {
                   {g.title || `${t('xt.tpl.werewolf.name')} · D${g.day}${g.status === 'active' ? '' : ` · ${g.winner === 'wolves' ? t('ww.role.wolf') : t('xt.village')}`}`}
                 </span>
               </Link>
-              <button
+              {!g.shared && <><button
                 aria-label="rename" title={t('hist.rename')}
                 onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
                 style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
@@ -644,7 +652,7 @@ export default function Nav() {
                   onClick={() => { setConfirmDel(g.id); setTimeout(() => setConfirmDel(c => c === g.id ? null : c), 4000) }}
                   style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
                 >×</button>
-              )}
+              )}</>}
             </div>
             )
           ))}

@@ -311,7 +311,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
       return { modelId: m.id, name: m.display_name }
     }))
     const ai = seats.flatMap((a, i) => {
-      if (!a || a === 'me') return []
+      if (!a || a === 'me' || a === 'invite') return []
       const m: any = models.find((x: any) => x.id === a.modelId)
       if (!m) return []
       return [{ pricing: m.model_pricing, thinking: speedLevel('poker', m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] }]

@@ -22,6 +22,8 @@ export { START_FEN }
 export type ChessEndReason =
   | 'checkmate' | 'stalemate' | 'insufficient' | 'fifty' | 'threefold'
   | 'cap' | 'resign'
+  // Two people (Oct 21): a clock ran out; the host closed the table before anyone sat down.
+  | 'time' | 'cancel'
 export type ChessEnd = { reason: ChessEndReason; winner: 'white' | 'black' | 'draw' }
 
 export type ChessPosition = {

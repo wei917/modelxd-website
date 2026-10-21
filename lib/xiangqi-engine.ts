@@ -17,6 +17,8 @@ import { XQ_START_FEN, parseFen, toWxf, type Side } from './xiangqi-board'
 export { XQ_START_FEN }
 
 export type XqEndReason = 'checkmate' | 'stalemate' | 'repetition' | 'insufficient' | 'cap' | 'resign'
+  // Two people (Oct 21): a clock ran out; the host closed the table before anyone sat down.
+  | 'time' | 'cancel'
 export type XqEnd = { reason: XqEndReason; winner: 'red' | 'black' | 'draw' }
 
 export type XqPosition = {
