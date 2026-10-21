@@ -852,10 +852,26 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {/* No account or language row here any more: sign-in / your profile
-            moved to the top bar beside the hamburger, and the language globe
-            was dropped from this menu (owner, Oct 13: "remove the global
-            button, it's not necessary"); language stays on /profile. */}
+        {/* Your account first: the picture in the top bar alone did not read
+            as the way to the profile (owner, Oct 20: "there is no 'profile'
+            option in the nav bar ... not clear"). The top-bar picture stays.
+            No language globe here (owner, Oct 13); language is on /profile. */}
+        {authLoaded && (user ? (
+          <Link href="/profile" className={`nav-mobile-account${pathname === '/profile' ? ' active' : ''}`}>
+            {face.photo ? (
+              <img src={face.photo} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="nav-auth-initials">
+                {(face.name || '?').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+              </span>
+            )}
+            <span className="nav-label">{t('nav.profile')}</span>
+          </Link>
+        ) : (
+          <button type="button" className="nav-mobile-account" onClick={() => { setMenuOpen(false); show() }}>
+            <NavIcon name="persona" /><span className="nav-label">{t('auth.signin')}</span>
+          </button>
+        ))}
         {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
           <Link
             key={href}
