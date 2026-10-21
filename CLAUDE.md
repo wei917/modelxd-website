@@ -538,7 +538,11 @@ speaks and deletes one unused for 7 days: the seat that claims the first use
 include it. The recording is never stored. Caps: 5 voices, 10 tries a day
 (Whisper is house-paid, ~$0.003 a try). `/api/xcreate/voices` (GET / POST
 multipart / DELETE), the panel is `app/xcreate/MyVoices.tsx` (chips and an
-in-place recorder: browser recording → mono WAV, at least 5 s spoken, 30 s at most). Deleting an
+in-place recorder: browser recording → mono WAV, at least 5 s spoken, 30 s at most).
+The Profile tab lists them too (Oct 20; owner: "user can manage it in the
+users profile"): `app/profile/Voices.tsx`, used or when MiniMax deletes it,
+rename (PATCH) and delete, and a link to `/xcreate?type=audio&from=voice_clone`
+(`?from=<recipe>` opens that From pick on the type the page opened on). Deleting an
 account deletes its voices at MiniMax. X角色 keeps text-designed voices only
 (Aug 8 rule, `app/api/xcharacter/tts/route.ts`).
 
@@ -724,7 +728,7 @@ app/
 ├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
 ├── profile/page.tsx            # Two views (Oct 15) under X先知's own top bar
 │                               #   style: Profile (picture, name, wallet,
-│                               #   ledger, plan, referral, X先知 settings,
+│                               #   ledger, plan, referral, my voices, X先知 settings,
 │                               #   delete account) and Library. Library =
 │                               #   profile/Library.tsx: one section per app
 │                               #   (X Duel + XCreate on by default, the rest

@@ -20,6 +20,7 @@ import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
 import ProfileLibrary, { makeLoader, ProfileViewTabs, type ProfileView, type LibraryActions } from './Library'
 import { renameReading, eraseReading } from '../../lib/xtell-history'
 import AccountPanel from './Account'
+import VoicesSection from './Voices'
 
 const sb = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -683,6 +684,7 @@ export default function ProfilePage() {
               referral={referral} refBusy={refBusy} refCopied={refCopied} onVerifyCard={verifyCard}
               onCopyRef={() => { if (referral) navigator.clipboard?.writeText(referral.link).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1800) }).catch(() => {}) }}
               xtellSettings={<div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>}
+              voices={<VoicesSection />}
             />
           )}
           {isXTell && <>
