@@ -32,7 +32,7 @@ export function languageRule(l: Lang): string {
   const n = langName(l)
   return l === 'en'
     ? 'Speak in English.'
-    : `This table plays in ${n}. Write everything you say aloud in ${n} — natural, conversational ${n}, not translated English. Your private "reasoning" may be in any language you think best in.`
+    : `This table plays in ${n}. Write everything you say aloud in ${n} — natural, conversational ${n}, not translated English. Your "why" may be in any language you think best in.`
 }
 
 type Keys = {

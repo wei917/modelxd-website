@@ -112,11 +112,18 @@ export function winner(players: Player[]): 'wolves' | 'village' | null {
  * because a model that ignores the format must not stall the game.
  */
 export function outputContract(field: string, fieldHint: string): string {
+  // The field is "why", not "reasoning", and is not called private thinking:
+  // Anthropic declined the old contract ({"reasoning": "<your private
+  // thinking, which nobody else ever sees>"}) as reasoning extraction on
+  // EVERY turn for Claude Opus 5 / 5.5, Fable 5 / 5.1 and Sonnet 5.5
+  // (Oct 21), so those seats never spoke; rewording alone still left Opus
+  // 5.5 declined, the key name was the trigger. The route reads "why" into
+  // the same hidden slot (and still reads an old "reasoning").
   return `Reply with ONE JSON object and nothing else — no markdown fence, no text around it:
 
-{"reasoning": "<your private thinking, which nobody else ever sees>", "${field}": "${fieldHint}"}
+{"why": "<two to four sentences: what you believe about the other players and why you choose this>", "${field}": "${fieldHint}"}
 
-"reasoning" is yours alone. Think freely there — including things you intend to hide.
+The other players never see "why" (people watching the game do), so it may include what you are keeping from the table.
 "${field}" is what the table sees. Only this is shown to the other players.`
 }
 
@@ -197,7 +204,7 @@ Day ${day} voting. You may vote for: ${targets.join(', ')}.
 
 ${outputContract('vote', 'the exact name of the player you vote to eliminate')}
 
-Your "reasoning" is private. Say aloud nothing here — this turn is the ballot only.`
+Your "why" is not shown to the table. Say aloud nothing here — this turn is the ballot only.`
 }
 
 /**
