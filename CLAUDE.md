@@ -69,6 +69,14 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `146_xgame_members.sql` applied 2026-10-21 by the owner: XGame
+  multiplayer's foundation, `xgame_members` (who sits where; service role
+  only), `xtalk_sessions.step_until` (a lease for model turns), and the
+  browser may now only read, rename (title) and delete its own
+  xtalk_sessions rows. Proven on PGlite first (19/19). Checked live: the
+  publishable key gets 42501 on xgame_members and on inserting a row; signed
+  in as the owner, renaming an own table works (restored) and rewriting
+  pending, winner/day or step_until gets 42501, row unchanged.
   `145_site_visit_time_zone.sql` applied 2026-10-20 by the owner:
   `site_visits.time_zone` (an IANA name, the browser's, else Vercel's
   `x-vercel-ip-timezone`; timestamptz keeps the moment, not the zone) and
