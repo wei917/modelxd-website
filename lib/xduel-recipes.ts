@@ -70,6 +70,35 @@ export function fitsRecipe(m: { modes?: string[] | null }, k: VideoRecipe): bool
   return (m.modes ?? []).includes(k)
 }
 
+// ── 音訊's kinds (Oct 21; owner: "do we have music generation models? we
+// should do that duel too", then "do it in one tab") ──────────────────────
+// One 音訊 tab, a Mode row of 語音 / 音樂. Speech reads the text at each
+// model's own voice; music makes a song from the description. The kind is
+// `duels.recipe` like video's, and music rates in its own pool (`xd_pool`,
+// migration 146). Old speech duels have no kind saved: they are speech.
+
+export type AudioKind = 'text_to_speech' | 'text_to_music'
+export const AUDIO_KINDS: readonly AudioKind[] = ['text_to_speech', 'text_to_music']
+export const DEFAULT_AUDIO_KIND: AudioKind = 'text_to_speech'
+export const isAudioKind = (v: unknown): v is AudioKind => v === 'text_to_speech' || v === 'text_to_music'
+
+/** How long a music duel's songs are. Lyria 3.5 always makes about a
+ *  minute: probed Oct 21, three prompts asking for 30 seconds in different
+ *  words all came back 62-63 s. So ElevenLabs, which takes a length, is set
+ *  to the same minute, and the prompt is left as the person wrote it. Lyria
+ *  bills per song ($0.08), ElevenLabs per second ($0.15 a minute): about
+ *  $0.23 a duel. */
+export const MUSIC_SECONDS = 60
+
+/** The longest text each kind takes: speech is read out word for word, so
+ *  300 characters bounds the cost and the listening (Oct 19); a song is
+ *  described, not read. */
+export const audioMaxChars = (k: AudioKind) => k === 'text_to_music' ? 500 : 300
+
+/** An audio duel's kind (speech for the ones from before music). */
+export const audioKindOf = (d: { mode?: string | null; recipe?: string | null }): AudioKind | null =>
+  d.mode !== 'audio' ? null : isAudioKind(d.recipe) ? d.recipe : DEFAULT_AUDIO_KIND
+
 /** A video duel's kind; duels from before migration 142 have none saved,
  *  so it is read from their input: none → text, a picture → first frame,
  *  a video → 改編. */

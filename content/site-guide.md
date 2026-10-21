@@ -59,7 +59,10 @@ text, image, video and speech (語音). Pick the type (Text, Image, Video,
 Audio) in the bar across the top of the page. A speech duel: type a short
 text (up to 300 characters) and two anonymous text-to-speech models read it
 aloud; you listen, vote, see the prices per minute of speech, and vote
-again. Speech has its own leaderboard on XBoard (the Audio tab).
+again. In Audio, the Mode row also offers Music (音樂): describe a song (up
+to 500 characters) and two music models (Lyria 3.5 and ElevenLabs Music
+2.5) each make about a minute of it; prices are shown per song. Speech and
+music have their own leaderboards on XBoard (the Speech and Music tabs).
 No web search here by design — it is meant to be a clean like-for-like test.
 
 Under the composer, XDuel also shows other people's duels of the chosen type

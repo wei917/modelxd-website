@@ -59,7 +59,7 @@ interface LeaderboardEntry {
   provisional: boolean
 }
 
-type FilterMode = 'text' | 'image' | 'video' | 'audio'
+type FilterMode = 'text' | 'image' | 'video' | 'audio' | 'music'
 
 /**
  * Subtype of the selected category (CC, Aug 2: no separate boards — every
@@ -153,7 +153,8 @@ function primaryMode(m: AIModel): string {
   const out = m.output_modalities ?? []
   if (out.includes('video')) return 'video'
   if (out.includes('image')) return 'image'
-  if (out.includes('audio')) return 'audio'
+  // Music is its own board (Oct 21): XDuel's 音樂 duels rate apart from speech.
+  if (out.includes('audio')) return (m.modes ?? []).includes('text_to_music') ? 'music' : 'audio'
   return 'text'
 }
 
@@ -187,6 +188,14 @@ function headlineOf(mode: string, p: ModelPricing): number | null {
     if (typeof q.per_audio_second === 'number') return q.per_audio_second * 60
     return null
   }
+  // Music: $ per song of a minute, as XDuel's 音樂 duels are priced (Lyria
+  // bills per song and always makes about a minute; ElevenLabs per second).
+  if (mode === 'music') {
+    const q = p as any
+    if (typeof q.per_song === 'number') return q.per_song
+    if (typeof q.per_audio_second === 'number') return q.per_audio_second * 60
+    return null
+  }
   if (mode === 'video' && p.per_video_second) {
     const r = p.per_video_second
     return r['720p'] ?? r['default'] ?? Object.values(r)[0] ?? null
@@ -217,6 +226,7 @@ function priceParts(m: AIModel): { amount: string; unit: string } | null {
   let unit: string
   if (mode === 'video')                                            unit = 'sec'
   else if (mode === 'audio')                                       unit = 'min'
+  else if (mode === 'music')                                       unit = 'song'
   else if (mode === 'image' && rateNum(p.tokens?.image_output) != null) unit = '1M'
   else if (mode === 'image')                                       unit = 'image'
   else                                                             unit = '1M'
@@ -249,7 +259,8 @@ function modalityBadge(mod: string): { label: string; color: string; bg: string 
     case 'text':  return { label: 'Text',  color: '#6b6860', bg: 'rgba(107,104,96,0.1)' }
     case 'image': return { label: 'Image', color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)' }
     case 'video': return { label: 'Video', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' }
-    case 'audio': return { label: 'Audio', color: '#06b6d4', bg: 'rgba(6,182,212,0.08)' }
+    case 'audio': return { label: 'Speech', color: '#06b6d4', bg: 'rgba(6,182,212,0.08)' }
+    case 'music': return { label: 'Music', color: '#ec4899', bg: 'rgba(236,72,153,0.08)' }
     default:      return { label: mod,     color: '#6b6860', bg: 'rgba(107,104,96,0.1)' }
   }
 }
@@ -280,6 +291,8 @@ function scoreTier(score: number | null): 'poor' | 'fair' | 'mid' | 'good' | 'el
 
 export default function LeaderboardPage() {
   const t = useT()
+  // Speech and music share XDuel's 音訊 tab but rate apart (Oct 21).
+  const tabLabel = (m: FilterMode) => m === 'audio' ? t('xduel.audio.speech') : m === 'music' ? t('xduel.audio.music') : t('mode.' + m)
   const [models, setModels] = useState<AIModel[]>([])
   const [scores, setScores] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -502,7 +515,7 @@ export default function LeaderboardPage() {
                 letterSpacing: '0.18em', textTransform: 'uppercase',
                 color: 'var(--muted)', padding: '2px 0 9px 14px',
               }}>
-                {t('mode.' + filterMode)}
+                {tabLabel(filterMode)}
               </div>
               {subtypeChips.map(([key, label]) => {
                 const active = subtype === key
@@ -597,12 +610,12 @@ export default function LeaderboardPage() {
             {/* Category filter. Picking a category resets its subtype to
                 the default so a leftover 'werewolf' can't leak into video. */}
             <div className="mode-seg">
-              {(['text', 'image', 'video', 'audio'] as FilterMode[]).map(m => (
+              {(['text', 'image', 'video', 'audio', 'music'] as FilterMode[]).map(m => (
                 <button key={m}
                   onClick={() => { setFilterMode(m); setSubtype('all') }}
                   className={`mode-seg-btn${filterMode === m ? ' active' : ''}`}>
                   <span className={`mode-dot${filterMode === m ? ' active' : ''}`} />
-                  {t('mode.' + m)}
+                  {tabLabel(m)}
                   <span style={{ fontSize: 9, color: 'var(--muted)', fontWeight: 600 }}>
                     {modeCounts[m] ?? 0}
                   </span>

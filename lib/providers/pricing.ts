@@ -259,6 +259,16 @@ export function speechPricePerMinute(model: ModelInfo): number {
   return perSec * 60
 }
 
+/** A song's price at a given length (XDuel's 音樂, Oct 21): Lyria bills
+ *  per song, ElevenLabs per second, so both are shown per song of the
+ *  duel's length. */
+export function musicPricePerSong(model: ModelInfo, seconds: number): number {
+  const p = pricing(model)
+  if (typeof p.per_song === 'number') return p.per_song
+  if (typeof p.per_audio_second === 'number') return seconds * p.per_audio_second
+  return 0
+}
+
 // ── presentation helpers ────────────────────────────────────────────────────
 
 /**
