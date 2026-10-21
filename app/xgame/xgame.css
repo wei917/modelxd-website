@@ -1,7 +1,11 @@
 /* XGame's tab pages (Oct 21; Codex's XOracle-style design, approved by the
    owner): XOracle's warm paper, the scenic feature, serif headings and white
    panels. Everything is scoped to XGame; shared rooms keep their own look. */
-.xgame-shell .arena.xgame-arena { max-width: 1180px; padding: 26px 32px 64px; }
+/* XOracle's own column (.xtell-explorer-container): up to 1280 px with 32 px
+   sides, the feature 10 px under the bar; on a phone 16 px sides and the
+   feature right under the bar (owner, Oct 21: "the page width does not match
+   XOracle"). */
+.xgame-shell .arena.xgame-arena { max-width: 1280px; padding: 10px 32px 64px; }
 .xgame-page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 20px; }
 .xgame-page-heading > a { color: var(--red); font: 600 12px/1.5 var(--font-body), sans-serif; letter-spacing: .2em; text-decoration: none; }
 .xgame-page-heading h1 { margin: 0; color: var(--xtell-ink); font: 400 clamp(18px, 2vw, 25px)/1.3 var(--xtell-serif); text-wrap: balance; }
@@ -59,14 +63,14 @@
 .xgame-shell :is(a, button, input):focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .xgame-table:focus { outline: none; }
 @media (max-width: 1000px) {
-  .xgame-shell .arena.xgame-arena { padding: 20px 24px 48px; }
+  .xgame-shell .arena.xgame-arena { padding-bottom: 48px; }
   .xgame-hero-copy { max-width: 580px; padding-left: 60px; padding-right: 60px; }
   .xgame-ways { padding: 18px; gap: 18px; }
   .xgame-way + .xgame-way { padding-left: 18px; }
 }
 @media (max-width: 700px) {
-  .xgame-shell .arena.xgame-arena { padding: 18px 16px 36px; }
-  .xgame-page-heading { display: block; margin-bottom: 16px; }
+  .xgame-shell .arena.xgame-arena { padding: 0 16px 36px; }
+  .xgame-page-heading { display: block; margin: 14px 0 16px; }
   .xgame-page-heading > a { font-size: 10px; }
   .xgame-page-heading h1 { margin-top: 5px; font-size: 23px; }
   .xgame-hero { min-height: 430px; border-radius: 18px; }
