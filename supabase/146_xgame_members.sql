@@ -1,5 +1,5 @@
--- 146: XGame multiplayer, the foundation (Oct 21, 2026). NOT RUN YET:
--- the owner runs it by hand in the Supabase SQL editor after saying yes.
+-- 146: XGame multiplayer, the foundation (Oct 21, 2026). Applied by the
+-- owner on Oct 21 and checked live (CLAUDE.md, migrations).
 -- Plan: docs/XGAME-MULTIPLAYER-PLAN.md ("Step 1: chess and 象棋").
 --
 -- Until now a table had one person, its creator, and the creator's browser
