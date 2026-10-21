@@ -24,7 +24,7 @@ export const maxDuration = 200
 
 import { createClient } from '@supabase/supabase-js'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
-import { seatThinking } from '@/lib/game-thinking'
+import { seatLevel, isEligible, passingLevels } from '@/lib/xgame-speed'
 import {
   emptyBoard, place, winAt, isFull, parseCoord, coordName, cellAt,
   type Board, type Stone,
@@ -103,15 +103,17 @@ export async function POST(req: Request) {
         const o = m.model_pricing?.tokens?.text_output
         return typeof o === 'number' ? o : typeof o?.default === 'number' ? o.default : null
       }
-      const eligible = (pool ?? []).filter((m: any) => !(m.blocked_features ?? []).includes('xduel'))
+      // Only models that passed 五子棋's speed test (lib/xgame-speed.ts).
+      const eligible = (pool ?? []).filter((m: any) => !(m.blocked_features ?? []).includes('xduel') && isEligible('gomoku', m))
       const cheap = eligible.filter((m: any) => { const p = outPrice(m); return p != null && p > 0 && p <= 8 })
       const from = (cheap.length >= 2 ? cheap : eligible).sort(() => Math.random() - 0.5)
       // Duel seats get a modest thinking level when the model has one:
       // cheap models with thinking OFF play blind-drunk gomoku (Aug 6).
       const pickThinking = (m: any): string | null => {
         const lv = m.output_config?.text?.thinking_levels
-        if (!Array.isArray(lv) || lv.length === 0) return null
-        return lv.includes('low') ? 'low' : lv[0]
+        const want = Array.isArray(lv) && lv.length ? (lv.includes('low') ? 'low' : lv[0]) : null
+        const r = seatLevel('gomoku', m, want && passingLevels('gomoku', m).includes(want) ? want : null)
+        return r.ok ? r.level : null
       }
       const play = body.play === true
       if (from.length < (play ? 1 : 2)) return Response.json({ error: 'Not enough models available for a blind match' }, { status: 503 })
@@ -128,16 +130,22 @@ export async function POST(req: Request) {
       title = 'Gomoku — blind duel'
     } else {
       const seats = body.seats ?? {}
+      // Only the models, and thinking levels, that passed this table's speed
+      // test may sit (lib/xgame-speed.ts); the picker offers no others.
+      let refused: string | null = null
       const mk = async (stone: Stone, cfg: any): Promise<Player | null> => {
         if (cfg?.human) return { stone, modelId: null, name: String(body.playerName ?? '').slice(0, 40) || 'You', isHuman: true }
         const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
-        return m ? {
+        const lv = m ? seatLevel('gomoku', m, cfg?.thinking) : null
+        if (m && lv && !lv.ok) { refused = `${m.display_name}: ${lv.reason}`; return null }
+        return m && lv?.ok ? {
           stone, modelId: m.id, name: m.display_name, isHuman: false,
-          thinking: seatThinking(m, cfg?.thinking),
+          thinking: lv.level,
         } : null
       }
       // Seat 0 plays Black in game 1, seat 1 in game 2.
       black = await mk('B', seats.black); white = await mk('W', seats.white)
+      if (refused) return Response.json({ error: refused }, { status: 400 })
       if (!black || !white) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
       if (black.isHuman && white.isHuman) return Response.json({ error: 'at most one human seat' }, { status: 400 })
       // The thinking level is part of a player's identity: "Terra (high)"

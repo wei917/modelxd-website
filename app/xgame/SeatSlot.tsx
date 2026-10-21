@@ -9,13 +9,17 @@ import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../lib/i18n'
 import { DEFAULT_SEAT_OPTS, type SeatOpts } from '../xtalk/SeatConfig'
 import { seatThinking } from '../../lib/game-thinking'
+import { isEligible, passingLevels, type SpeedGame } from '../../lib/xgame-speed'
 import type { Speaker } from '../xtalk/templates'
 
 export type SeatAssign = 'me' | { modelId: string; name: string } | null
 
-export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, onAssign, onOpenPicker }: {
+export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatOpts, onAssign, onOpenPicker }: {
   /** A stone emoji (五子棋) or a picture (chess draws its king). */
   icon: React.ReactNode
+  /** A timed table (lib/xgame-speed.ts): 🎲 draws, and the thinking chips
+   *  offer, only what passed this game's speed test. */
+  game?: SpeedGame
   assign: SeatAssign
   models: Speaker[]
   seatOpts: Record<string, SeatOpts>
@@ -37,16 +41,23 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
   }, [open])
 
   const model: any = assign && assign !== 'me' ? models.find((m: any) => m.id === assign.modelId) : null
-  const levels: string[] = model?.output_config?.text?.thinking_levels ?? []
-  const cur = model ? (seatOpts[model.id]?.thinking ?? null) : null
+  const declared: string[] = model?.output_config?.text?.thinking_levels ?? []
+  // A timed table offers only the levels that passed (auto included or not).
+  const passing = model && game ? passingLevels(game, model) : null
+  const levels = passing ? declared.filter(lv => passing.includes(lv)) : declared
+  const autoOk = passing ? passing.includes(null) : true
+  const saved = model ? (seatOpts[model.id]?.thinking ?? null) : null
+  const cur = saved && levels.includes(saved) ? saved : null
   // A row with its own game default (Qwen: thinking off) shows that level
-  // selected instead of 自動, so the seat says what the table will send.
+  // selected instead of 自動, so the seat says what the table will send; so
+  // does a timed seat whose default was too slow (its first passing level).
   const dflt = model ? seatThinking(model, null) : null
-  const shown = cur ?? dflt
+  const fallback = dflt && levels.includes(dflt) ? dflt : !autoOk ? (levels[0] ?? null) : dflt
+  const shown = cur ?? fallback
   const label = assign === 'me' ? t('gm.me') : assign ? assign.name : t('gm.pickseat')
 
   const randomModel = (): SeatAssign => {
-    const pool: any[] = models.filter((m: any) => m.id)
+    const pool: any[] = models.filter((m: any) => m.id && (!game || isEligible(game, m)))
     if (pool.length === 0) return null
     const m = pool[Math.floor(Math.random() * pool.length)]
     return { modelId: m.id, name: m.display_name }
@@ -103,7 +114,7 @@ export default function SeatSlot({ icon, assign, models, seatOpts, onSeatOpts, o
                 {t('gm.configmodel')} · {t('xcreate.thinking')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {(dflt ? levels : [null, ...levels]).map(lv => {
+                {(fallback || !autoOk ? levels : [null, ...levels]).map(lv => {
                   const on = shown === lv
                   return (
                     <button key={lv ?? 'auto'} type="button"

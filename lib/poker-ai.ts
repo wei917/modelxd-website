@@ -116,7 +116,10 @@ export function buildPrompt(g: PokerGame, seat: number, seats: SeatInfo[], lang:
     '',
     'Reply with ONLY one JSON object, fields in this order:',
     '{"why": "...", "action": "fold|check|call|bet|raise|allin", "amount": 0, "say": "..."}',
-    `- "why": your private reasoning in one to three sentences, written in ${langName}. Nobody at the table sees it during the hand.`,
+    // Not "your private reasoning": Anthropic declines that wording on Claude
+    // Opus 5 / 5.5 and Fable 5 as reasoning extraction (Oct 21, every poker
+    // turn), so those seats only ever got the automatic move.
+    `- "why": one to three sentences on why you chose this move, written in ${langName}. The other players do not see it during the hand.`,
     '- "action": one of the moves listed above.',
     '- "amount": a whole number, only for bet or raise (the total for this street); otherwise 0.',
     `- "say": optional table talk the other players and the audience will see, at most ${SAY_MAX} characters, in ${langName}. It may bluff. Use "" to stay quiet.`,

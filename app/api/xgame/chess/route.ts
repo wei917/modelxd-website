@@ -22,7 +22,7 @@ import { createClient } from '@supabase/supabase-js'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { chessEngine, type ChessEnd, type ChessEngine, type ChessPosition } from '@/lib/chess-engine'
 import { playAiTurn, providerAsk, CHESS_HARNESS } from '@/lib/chess-turn'
-import { seatThinking } from '@/lib/game-thinking'
+import { seatLevel } from '@/lib/xgame-speed'
 
 const LOG = '[xgame:chess]'
 
@@ -65,15 +65,21 @@ export async function POST(req: Request) {
   // ── create ────────────────────────────────────────────────────────────
   if (body.action === 'create') {
     const seats = body.seats ?? {}
+    // Only the models, and thinking levels, that passed this table's speed
+    // test may sit (lib/xgame-speed.ts); the picker offers no others.
+    let refused: string | null = null
     const mk = async (color: Color, cfg: any): Promise<Player | null> => {
       if (cfg?.human) return { color, modelId: null, name: String(body.playerName ?? '').slice(0, 40) || 'You', isHuman: true }
       const m = cfg?.modelId ? await getModelById(cfg.modelId) : null
-      return m ? {
+      const lv = m ? seatLevel('chess', m, cfg?.thinking) : null
+      if (m && lv && !lv.ok) { refused = `${m.display_name}: ${lv.reason}`; return null }
+      return m && lv?.ok ? {
         color, modelId: m.id, name: m.display_name, isHuman: false,
-        thinking: seatThinking(m, cfg?.thinking),
+        thinking: lv.level,
       } : null
     }
     const white = await mk('w', seats.white), black = await mk('b', seats.black)
+    if (refused) return Response.json({ error: refused }, { status: 400 })
     if (!white || !black) return Response.json({ error: 'both seats need a model or a human' }, { status: 400 })
     if (white.isHuman && black.isHuman) return Response.json({ error: 'at most one human seat' }, { status: 400 })
     // The thinking level is part of a player's identity, as in 五子棋.

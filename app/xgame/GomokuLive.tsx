@@ -28,6 +28,7 @@ import { GOMOKU_HARNESS, type GameResult, type MatchState } from '../../lib/gomo
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import GridBoard, { type XY, type GridGeometry } from './GridBoard'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
+import { isEligible } from '../../lib/xgame-speed'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 
@@ -227,13 +228,14 @@ export default function GomokuLive({ models, resumeId, onExit }: {
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <SeatSlot icon="⚫" assign={seats.B} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('B')} onOpenPicker={() => setPickerFor('B')} />
-          <SeatSlot icon="⚪" assign={seats.W} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('W')} onOpenPicker={() => setPickerFor('W')} />
+          <SeatSlot icon="⚫" game="gomoku" assign={seats.B} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('B')} onOpenPicker={() => setPickerFor('B')} />
+          <SeatSlot icon="⚪" game="gomoku" assign={seats.W} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('W')} onOpenPicker={() => setPickerFor('W')} />
         </div>
         {pickerFor && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text"
             slotIds={[]}
+            allow={(m: any) => isEligible('gomoku', m)}
             onClose={() => setPickerFor(null)}
             onSelect={(m: any) => { setSeats(prev => ({ ...prev, [pickerFor]: { modelId: m.id, name: m.display_name } })); setPickerFor(null) }}
           />

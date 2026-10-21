@@ -101,7 +101,7 @@ function companyLabel(id: string): string {
     .join(' ')
 }
 
-export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature, needsSearch, multi, studio = false }: {
+export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose, slotIds, feature, needsSearch, allow, multi, studio = false }: {
   /** One recipe, or a SET — a model qualifies by supporting ANY of them
    *  (canvas re-generate wants image_to_video OR reference_frames). */
   mode: Mode; recipeMode: ModelMode | ModelMode[]; onSelect: (m: PickerModel) => void; onClose: () => void
@@ -115,6 +115,10 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   /** Only models that can search the web (output_config.text.capabilities
    *  has web_search): XSports, where search is always on (owner, Oct 12). */
   needsSearch?: boolean
+  /** Only the models this says yes to: XGame's tables offer the models that
+   *  passed that game's speed test (lib/xgame-speed.ts, Oct 20). Hidden
+   *  outright, like a blocked feature. */
+  allow?: (m: PickerModel) => boolean
   /** Per-slot selected model ids (null = empty slot) - index maps to A/B/C/D. */
   slotIds: (string | null)[]
   /** Opt-in: choose several (XSports' private chat, Oct 13). A row toggles
@@ -195,7 +199,8 @@ export default function ModelPickerDialog({ mode, recipeMode, onSelect, onClose,
   const offered = needsSearch
     ? allModels.filter(m => (m.output_config?.text?.capabilities ?? []).includes('web_search'))
     : allModels
-  const models = feature ? allowedFor(offered, feature) : offered
+  const featured = feature ? allowedFor(offered, feature) : offered
+  const models = allow ? featured.filter(allow) : featured
   const recipes: ModelMode[] = Array.isArray(recipeMode) ? recipeMode : [recipeMode]
   const eligible = models.filter(m => recipes.some(r => (m.modes ?? []).includes(r)))
 

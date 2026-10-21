@@ -25,7 +25,7 @@ import {
 } from '@/lib/poker-engine'
 import { buildPrompt, parseReply, askOnce, MODEL_TIMEOUT_MS, TURN_BUDGET_MS, type SeatInfo } from '@/lib/poker-ai'
 import { seal, unseal } from '@/lib/poker-seal'
-import { seatThinking } from '@/lib/game-thinking'
+import { seatLevel } from '@/lib/xgame-speed'
 
 const LOG = '[xgame:poker]'
 
@@ -244,7 +244,11 @@ async function create(body: any, d: PokerDeps): Promise<Reply> {
     }
     const m = typeof c?.modelId === 'string' ? await d.getModel(c.modelId) : null
     if (!usable(m)) return fail(400, `Seat ${i + 1}: that model is not available.`)
-    const thinking = seatThinking(m, c.thinking)
+    // Only the models, and thinking levels, that passed poker's speed test
+    // (lib/xgame-speed.ts); the picker offers no others.
+    const lv = seatLevel('poker', m, c.thinking)
+    if (!lv.ok) return fail(400, `Seat ${i + 1}: ${m.display_name}: ${lv.reason}.`)
+    const thinking = lv.level
     // The same model may take several seats: "name (2)", "name (3)", as in Werewolf.
     const k = (counts.get(m.id) ?? 0) + 1
     counts.set(m.id, k)
