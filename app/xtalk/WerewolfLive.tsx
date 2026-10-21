@@ -255,7 +255,7 @@ export default function WerewolfLive({
             isn't one of, and the pictograms forced the eye to decode a glyph
             before it could read a number. There is one board; this states it
             in words and gets out of the way. (CC, Aug 2) */}
-        <div style={{
+        <div className="xgame-role-summary" style={{
           display: 'flex', alignItems: 'baseline', gap: 22, flexWrap: 'wrap',
           padding: '0 0 14px', marginBottom: 20,
           borderBottom: '1px solid var(--border)',
@@ -269,7 +269,7 @@ export default function WerewolfLive({
             const n = composition(TABLE_SIZE).filter(x => x === r).length
             if (n === 0) return null
             return (
-              <span key={r} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+              <span key={r} className="xgame-role-chip" style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
                 <span style={{
                   fontFamily: 'var(--font-display), sans-serif', fontSize: 15, fontWeight: 800,
                   color: r === 'wolf' ? 'var(--red)' : 'var(--white)', lineHeight: 1,
@@ -292,7 +292,7 @@ export default function WerewolfLive({
             slot in this row and nothing else has to move. The AI count reads
             off the same arithmetic — chairs minus humans. (CC, Aug 2) */}
         <div className="prompt-label" style={{ marginBottom: 10 }}>{t('ww.sec.human')}</div>
-        <div style={{
+        <div className="xgame-human-seats" style={{
           display: 'grid', gap: 8, marginBottom: 18,
           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
         }}>
@@ -391,7 +391,7 @@ export default function WerewolfLive({
             toggle arrived by symmetry with Discussion and only added
             per-search fees and latency to every act. */}
         {error && <div style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>⚠ {error}</div>}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div className="xgame-setup-action" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button className="btn-next" disabled={total !== size || busy} onClick={start}>
             {busy ? t('ww.dealing') : t('ww.deal')}
           </button>

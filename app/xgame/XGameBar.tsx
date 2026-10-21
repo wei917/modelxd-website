@@ -5,27 +5,20 @@
 // games are its rooms, icon over a label. The lobby switches in place
 // (onPick); a game's table links back to /xgame?game=.
 //
-// Icons: there is no approved per-game icon set yet (MediaIcon has one
-// generic 'game'). Each game shows a square cut from its own lobby art
-// (werewolf's painted icon, the other banners' centres) until generated
-// icons replace them.
+// Icons (Oct 21, approved by the owner via Codex): the refined "03 bold
+// graphic" set for five games, the 將 / 帥 river board for 象棋 and the cream
+// 3NT table with four cards for bridge. public/xgame/icons/ keeps the
+// approved originals; the page loads 256 px crops of them (the same
+// rectangles Codex's CSS showed: ~64 KB for all seven, not ~4 MB of PNG on
+// a phone). The bar and a game's setup heading share gameIconStyle.
 
+import type { CSSProperties } from 'react'
 import { useLang, useT } from '../../lib/i18n'
 import { gamesFor, GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
 
-const ICON: Record<GameKey, string> = {
-  werewolf: '/xtalk/werewolf.png',
-  gomoku: '/xgame/gomoku-banner.svg',
-  draw: '/xgame/draw-banner.svg',
-  chess: '/xgame/chess-banner.svg',
-  poker: '/xgame/poker-banner.svg',
-  xiangqi: '/xgame/xiangqi-icon.svg',
-  bridge: '/xgame/bridge-icon.svg',
+export function gameIconStyle(game: GameKey): CSSProperties {
+  return { backgroundImage: `url(/xgame/icons/${game}.webp)` }
 }
-
-/** Where the square sits in a banner, when its centre is not the subject. */
-const ICON_POS: Partial<Record<GameKey, string>> = { draw: '20% 55%' }
-
 
 export default function XGameBar({ current, onPick }: {
   current: GameKey | null
@@ -45,7 +38,7 @@ export default function XGameBar({ current, onPick }: {
                   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
                   e.preventDefault(); onPick(k)
                 } : undefined}>
-                <span className="xtell-nav-icon xgame-bar-icon" style={{ backgroundImage: `url(${ICON[k]})`, ...(ICON_POS[k] ? { backgroundPosition: ICON_POS[k] } : {}) }} aria-hidden />
+                <span className="xtell-nav-icon xgame-bar-icon" style={gameIconStyle(k)} aria-hidden />
                 <span>{t(GAME_NAME_KEY[k])}</span>
               </a>
             ))}

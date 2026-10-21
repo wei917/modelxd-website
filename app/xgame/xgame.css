@@ -1,0 +1,102 @@
+/* XGame's tab pages (Oct 21; Codex's XOracle-style design, approved by the
+   owner): XOracle's warm paper, the scenic feature, serif headings and white
+   panels. Everything is scoped to XGame; shared rooms keep their own look. */
+.xgame-shell .arena.xgame-arena { max-width: 1180px; padding: 26px 32px 64px; }
+.xgame-page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 20px; }
+.xgame-page-heading > a { color: var(--red); font: 600 12px/1.5 var(--font-body), sans-serif; letter-spacing: .2em; text-decoration: none; }
+.xgame-page-heading h1 { margin: 0; color: var(--xtell-ink); font: 400 clamp(18px, 2vw, 25px)/1.3 var(--xtell-serif); text-wrap: balance; }
+.xgame-hero { position: relative; isolation: isolate; overflow: hidden; min-height: 390px; border-radius: 22px; background: #eee5d6; color: #302d29; }
+.xgame-hero-art, .xgame-hero-shade { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.xgame-hero-art img { width: 100%; height: 100%; object-fit: cover; object-position: 70% center; }
+.xgame-hero-shade { background: linear-gradient(90deg, rgba(255,250,240,.97), rgba(255,250,240,.9) 34%, rgba(255,250,240,.26) 69%, rgba(255,250,240,.06)); }
+.xgame-hero-copy { padding: 46px 70px 80px; max-width: 660px; }
+.xgame-hero-kicker { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 13px; letter-spacing: .1em; }
+.xgame-hero-kicker::before { content: ''; width: 26px; height: 1px; background: currentColor; opacity: .55; }
+.xgame-hero-copy h2 { margin: 0; font: 400 clamp(30px, 3.8vw, 46px)/1.12 var(--xtell-serif); letter-spacing: -.025em; white-space: pre-line; text-wrap: balance; }
+.xgame-hero-description { max-width: 330px; margin: 16px 0 23px; font-size: 14px; line-height: 1.6; }
+.xgame-hero-enter { display: inline-flex; align-items: center; justify-content: center; gap: 18px; min-height: 44px; padding: 11px 22px; border-radius: 999px; background: var(--red); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 5px 18px rgba(100,30,20,.18); transition: background .2s, transform .2s; }
+.xgame-hero-enter:hover { background: #bb2f28; transform: translateY(-2px); color: #fff; }
+.xgame-hero-enter span { font-size: 19px; line-height: 1; }
+.xgame-hero-arrow { position: absolute; top: 45%; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid rgba(255,255,255,.65); border-radius: 50%; background: rgba(255,253,248,.8); color: #302d29; cursor: pointer; font: 24px/1 Georgia, serif; }
+.xgame-hero-arrow:hover { background: #fff; }
+.xgame-hero-arrow.is-prev { left: 14px; }
+.xgame-hero-arrow.is-next { right: 14px; }
+.xgame-hero-controls { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; padding: 2px 7px; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; background: rgba(255,253,248,.9); color: #302d29; }
+.xgame-hero-dots { display: flex; }
+.xgame-hero-dots button, .xgame-hero-play { position: relative; display: grid; place-items: center; width: 30px; height: 34px; padding: 0; border: 0; border-radius: 99px; background: none; color: inherit; cursor: pointer; }
+.xgame-hero-dots button::after { content: ''; width: 6px; height: 6px; border-radius: 99px; background: #a79c92; transition: width .2s; }
+.xgame-hero-dots button[aria-current]::after { width: 19px; background: var(--red); }
+.xgame-hero-play { margin-left: 5px; }
+.xgame-hero-count { position: absolute; right: 28px; bottom: 28px; font-size: 12px; letter-spacing: .12em; }
+.xgame-hero-count span { opacity: .6; }
+.xgame-hero[data-game="werewolf"] { background: #12222b; color: #fff9ef; }
+.xgame-hero[data-game="werewolf"] .xgame-hero-shade { background: linear-gradient(90deg, rgba(9,22,30,.9), rgba(9,22,30,.67) 35%, rgba(9,22,30,.12) 72%); }
+.xgame-hero[data-game="werewolf"] .xgame-hero-description, .xgame-hero[data-game="werewolf"] .xgame-hero-kicker { color: #e1e2df; }
+.xgame-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0 24px; padding: 20px 24px; border: 1px solid var(--xtell-rule); border-radius: 16px; background: #fff; box-shadow: 0 4px 16px rgba(60,40,20,.025); }
+.xgame-way { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.xgame-way + .xgame-way { border-left: 1px solid var(--xtell-rule); padding-left: 24px; }
+.xgame-way-icon { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 50%; background: #f6efe6; color: #9a5b3f; }
+.xgame-way:last-child .xgame-way-icon { color: #587368; background: #edf2ed; }
+.xgame-way strong { display: block; margin-bottom: 3px; font: 600 17px/1.4 var(--xtell-serif); }
+.xgame-way p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.xgame-table { scroll-margin-top: 100px; padding: 28px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
+.xgame-table-heading { display: flex; align-items: start; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--xtell-rule); }
+.xgame-table-heading > .xgame-bar-icon { width: 48px; height: 48px; flex-shrink: 0; }
+.xgame-table-heading h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 6px; font: 400 27px/1.25 var(--xtell-serif); }
+.xgame-table-heading h2 span { padding: 4px 9px; border-radius: 99px; background: #f4eee5; color: var(--muted); font: 400 12px/1.4 var(--font-body), sans-serif; white-space: nowrap; }
+.xgame-table-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.xgame-table .prompt-label { color: var(--xtell-ink); font: 600 14px/1.5 var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; }
+.xgame-shell .xgame-role-summary { display: flex; align-items: center; gap: 10px !important; flex-wrap: wrap; margin: 0 0 24px; padding: 14px 16px !important; background: #faf7f2; border: 1px solid #ede5da; border-radius: 12px; }
+.xgame-shell .xgame-role-summary > span:first-child { margin-right: 10px; font: 500 12px/1.4 var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; }
+.xgame-shell .xgame-role-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 11px; border: 1px solid #e8dfd4; border-radius: 99px; background: #fff; }
+.xgame-shell .xgame-human-seats, .xgame-shell .xgame-model-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.xgame-shell .xgame-human-seats { grid-template-columns: minmax(0, 260px) !important; }
+.xgame-shell .xgame-human-seats > button, .xgame-shell .xgame-model-seats > button { min-height: 62px; font-size: 13px !important; background: #fdfbf8 !important; border-color: #d9ccbb !important; cursor: pointer !important; transition: border-color .15s, background .15s; }
+.xgame-shell .xgame-human-seats > button:hover, .xgame-shell .xgame-model-seats > button:hover { border-color: var(--red) !important; background: #fff5f1 !important; color: var(--red) !important; }
+.xgame-shell .xgame-setup-action { padding-top: 20px; margin-top: 8px; border-top: 1px solid var(--xtell-rule); }
+.xgame-shell .xgame-setup-action .btn-next { min-height: 44px; padding: 11px 24px; border-radius: 99px; font-size: 14px; }
+.xgame-shell .xgame-setup-action .btn-next:disabled { background: #eee5da; color: #8a7b6b; opacity: 1; cursor: not-allowed; }
+.xgame-shell :is(a, button, input):focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
+.xgame-table:focus { outline: none; }
+@media (max-width: 1000px) {
+  .xgame-shell .arena.xgame-arena { padding: 20px 24px 48px; }
+  .xgame-hero-copy { max-width: 580px; padding-left: 60px; padding-right: 60px; }
+  .xgame-ways { padding: 18px; gap: 18px; }
+  .xgame-way + .xgame-way { padding-left: 18px; }
+}
+@media (max-width: 700px) {
+  .xgame-shell .arena.xgame-arena { padding: 18px 16px 36px; }
+  .xgame-page-heading { display: block; margin-bottom: 16px; }
+  .xgame-page-heading > a { font-size: 10px; }
+  .xgame-page-heading h1 { margin-top: 5px; font-size: 23px; }
+  .xgame-hero { min-height: 430px; border-radius: 18px; }
+  .xgame-hero-copy { max-width: none; padding: 34px 36px 90px; }
+  .xgame-hero-copy h2 { font-size: clamp(28px, 8vw, 36px); line-height: 1.17; }
+  .xgame-hero-kicker { font-size: 12px; }
+  .xgame-hero-description { max-width: 270px; font-size: 13px; margin: 14px 0 20px; }
+  .xgame-hero-art img { object-position: 64% center; }
+  .xgame-hero-shade { background: linear-gradient(90deg, rgba(255,250,240,.97), rgba(255,250,240,.75) 65%, rgba(255,250,240,.35)); }
+  .xgame-hero[data-game="werewolf"] .xgame-hero-shade { background: linear-gradient(90deg, rgba(9,22,30,.87), rgba(9,22,30,.59) 65%, rgba(9,22,30,.25)); }
+  .xgame-hero-arrow { width: 28px; height: 38px; border-color: transparent; background: rgba(255,253,248,.85); }
+  .xgame-hero-arrow.is-prev { left: 4px; }
+  .xgame-hero-arrow.is-next { right: 4px; }
+  .xgame-hero-count { display: none; }
+  .xgame-ways { grid-template-columns: 1fr; gap: 14px; margin: 12px 0 18px; padding: 16px; border-radius: 14px; }
+  .xgame-way { gap: 12px; }
+  .xgame-way + .xgame-way { border-left: 0; border-top: 1px solid var(--xtell-rule); padding: 14px 0 0; }
+  .xgame-way strong { font-size: 16px; }
+  .xgame-way p { font-size: 12px; }
+  .xgame-table { padding: 18px 16px; border-radius: 16px; scroll-margin-top: 140px; }
+  .xgame-table-heading { gap: 10px; }
+  .xgame-table-heading h2 { font-size: 24px; gap: 8px; }
+  .xgame-shell .xgame-role-summary { padding: 12px; gap: 7px; }
+  .xgame-shell .xgame-role-summary > span:first-child { flex-basis: 100%; }
+  .xgame-shell .xgame-role-summary > span:last-child { display: none; }
+  .xgame-shell .xgame-role-chip { padding: 4px 8px; }
+  .xgame-shell .xgame-model-seats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+  .xgame-shell .xgame-human-seats { grid-template-columns: 1fr !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xgame-shell *, .xgame-shell *::after { transition: none !important; }
+}
+.xgame-hero-copy:lang(ko), .xgame-page-heading:lang(ko) { word-break: keep-all; }

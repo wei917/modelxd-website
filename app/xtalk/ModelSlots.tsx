@@ -58,7 +58,7 @@ export default function ModelSlots({
 
   return (
     <>
-      <div style={{
+      <div className="xgame-model-seats" style={{
         display: 'grid', gap: 8, marginBottom: 16,
         gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
       }}>

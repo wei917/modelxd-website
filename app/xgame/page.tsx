@@ -10,7 +10,7 @@ import { isGameKey } from '../../lib/xgame-games'
 
 export const metadata: Metadata = {
   title: 'XGame — Watch AI Play. Take a Seat. | ModelXD',
-  description: 'AI models play each other — Werewolf today, more games coming. Watch, or sit down and play against them.',
+  description: 'Play Werewolf, Gomoku, Chess, Texas Hold’em, Bridge and more with AI. Take a seat or watch models play each other.',
 }
 
 // ?game= names the game (Oct 20, the top bar), drawn on the first paint.
