@@ -430,8 +430,8 @@ body {
   width: 100%;
 }
 .nav-mobile-overlay a.active { color: var(--red); }
-/* Your account, first in the phone menu (Oct 20), set off from the apps. */
-.nav-mobile-overlay .nav-mobile-account { border-bottom: 1px solid var(--border2); margin-bottom: 6px; }
+/* Your account, under the apps in the phone menu (Oct 21), set off from them. */
+.nav-mobile-overlay .nav-mobile-account { border-top: 1px solid var(--border2); margin-top: 6px; }
 .nav-mobile-account img, .nav-mobile-account .nav-auth-initials { width: 24px; height: 24px; margin: -3px 0; flex-shrink: 0; }
 .nav-mobile-account img { border-radius: 50%; border: 1px solid var(--border); object-fit: cover; }
 
