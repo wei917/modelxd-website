@@ -70,8 +70,11 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
   // each game's state action in turn, fall back to werewolf on 404s.
   useEffect(() => {
     if (!resumeId) return
+    // A friend opening a table's invite link carries ?join=<token>: the
+    // chess and 象棋 routes show such a table to its holder (Oct 21).
+    const join = new URLSearchParams(window.location.search).get('join')
     const probe = (route: string) =>
-      fetch(`/api/xgame/${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId }) })
+      fetch(`/api/xgame/${route}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'state', id: resumeId, ...(join ? { join } : {}) }) })
     probe('gomoku').then(async r => {
       if (r.ok) { setActive('gomoku'); return }
       const d = await probe('draw').catch(() => null)

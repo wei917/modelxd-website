@@ -6,6 +6,12 @@
 // GridBoard; the pieces are Cburnett's set (BSD 3-clause, see
 // public/xgame/chess/LICENSE.txt), drawn as images because Unicode chess
 // glyphs turn into emoji on some phones.
+//
+// Two people (Oct 21, multiplayer step 1): a seat may be 「邀請朋友」; the host
+// then shares the table's link (InvitePanel), the friend sits down from it
+// (JoinPanel), both play on clocks, and the table refreshes on the server's
+// Realtime ping (app/xgame/DuoParts.tsx). The page steps the game only while
+// a MODEL is to move (`aiTurn`): the other person's turn is not ours to drive.
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,18 +23,21 @@ import { isEligible } from '../../lib/xgame-speed'
 import GridBoard, { type XY } from './GridBoard'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
+import { ClockText, Face, InvitePanel, JoinPanel, useDuoClock, useJoinToken, useTablePings, type ViewClock } from './DuoParts'
 
 type Move = {
   n: number; color: Color; san: string; uci: string
   why?: string; fallback?: boolean; retried?: boolean; rejected?: string[]; timedOut?: boolean
   cost?: number; ms?: number
 }
-type Player = { color: Color; name: string; isHuman: boolean; thinking?: string | null }
+type Player = { color: Color; name: string; isHuman: boolean; thinking?: string | null; handle?: string | null; avatar?: string | null; invited?: boolean }
 type GameView = {
   id: string; status: 'active' | 'over'; winner: 'white' | 'black' | 'draw' | null
   end: { reason: string; winner: string } | null
   fen: string; turn: Color | null; check: boolean; legal: string[]
   moves: Move[]; players: Player[]; humanTurn: boolean; costUsd: number
+  aiTurn: boolean; me: 0 | 1 | null; isHost: boolean
+  lobby: { open: number[]; token?: string } | null; canJoin: boolean; clock: ViewClock | null
 }
 
 const RANKS = ['8', '7', '6', '5', '4', '3', '2', '1']
@@ -91,6 +100,8 @@ export default function ChessLive({ models, resumeId, onExit }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g?.moves.length, g?.status])
   const loopRef = useRef(false)
+  // A friend's way in: the table's link carries ?join=<token>.
+  const join = useJoinToken()
 
   // Every request carries a timeout (GomokuLive's lesson: a severed fetch
   // left the loop locked forever). A step may hold two 90 s asks.
@@ -100,7 +111,7 @@ export default function ChessLive({ models, resumeId, onExit }: {
     try {
       const res = await fetch('/api/xgame/chess', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body), signal: ctl.signal,
+        body: JSON.stringify(join ? { ...body, join } : body), signal: ctl.signal,
       })
       const d = await res.json().catch(() => null)
       if (!res.ok) { setErr(d?.error ?? `HTTP ${res.status}`); if (res.status === 402) setBroke(true); return null }
@@ -123,7 +134,7 @@ export default function ChessLive({ models, resumeId, onExit }: {
     if (loopRef.current) return
     loopRef.current = true
     let cur = from
-    while (cur && cur.status === 'active' && !cur.humanTurn) {
+    while (cur && cur.status === 'active' && cur.aiTurn) {
       cur = await post({ action: 'step', id: cur.id })
       if (!cur) break
     }
@@ -142,7 +153,7 @@ export default function ChessLive({ models, resumeId, onExit }: {
   // WATCHDOG (as in GomokuLive): an AI's turn with no loop running restarts
   // the loop. Paused while out of credits: the error stays on screen.
   useEffect(() => {
-    if (!g || g.status !== 'active' || g.humanTurn || broke) return
+    if (!g || g.status !== 'active' || !g.aiTurn || broke) return
     const id = g.id
     const iv = setInterval(() => {
       if (loopRef.current) return
@@ -150,13 +161,21 @@ export default function ChessLive({ models, resumeId, onExit }: {
     }, 5000)
     return () => clearInterval(iv)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [g?.id, g?.status, g?.humanTurn, broke])
+  }, [g?.id, g?.status, g?.aiTurn, broke])
+
+  // Two people: the other person's move arrives as a ping; the clocks run
+  // on the server's numbers.
+  const duo = !!g && g.players.length === 2 && g.players.every(p => p.isHuman)
+  useTablePings(g?.id, duo && g?.status === 'active', () => { if (g) void post({ action: 'state', id: g.id }) })
+  const toMoveIdx: 0 | 1 | null = g && g.status === 'active' && g.turn && !g.lobby ? (g.turn === 'w' ? 0 : 1) : null
+  const clockLeft = useDuoClock(duo ? g?.clock : null, toMoveIdx, () => { if (g) void post({ action: 'state', id: g.id }) })
 
   const start = async () => {
     if (busy || !seats.w || !seats.b) return
     setBusy(true)
     const enc = (a: SeatAssign) => a === 'me'
       ? { human: true }
+      : a === 'invite' ? { invite: true }
       : { modelId: (a as any).modelId, thinking: seatOpts[(a as any).modelId]?.thinking ?? null }
     const v = await post({ action: 'create', seats: { white: enc(seats.w), black: enc(seats.b) } })
     setBusy(false)
@@ -180,22 +199,33 @@ export default function ChessLive({ models, resumeId, onExit }: {
     await post({ action: 'resign', id: g.id })
   }
 
+  const sitDown = async () => {
+    if (!g || busy) return
+    setBusy(true)
+    const v = await post({ action: 'join', id: g.id })
+    setBusy(false)
+    // Seated: the token has done its job, the address goes back to the table.
+    if (v && v.me != null) { try { window.history.replaceState(window.history.state, '', `/xgame/${g.id}`) } catch { /* cosmetic */ } }
+  }
+
   // ── setup ──────────────────────────────────────────────────────────────
   if (!g) {
-    const ready = !!seats.w && !!seats.b
+    // A friend by link plays against the host: the other seat is the host's.
+    const ready = !!seats.w && !!seats.b && (seats.w !== 'invite' || seats.b === 'me') && (seats.b !== 'invite' || seats.w === 'me')
     const assign = (side: Color) => (a: SeatAssign) => {
       setSeats(prev => {
         const other: Color = side === 'w' ? 'b' : 'w'
         const next = { ...prev, [side]: a }
         if (a === 'me' && prev[other] === 'me') (next as any)[other] = null
+        if (a === 'invite') (next as any)[other] = 'me'
         return next
       })
     }
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <SeatSlot icon={<King color="w" size={26} />} game="chess" assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
-          <SeatSlot icon={<King color="b" size={26} />} game="chess" assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
+          <SeatSlot icon={<King color="w" size={26} />} game="chess" allowInvite assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
+          <SeatSlot icon={<King color="b" size={26} />} game="chess" allowInvite assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
         </div>
         {pickerFor && (
           <ModelPickerDialog
@@ -217,7 +247,7 @@ export default function ChessLive({ models, resumeId, onExit }: {
   }
 
   // ── live board ─────────────────────────────────────────────────────────
-  const meIdx = g.players.findIndex(p => p.isHuman)
+  const meIdx = g.me ?? -1
   const flipped = meIdx === 1
   const bottomIdx = (meIdx >= 0 ? meIdx : 0) as 0 | 1
   const topIdx = (bottomIdx === 0 ? 1 : 0) as 0 | 1
@@ -247,8 +277,11 @@ export default function ChessLive({ models, resumeId, onExit }: {
     return `${Math.floor(sTot / 60)}:${String(sTot % 60).padStart(2, '0')}`
   }
   const winnerLabel = () => {
+    if (g.end?.reason === 'cancel') return t('gm.cancelled')
     if (g.winner === 'draw' || !g.winner) return t('ch.draw')
-    const p = g.players[g.winner === 'white' ? 0 : 1]
+    const w = g.winner === 'white' ? 0 : 1
+    const p = g.players[w]
+    if (duo) return w === meIdx ? t('gm.youwin') : `${p.name} ${t('gm.win')}`
     return p.isHuman ? t('gm.youwin') : `${p.name} ${t('gm.win')}`
   }
   const reasonLabel = g.end ? t(`ch.end.${g.end.reason}`) : ''
@@ -269,8 +302,11 @@ export default function ChessLive({ models, resumeId, onExit }: {
         background: activeSeat ? 'var(--red-dim)' : 'var(--surface)',
       }}>
         <King color={color} />
+        {duo && !p.invited && <Face name={p.name} avatar={p.avatar} />}
         <span style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-          {p.isHuman ? t('ch.you') : p.name}
+          {duo
+            ? (p.invited ? <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{t('gm.invite.seat')}</span> : <>{p.name}{i === meIdx ? ` ${t('gm.you.tag')}` : ''}</>)
+            : p.isHuman ? t('ch.you') : p.name}
           {p.thinking && (
             <span title={t('xcreate.thinking')} style={{ marginLeft: 7, fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', fontWeight: 700, color: 'var(--red)', border: '1px solid var(--red-dim)', background: 'var(--red-dim)', borderRadius: 6, padding: '1px 6px', verticalAlign: 'middle' }}>
               {p.thinking}
@@ -283,9 +319,11 @@ export default function ChessLive({ models, resumeId, onExit }: {
         {spend > 0 && (
           <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: 'var(--muted2)', flexShrink: 0 }}>${spend.toFixed(3)}</span>
         )}
-        <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: activeSeat ? 'var(--red)' : 'var(--muted2)', fontWeight: 700, flexShrink: 0 }}>
-          {fmtClock(used)}
-        </span>
+        {duo ? <ClockText ms={clockLeft(i)} live={activeSeat && !g.lobby} /> : (
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono), monospace', color: activeSeat ? 'var(--red)' : 'var(--muted2)', fontWeight: 700, flexShrink: 0 }}>
+            {fmtClock(used)}
+          </span>
+        )}
         {activeSeat && !p.isHuman && <span className="nav-history-spin" aria-hidden style={{ flexShrink: 0 }} />}
       </div>
     )
@@ -296,6 +334,15 @@ export default function ChessLive({ models, resumeId, onExit }: {
   return (
     <div style={{ marginTop: 16, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(520px, 100%)', position: 'relative' }}>
+        {g.status === 'active' && g.lobby && g.isHost && g.lobby.token && (
+          <InvitePanel id={g.id} token={g.lobby.token} gameName={t('xg.game.chess')} />
+        )}
+        {g.status === 'active' && g.canJoin && g.lobby && (
+          <JoinPanel
+            host={g.players[g.lobby.open[0] === 0 ? 1 : 0]} gameName={t('xg.game.chess')}
+            seatLabel={t(`ch.side.${g.lobby.open[0] === 0 ? 'w' : 'b'}`)} onJoin={sitDown} busy={busy}
+          />
+        )}
         {seatCard(topIdx)}
         {g.status === 'over' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--red)', background: 'var(--red-dim)' }}>
@@ -305,7 +352,7 @@ export default function ChessLive({ models, resumeId, onExit }: {
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 19, fontWeight: 900, fontFamily: 'var(--font-display), inherit' }}>{winnerLabel()}</span>
               <span style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace' }}>
-                {reasonLabel} · {t('ch.moves').replace('{n}', String(Math.ceil(g.moves.length / 2)))} · ${g.costUsd.toFixed(3)}
+                {reasonLabel} · {t('ch.moves').replace('{n}', String(Math.ceil(g.moves.length / 2)))}{duo ? '' : ` · $${g.costUsd.toFixed(3)}`}
               </span>
             </span>
             <button onClick={onExit} style={{ padding: '9px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
@@ -350,14 +397,19 @@ export default function ChessLive({ models, resumeId, onExit }: {
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {g.status === 'over'
             ? `${winnerLabel()} · ${reasonLabel}`
-            : g.humanTurn ? t('ch.yourmove') : `${g.players[g.turn === 'b' ? 1 : 0]?.name ?? ''} ${t('gm.turn')}`}
+            : g.lobby ? t('gm.invite.waiting')
+            : g.humanTurn ? t('ch.yourmove')
+            : duo ? t('gm.theirmove').replace('{name}', g.players[g.turn === 'b' ? 1 : 0]?.name ?? '')
+            : `${g.players[g.turn === 'b' ? 1 : 0]?.name ?? ''} ${t('gm.turn')}`}
           {g.status === 'active' && g.check && (
             <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: 'var(--red)', borderRadius: 6, padding: '2px 7px' }}>{t('ch.check')}</span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
-          ${g.costUsd.toFixed(3)}
-        </div>
+        {!duo && (
+          <div style={{ fontSize: 11, color: 'var(--muted2)', fontFamily: 'var(--font-mono), monospace', marginBottom: 10 }}>
+            ${g.costUsd.toFixed(3)}
+          </div>
+        )}
         <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[...g.moves].reverse().map(m => (
             <div key={m.n} style={{ padding: '7px 10px', borderRadius: 9, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 12.5, lineHeight: 1.5 }}>
@@ -382,14 +434,14 @@ export default function ChessLive({ models, resumeId, onExit }: {
           </button>
           {g.status === 'active' && meIdx >= 0 && !askResign && (
             <button onClick={() => setAskResign(true)} style={{ background: 'none', border: '1px solid var(--border2)', borderRadius: 9, padding: '7px 16px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>
-              {t('ch.resign')}
+              {g.lobby ? t('gm.invite.cancel') : t('ch.resign')}
             </button>
           )}
           {g.status === 'active' && meIdx >= 0 && askResign && (
-            <span role="group" aria-label={t('ch.resign.confirm')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '4px 4px 4px 12px', border: '1px solid var(--red)', borderRadius: 9, background: 'var(--red-dim)' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--white)', fontWeight: 600 }}>{t('ch.resign.confirm')}</span>
+            <span role="group" aria-label={t(g.lobby ? 'gm.invite.cancel.confirm' : 'ch.resign.confirm')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '4px 4px 4px 12px', border: '1px solid var(--red)', borderRadius: 9, background: 'var(--red-dim)' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--white)', fontWeight: 600 }}>{t(g.lobby ? 'gm.invite.cancel.confirm' : 'ch.resign.confirm')}</span>
               <button onClick={resign} style={{ background: 'var(--red)', border: 'none', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
-                {t('ch.resign')}
+                {g.lobby ? t('gm.invite.cancel') : t('ch.resign')}
               </button>
               <button onClick={() => setAskResign(false)} style={{ background: 'var(--surface)', border: '1px solid var(--border2)', borderRadius: 7, padding: '6px 14px', fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
                 {t('ch.cancel')}

@@ -172,7 +172,13 @@ export function makeLoader(userId: string): Loader {
         if (p.q) q = q.ilike('title', like(p.q))
         const { data, count, error } = await q.order('created_at', { ascending: asc }).range(p.offset, to)
         if (error) throw error
-        return { total: count, items: (data ?? []).map((g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: GAME_NAME_KEY[isGameKey(g.game) ? (g.game as GameKey) : 'werewolf'], badge: g.status === 'active' ? 'live' : undefined })) }
+        const item = (g: any) => ({ id: g.id, title: g.title ?? '', created: g.created_at, href: `/xgame/${g.id}`, metaKey: GAME_NAME_KEY[isGameKey(g.game) ? (g.game as GameKey) : 'werewolf'], badge: g.status === 'active' ? 'live' : undefined })
+        // Tables someone else created and this account joined by link
+        // (Oct 21, /api/xgame/shared): few, so they ride on the first page.
+        const joined: any[] = p.offset > 0 ? [] : ((await fetch('/api/xgame/shared').then(r => r.ok ? r.json() : { tables: [] }).catch(() => ({ tables: [] }))).tables ?? [])
+          .filter((g: any) => !p.q || String(g.title ?? '').toLowerCase().includes(p.q.toLowerCase()))
+        const items = [...(data ?? []), ...joined].sort((a: any, b: any) => (asc ? 1 : -1) * String(a.created_at).localeCompare(String(b.created_at))).map(item)
+        return { total: (count ?? 0) + joined.length, items }
       }
       case 'xpersonas': {
         let q = client.from('x_characters').select('id, name, avatar_path, msg_count, created_at', { count: 'exact' }).eq('user_id', userId)

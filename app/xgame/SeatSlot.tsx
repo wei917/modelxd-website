@@ -12,9 +12,10 @@ import { seatThinking } from '../../lib/game-thinking'
 import { isEligible, passingLevels, type SpeedGame } from '../../lib/xgame-speed'
 import type { Speaker } from '../xtalk/templates'
 
-export type SeatAssign = 'me' | { modelId: string; name: string } | null
+// 'invite': a friend by link (Oct 21, chess and 象棋 for two people).
+export type SeatAssign = 'me' | 'invite' | { modelId: string; name: string } | null
 
-export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatOpts, onAssign, onOpenPicker }: {
+export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatOpts, onAssign, onOpenPicker, allowInvite = false }: {
   /** A stone emoji (五子棋) or a picture (chess draws its king). */
   icon: React.ReactNode
   /** A timed table (lib/xgame-speed.ts): 🎲 draws, and the thinking chips
@@ -26,6 +27,8 @@ export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatO
   onSeatOpts: (next: Record<string, SeatOpts>) => void
   onAssign: (a: SeatAssign) => void
   onOpenPicker: () => void
+  /** Offer 「邀請朋友」: the seat goes to whoever opens the table's link. */
+  allowInvite?: boolean
 }) {
   const t = useT()
   const [open, setOpen] = useState(false)
@@ -40,7 +43,7 @@ export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatO
     return () => document.removeEventListener('mousedown', away)
   }, [open])
 
-  const model: any = assign && assign !== 'me' ? models.find((m: any) => m.id === assign.modelId) : null
+  const model: any = assign && assign !== 'me' && assign !== 'invite' ? models.find((m: any) => m.id === assign.modelId) : null
   const declared: string[] = model?.output_config?.text?.thinking_levels ?? []
   // A timed table offers only the levels that passed (auto included or not).
   const passing = model && game ? passingLevels(game, model) : null
@@ -54,7 +57,7 @@ export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatO
   const dflt = model ? seatThinking(model, null) : null
   const fallback = dflt && levels.includes(dflt) ? dflt : !autoOk ? (levels[0] ?? null) : dflt
   const shown = cur ?? fallback
-  const label = assign === 'me' ? t('gm.me') : assign ? assign.name : t('gm.pickseat')
+  const label = assign === 'me' ? t('gm.me') : assign === 'invite' ? t('gm.invite.seat') : assign ? assign.name : t('gm.pickseat')
 
   const randomModel = (): SeatAssign => {
     const pool: any[] = models.filter((m: any) => m.id && (!game || isEligible(game, m)))
@@ -106,6 +109,7 @@ export default function SeatSlot({ icon, game, assign, models, seatOpts, onSeatO
           {/* Random KEEPS the popup open: the config for the model that just
               landed appears right below — closing here is what made the
               config "disappear" (owner, Aug 6). */}
+          {allowInvite && option('invite', <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1.2-3.5 3.8-5.2 6.5-5.2s5.3 1.7 6.5 5.2M18 8v6M15 11h6"/></svg>{t('gm.invite')}</>, () => { onAssign('invite'); setOpen(false) })}
           {option('random', <>🎲 {t('gm.random')}</>, () => onAssign(randomModel()))}
           {option('pick', <>☰ {t('gm.choosemodel')}</>, () => { setOpen(false); onOpenPicker() })}
           {model && levels.length > 0 && (
