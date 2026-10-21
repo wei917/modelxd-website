@@ -184,3 +184,51 @@ any of this, as a small change of their own.
   accounts): join by link, both pages update within a second, each sees only
   their own hidden information, a closed page loses on time, a model seat
   charges the host once per move even with both pages open.
+
+## Step 1: chess and 象棋, two people (proposed Oct 21, awaiting a yes)
+
+**What two people see.**
+1. The host opens 西洋棋 or 象棋, takes one seat (我來下) and picks
+   「邀請朋友」 for the other, then starts. The table waits and shows its
+   invite link with 複製 / 分享 (the phone's share sheet).
+2. The friend opens the link (signing in if needed), sees the board and
+   「入座（黑方）」, taps it, and the game starts on both screens.
+3. Each sees their own side at the bottom (exists), both names, @IDs and
+   pictures, and two clocks: 10 minutes each plus 5 s a move. A move shows on
+   the other screen within a second.
+4. Resign (exists) or lose on time. The game is in both players' history
+   (menu and Library).
+5. Not in step 1: offering a draw, a rematch, watchers, a model plus two
+   people, a public list of open tables.
+
+**Server.**
+- `lib/xgame-table.ts`, shared by every game later: the seat of the asking
+  account, the invite token (random, in `pending.lobby`, valid until the game
+  starts), adding and removing members, copying name / @ID / picture from
+  `profiles` at join, the Realtime ping (the server sends only the new
+  version on `xgame:<id>`; each page then fetches its own view), and the
+  clock arithmetic (pure, with a check script).
+- The chess and 象棋 routes: `create` with an invite seat (no model, free),
+  `join`, `leave` (before the start), `state` for members and link holders,
+  `move` / `resign` only from the seat's owner, the clock applied on every
+  request (loss on time), a ping after every save. One-person tables work as
+  today.
+- `/api/xgame/shared`: the tables I joined as a guest, for the menu and
+  the Library.
+
+**Migration 146** (`supabase/146_xgame_members.sql`, not run): the members
+table (server only), `step_until` for later games, and the browser's writes
+to `xtalk_sessions` limited to renaming (it can read, rename and delete its
+own rows, as every page does today, and nothing else). Proven on PGlite
+against migration 57's original policy, 19 of 19: the hole reproduces
+before (the creator rewrote `pending`), after it the creator renames and
+deletes but cannot rewrite `pending`, `winner`, `day` or the lease (42501)
+nor insert; nobody but the server reads members; one account cannot take two
+seats, two accounts cannot share one; the lease is won once; deleting a
+table removes its members; it runs twice cleanly.
+
+**Order.** The owner runs 146 first (it stands alone: it only removes writes
+no page makes); I check it live in the owner's Chrome; then I build step 1
+on a branch, test it with scripts and the owner's account, and the last
+check needs a second account: the owner's other Google account in another
+browser or on a phone, opening the invite link. No model calls, no cost.
