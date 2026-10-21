@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { normalizeAudioForVideo } from '../../lib/audio-normalize'
-import { MAX_SECONDS, MIN_SECONDS, PASSAGES, passageLang } from '../../lib/voice-passages'
+import { MAX_SECONDS, MIN_SECONDS, MIN_SPOKEN, PASSAGES, passageLang } from '../../lib/voice-passages'
 import { InputIcon } from './recipes'
 
 export type MyVoice = { id: string; name: string; lang: string | null; used: boolean; createdAt: string; lapsesAt: string | null }
@@ -164,12 +164,14 @@ function Recorder({ t, lang, fee, n, canClose, onClose, onMade }: {
     mr.ondataavailable = e => { if (e.data.size) chunks.push(e.data) }
     mr.onstop = async () => {
       stopAll()
+      const spoken = (Date.now() - started.current) / 1000
       const type = mr.mimeType || 'audio/webm'
       const raw = new File([new Blob(chunks, { type })], `voice.${type.includes('mp4') ? 'm4a' : 'webm'}`, { type })
-      const norm = await normalizeAudioForVideo(raw, MAX_SECONDS, { mono: true })
+      // The passage reads in about 8 s; MiniMax needs 10, so the rest is quiet.
+      const norm = await normalizeAudioForVideo(raw, MAX_SECONDS, { mono: true, minSeconds: MIN_SECONDS + 0.5 })
       if (!norm || norm.file.type !== 'audio/wav') { setErr(t('myvoice.err.decode')); setState('idle'); return }
       setWav(norm.file)
-      setSecs(Math.round(norm.durationSeconds))
+      setSecs(Math.round(spoken))
       setUrl(old => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(norm.file) })
       setState('done')
     }
@@ -198,11 +200,11 @@ function Recorder({ t, lang, fee, n, canClose, onClose, onMade }: {
     if (r?.ok && j?.voice) { onMade(j.voice); return }
     const code = String(j?.code ?? 'other')
     const known = ['reading_mismatch', 'too_short', 'too_many', 'daily_cap', 'not_ready', 'flagged', 'bad_audio']
-    setErr(fill(t(`myvoice.err.${known.includes(code) ? code : 'other'}`), { min: MIN_SECONDS, max: j?.max ?? 5 }))
+    setErr(fill(t(`myvoice.err.${known.includes(code) ? code : 'other'}`), { min: MIN_SPOKEN, max: j?.max ?? 5 }))
     setState('done')
   }
 
-  const short = state === 'done' && secs < MIN_SECONDS
+  const short = state === 'done' && secs < MIN_SPOKEN
   return (
     <div className="xcs-rec">
       <div className="xcs-rec-head">
@@ -211,7 +213,7 @@ function Recorder({ t, lang, fee, n, canClose, onClose, onMade }: {
           <button type="button" className="xcs-rec-close" onClick={onClose} aria-label={t('myvoice.rec.close')}>×</button>
         )}
       </div>
-      <p className="xcs-rec-rule">{fill(t('myvoice.rec.rule'), { min: MIN_SECONDS, max: MAX_SECONDS })}</p>
+      <p className="xcs-rec-rule">{t('myvoice.rec.rule')}</p>
       <blockquote className="xcs-rec-passage" lang={pl}>{PASSAGES[pl]}</blockquote>
 
       <div className="xcs-rec-controls">
@@ -228,11 +230,11 @@ function Recorder({ t, lang, fee, n, canClose, onClose, onMade }: {
           </span>
         )}
       </div>
-      {state === 'recording' && secs < MIN_SECONDS && (
-        <p className="xcs-rec-hint">{fill(t('myvoice.rec.short'), { min: MIN_SECONDS })}</p>
+      {state === 'recording' && secs < MIN_SPOKEN && (
+        <p className="xcs-rec-hint">{fill(t('myvoice.rec.short'), { min: MIN_SPOKEN })}</p>
       )}
       {url && state !== 'recording' && <audio className="xcs-rec-play" src={url} controls preload="metadata" />}
-      {short && <p className="xcs-rec-err">{fill(t('myvoice.err.too_short'), { min: MIN_SECONDS })}</p>}
+      {short && <p className="xcs-rec-err">{fill(t('myvoice.err.too_short'), { min: MIN_SPOKEN })}</p>}
 
       <label className="xcs-rec-consent">
         <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
