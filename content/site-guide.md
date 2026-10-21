@@ -126,8 +126,9 @@ the page (about 10 seconds, your own voice only; a recording of someone else
 will not pass the check), then any script is spoken in it by the MiniMax Speech 2.8
 models. Making the voice is free; the first time it speaks costs $1.50
 (MiniMax's fee), then the normal per-character price. You can keep 5 voices
-and delete any; a voice not used within 7 days is deleted by MiniMax. The
-recording itself is not kept.
+and rename or delete them in X創作 or on your Profile page (My voices); a
+voice not used within 7 days is deleted by MiniMax. The recording itself is
+not kept.
 
 **Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** The fifth
 type in XCreate's top bar: describe a short film (what it is

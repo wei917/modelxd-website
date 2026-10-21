@@ -4916,6 +4916,19 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 }
 .acct-btn:hover { border-color: var(--red); color: var(--red); }
 .acct-btn.is-primary { background: var(--xd-button, var(--red)); border-color: var(--xd-button, var(--red)); color: #fff; font-weight: 600; }
+/* 我的聲音 on the Profile tab (app/profile/Voices.tsx, Oct 20). */
+.acct-voice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid var(--xtell-rule, var(--border)); }
+.acct-voice:first-of-type { border-top: 0; }
+.acct-voice-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.acct-voice-name { font-size: 16px; font-weight: 600; color: var(--white); overflow-wrap: anywhere; }
+.acct-voice-meta { font-size: 13px; line-height: 1.5; color: var(--muted2); }
+.acct-voice-acts { display: flex; gap: 8px; }
+.acct-voice-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+.acct-voice-edit input { flex: 1 1 160px; min-width: 0; min-height: 36px; padding: 0 12px; border: 1px solid var(--border2); border-radius: 10px; font-size: 16px; color: var(--white); background: var(--xtell-white, #fff); }
+.acct-voice-q { flex: 1 1 100%; font-size: 14px; color: var(--white); }
+.acct-btn.acct-danger { border-color: var(--red); color: var(--red); }
+.acct-voice-open { justify-content: flex-start; padding-top: 12px; }
+.acct-voice-open .acct-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .acct-btn.is-primary:hover { background: var(--xd-button-hover, var(--red)); border-color: var(--xd-button-hover, var(--red)); color: #fff; }
 .acct-btn:disabled { opacity: .6; cursor: default; }
 .acct-lang { position: relative; display: inline-flex; align-items: center; gap: 6px; }

@@ -1031,6 +1031,8 @@ function CreateStudio() {
   const firstType: StudioType | null = searchFanParam || searchRemakeParam ? 'remake'
     : searchFilmParam ? 'film' : isStudioType(searchTypeParam) ? searchTypeParam : null
   const [mode,           setMode]           = useState<Mode>(firstType && firstType !== 'film' && firstType !== 'remake' ? firstType : 'video')
+  const openedModeRef = useRef(mode)
+  const fromRecipeRef = useRef<string | null>(useSearchParams()?.get('from') ?? null)
   const [prompt,         setPrompt]         = useState('')
   const [selectedModels, setSelectedModels] = useState<(SlotModel | null)[]>([null, null, null, null])
   const [slots,          setSlots]          = useState<SlotState[]>([])
@@ -1635,7 +1637,12 @@ function CreateStudio() {
     setChosenIdx(null); setChatHistory([]); setXcreateId(null); setAttachments([])
     setRetryOfId(null)  // switching modes is a new creation, not a retry
     setSlotOptions([null, null, null, null])
-    setRecipeMode(RECIPES[mode][0].id)  // reset Layer 2 to the first recipe
+    // Reset Layer 2 to the first recipe, or to ?from=<recipe> on the type
+    // the page opened on (the Profile page's 我的聲音 links to
+    // ?type=audio&from=voice_clone). Any other type forgets it.
+    if (mode !== openedModeRef.current) fromRecipeRef.current = null
+    const want = fromRecipeRef.current
+    setRecipeMode(want && RECIPES[mode].some(r => r.id === want) ? want as ModelMode : RECIPES[mode][0].id)
   }, [mode])
 
   // ?tool=<id> opens a one-tap tool (an ad, a LINE post, the sign-in return),

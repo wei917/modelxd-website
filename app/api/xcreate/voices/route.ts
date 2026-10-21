@@ -7,6 +7,7 @@
 //           you reading the page's passage (lib/voice-passages.ts) →
 //           Whisper checks you read it → MiniMax clones it → a row in
 //           xcreate_voices (migration 144)
+//   PATCH   JSON { id, name }: rename (the Profile page's 我的聲音)
 //   DELETE  ?id=<row>: gone from MiniMax and from your list
 //
 // Own voice only, and that is the point of the passage: a recording of
@@ -133,6 +134,23 @@ export async function POST(req: Request) {
     await deleteVoice(voiceId).catch(() => {})
     return fail(missingTable(error) ? 503 : 500, missingTable(error) ? 'not_ready' : 'save_failed')
   }
+  return Response.json({ voice: toMyVoice(row as VoiceRow) })
+}
+
+/** Rename: JSON { id, name } (the Profile page's 我的聲音, Oct 20). */
+export async function PATCH(req: Request) {
+  const user = await viewer()
+  if (!user) return fail(401, 'unauthorized')
+  const body = await req.json().catch(() => null) as { id?: unknown; name?: unknown } | null
+  const id = String(body?.id ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(400, 'bad_id')
+  const name = String(body?.name ?? '').replace(/[\p{C}]/gu, '').trim().slice(0, 30)
+  if (!name) return fail(400, 'no_name')
+  const { data: row, error } = await admin().from('xcreate_voices').update({ name })
+    .eq('id', id).eq('user_id', user.id).is('deleted_at', null)
+    .select('id, user_id, provider, voice_id, name, lang, first_used_at, created_at').maybeSingle()
+  if (error) { console.error(`${LOG} rename:`, error); return fail(500, 'save_failed') }
+  if (!row) return fail(404, 'not_found')
   return Response.json({ voice: toMyVoice(row as VoiceRow) })
 }
 

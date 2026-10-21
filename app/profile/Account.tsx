@@ -4,8 +4,8 @@
 // profile icon, display name... just messy", "organize and group the credit
 // spent activities", text in X先知's sizes). One column of plain sections:
 // who you are, your credits with their activity grouped by day and by app,
-// the monthly plan, inviting friends, X先知's settings, then language and
-// signing out. The page keeps the state and the flows (checkout, the face
+// the monthly plan, inviting friends, your voices (我的聲音, Oct 20), X先知's
+// settings, then language and signing out. The page keeps the state and the flows (checkout, the face
 // editor, the plan and referral calls); this file only lays them out.
 // X先知's own front door keeps its account page as it was.
 
@@ -80,6 +80,8 @@ export type AccountProps = {
   onVerifyCard: () => void
   onCopyRef: () => void
   xtellSettings: ReactNode
+  /** 我的聲音: your cloned voices from X創作's 語音 (Voices.tsx). */
+  voices: ReactNode
 }
 
 export default function AccountPanel(p: AccountProps) {
@@ -168,6 +170,8 @@ export default function AccountPanel(p: AccountProps) {
           </p>
         </section>
       )}
+
+      {p.voices}
 
       {/* X先知: the birth details and the personality type (its readings
           are a Library section). */}
