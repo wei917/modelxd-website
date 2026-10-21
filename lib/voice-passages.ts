@@ -11,48 +11,58 @@
 // Why Whisper and not MiniMax's own check (`text_validation`): probed Oct
 // 20, MiniMax's passes the right passage and refuses a wrong one in 繁中,
 // 简中 and English, but refuses the RIGHT passage in Japanese and Korean
-// even at accuracy 0.1. Whisper, same TTS readings: the right passage
-// 0.92-1.00, any other passage about 0.02. Whisper writes Chinese in either
-// script whichever was spoken, so Chinese is compared with both.
+// even at accuracy 0.1. Whisper writes Chinese in either script whichever
+// was spoken, so Chinese is compared with both.
 
 export type PassageLang = 'en' | 'zh-Hant' | 'zh-Hans' | 'ja' | 'ko'
 
-// 15-20 seconds read at an easy pace. MiniMax needs at least 10 seconds of
-// voice, and a TTS reading of the shorter first drafts ran 10.4-14.8 s.
+// Two sentences, about 8-10 seconds read (owner, Oct 20: "the passage on
+// screen is long"; the first ones ran 15-20 s). MiniMax needs a 10-second
+// recording, so the page fills a shorter one out with quiet
+// (lib/audio-normalize.ts `minSeconds`); probed Oct 20: 8.0-9.8 s of reading
+// padded to 10.5 s cloned fine in 繁中, Japanese and English.
 export const PASSAGES: Record<PassageLang, string> = {
-  'zh-Hant': '我正在建立自己的 AI 聲音。這段話由我本人親口朗讀。今天天氣很好，我想用自己的聲音說一個故事。我會用它來錄旁白、唸出我寫的文字，不會用它假冒任何人。',
-  'zh-Hans': '我正在建立自己的 AI 声音。这段话由我本人亲口朗读。今天天气很好，我想用自己的声音说一个故事。我会用它来录旁白、念出我写的文字，不会用它假冒任何人。',
-  ja: '私は今、自分の AI の声を作っています。この文章は私自身が声に出して読んでいます。今日はいい天気なので、自分の声で物語を語ってみたいです。ナレーションや朗読に使いますが、この声で他の人になりすますことはしません。',
-  ko: '저는 지금 제 AI 목소리를 만들고 있습니다. 이 글은 제가 직접 소리 내어 읽고 있습니다. 오늘은 날씨가 좋아서, 제 목소리로 이야기를 하나 들려주고 싶습니다. 내레이션이나 낭독에 쓰겠지만, 이 목소리로 다른 사람을 사칭하지 않겠습니다.',
-  en: 'I am creating my own AI voice, and I am reading these words out loud myself. The weather is nice today, so I would like to tell a short story in my own voice. I will use it for narration and reading, and I will not use it to pretend to be anyone else.',
+  'zh-Hant': '這是我本人的聲音，由我親口朗讀。我會用它說故事、錄旁白，不會用它假冒任何人。',
+  'zh-Hans': '这是我本人的声音，由我亲口朗读。我会用它说故事、录旁白，不会用它假冒任何人。',
+  ja: 'これは私自身の声で、私が読み上げています。物語やナレーションに使い、他の人になりすますことはしません。',
+  ko: '이것은 제 목소리이고, 제가 직접 읽고 있습니다. 이야기나 내레이션에 쓰고, 다른 사람을 사칭하지 않겠습니다.',
+  en: 'This is my own voice, and I am reading it myself. I will use it for stories and narration, never to pretend to be someone else.',
 }
 
 export const passageLang = (v: unknown): PassageLang =>
   v === 'zh-Hant' || v === 'zh-Hans' || v === 'ja' || v === 'ko' ? v : 'en'
 
-/** MiniMax takes 10 s to 5 min; the page stops at 30 s, which keeps a
- *  48 kHz mono WAV under 3 MB (a Vercel request body is 4.5 MB at most). */
+/** MiniMax takes 10 s to 5 min: the page pads a shorter recording to
+ *  MIN_SECONDS, refuses one under MIN_SPOKEN (a slip of the finger), and
+ *  stops at 30 s, which keeps a 48 kHz mono WAV under 3 MB (a Vercel
+ *  request body is 4.5 MB at most). */
 export const MIN_SECONDS = 10
+export const MIN_SPOKEN = 5
 export const MAX_SECONDS = 30
 
 /** A reading passes at this score or above (see the numbers at the top). */
 export const PASS_SCORE = 0.6
 
 const norm = (s: string) => s.normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}\s]/gu, '')
+const words = (s: string) => s.normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}]/gu, ' ').split(/\s+/).filter(Boolean)
 
-function bigrams(s: string): Map<string, number> {
+/** Pairs of neighbours: characters for Chinese, Japanese and Korean, WORDS
+ *  for English, where any two sentences share common letter pairs (other
+ *  English speech scored 0.36 by letters against a 0.6 bar). */
+function bigrams(items: string[]): Map<string, number> {
   const g = new Map<string, number>()
-  for (let i = 0; i < s.length - 1; i++) {
-    const k = s.slice(i, i + 2)
+  for (let i = 0; i < items.length - 1; i++) {
+    const k = items[i] + '\u0000' + items[i + 1]
     g.set(k, (g.get(k) ?? 0) + 1)
   }
   return g
 }
+const units = (s: string, lang: PassageLang) => lang === 'en' ? words(s) : [...norm(s)]
 
-/** Dice similarity of character pairs, punctuation and spaces ignored:
+/** Dice similarity of neighbour pairs, punctuation and spaces ignored:
  *  1 = the same words, near 0 = other words. */
-function dice(a: string, b: string): number {
-  const A = bigrams(norm(a)), B = bigrams(norm(b))
+function dice(a: string, b: string, lang: PassageLang): number {
+  const A = bigrams(units(a, lang)), B = bigrams(units(b, lang))
   let inter = 0, n = 0
   for (const [k, v] of A) { inter += Math.min(v, B.get(k) ?? 0); n += v }
   for (const v of B.values()) n += v
@@ -62,7 +72,7 @@ function dice(a: string, b: string): number {
 /** How closely a transcript matches the passage for `lang` (0-1). */
 export function readingScore(transcript: string, lang: PassageLang): number {
   if (lang === 'zh-Hant' || lang === 'zh-Hans') {
-    return Math.max(dice(transcript, PASSAGES['zh-Hant']), dice(transcript, PASSAGES['zh-Hans']))
+    return Math.max(dice(transcript, PASSAGES['zh-Hant'], lang), dice(transcript, PASSAGES['zh-Hans'], lang))
   }
-  return dice(transcript, PASSAGES[lang])
+  return dice(transcript, PASSAGES[lang], lang)
 }

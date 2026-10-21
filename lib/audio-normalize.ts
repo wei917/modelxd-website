@@ -27,8 +27,10 @@ export interface NormalizedAudio {
  *  the browser can't decode the file at all — caller keeps the original
  *  and lets the provider report. */
 /** `mono`: one channel (X創作's 我的聲音: a voice needs one, and 30 s of
- *  stereo 48 kHz WAV would pass the 4.5 MB request limit). */
-export async function normalizeAudioForVideo(file: File, maxSeconds = 15, opts?: { mono?: boolean }): Promise<NormalizedAudio | null> {
+ *  stereo 48 kHz WAV would pass the 4.5 MB request limit). `minSeconds`:
+ *  quiet added at the end up to that length (MiniMax clones from 10 s; the
+ *  passage reads in about 8). */
+export async function normalizeAudioForVideo(file: File, maxSeconds = 15, opts?: { mono?: boolean; minSeconds?: number }): Promise<NormalizedAudio | null> {
   let buf: AudioBuffer
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
   try {
@@ -43,12 +45,13 @@ export async function normalizeAudioForVideo(file: File, maxSeconds = 15, opts?:
   const type = (file.type || '').toLowerCase()
   const ext  = (file.name.split('.').pop() ?? '').toLowerCase()
   const alreadyAccepted = type === 'audio/mpeg' || type === 'audio/wav' || ext === 'mp3' || ext === 'wav'
-  if (alreadyAccepted && duration <= maxSeconds + 0.05) {
+  const minFrames = Math.ceil((opts?.minSeconds ?? 0) * buf.sampleRate)
+  if (alreadyAccepted && duration <= maxSeconds + 0.05 && buf.length >= minFrames) {
     return { file, trimmed: false, durationSeconds: duration }
   }
 
   const channels = opts?.mono ? 1 : Math.min(2, buf.numberOfChannels)
-  const frames   = Math.min(buf.length, Math.floor(maxSeconds * buf.sampleRate))
+  const frames   = Math.max(minFrames, Math.min(buf.length, Math.floor(maxSeconds * buf.sampleRate)))
   const wav      = encodeWavPcm16(buf, channels, frames)
   const base     = file.name.replace(/\.[^.]+$/, '')
   return {
@@ -110,7 +113,8 @@ function encodeWavPcm16(buf: AudioBuffer, channels: number, frames: number, star
   let off = 44
   for (let i = 0; i < frames; i++) {
     for (let c = 0; c < channels; c++) {
-      const s = Math.max(-1, Math.min(1, chans[c][startFrame + i]))
+      // Past the end of the audio (minSeconds padding): quiet.
+      const s = Math.max(-1, Math.min(1, chans[c][startFrame + i] ?? 0))
       v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true)
       off += 2
     }

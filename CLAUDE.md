@@ -520,10 +520,13 @@ the one the owner's ear picked. The film's speak tool routes the same way.
 some text with cloned voice", then "go ahead to do it").** A second From pick
 on 語音 (`voice_clone` in `modes`, declared by MiniMax Speech 2.8 HD and
 Turbo). Own voice only: the person reads a passage shown in the page's
-language (`lib/voice-passages.ts`), Whisper transcribes it and the server
-compares it with the same passage (character-pair Dice, pass at 0.6; a full
-reading scored 0.92-1.00, other speech 0.02-0.36), so a clip of somebody
-else cannot pass; they tick "this is my own voice". MiniMax's own
+language (`lib/voice-passages.ts`; two sentences, about 8 s, since Oct 20:
+"the passage on screen is long"; the page pads the recording with quiet to
+10.5 s, MiniMax's minimum, probed OK), Whisper transcribes it and the server
+compares it with the same passage (Dice on neighbour pairs: characters, WORDS
+for English; pass at 0.6; full readings 0.84-1.00, other speech 0.00-0.17,
+half the passage 0.57-0.58), so a clip of somebody else cannot pass; they
+tick "this is my own voice". MiniMax's own
 `text_validation` is not used: probed Oct 20, it refuses the RIGHT passage in
 Japanese and Korean even at accuracy 0.1. Then MiniMax clones it (free) and a
 row goes in `xcreate_voices` (migration 144, service key only); the page
@@ -535,7 +538,7 @@ speaks and deletes one unused for 7 days: the seat that claims the first use
 include it. The recording is never stored. Caps: 5 voices, 10 tries a day
 (Whisper is house-paid, ~$0.003 a try). `/api/xcreate/voices` (GET / POST
 multipart / DELETE), the panel is `app/xcreate/MyVoices.tsx` (chips and an
-in-place recorder: browser recording → mono WAV, 10-30 s). Deleting an
+in-place recorder: browser recording → mono WAV, at least 5 s spoken, 30 s at most). Deleting an
 account deletes its voices at MiniMax. X角色 keeps text-designed voices only
 (Aug 8 rule, `app/api/xcharacter/tts/route.ts`).
 
