@@ -69,7 +69,7 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
-  `146_xgame_members.sql` applied 2026-10-21 by the owner: XGame
+  `147_xgame_members.sql` applied 2026-10-21 by the owner: XGame
   multiplayer's foundation, `xgame_members` (who sits where; service role
   only), `xtalk_sessions.step_until` (a lease for model turns), and the
   browser may now only read, rename (title) and delete its own
