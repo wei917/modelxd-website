@@ -111,14 +111,18 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
       <XGameBar current={active} onPick={pick} />
       <div className="xduel-page">
         <div className="arena xcreate-arena">
-          <div className="prompt-header">
-            <Link href="/xgame" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XGAME</Link>
-            {/* The slogan sells the LOBBY; the table's headline is simply the
-                game you are at. (owner, Aug 6) */}
-            <h1 className="page-headline" style={{ marginBottom: 20 }}>
-              {resume ? (active ? t(GAME_NAME_KEY[active]) : ' ') : t('xg.shell.title')}
-            </h1>
-          </div>
+          {/* The lobby opens straight on the chosen game: no XGAME eyebrow
+              and no slogan above it (owner, Oct 21: "please remove ... on all
+              tab pages"). A table's headline is simply the game you are at.
+              (owner, Aug 6) */}
+          {resume && (
+            <div className="prompt-header">
+              <Link href="/xgame" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>XGAME</Link>
+              <h1 className="page-headline" style={{ marginBottom: 20 }}>
+                {active ? t(GAME_NAME_KEY[active]) : ' '}
+              </h1>
+            </div>
+          )}
 
           {/* The chosen game, as its lobby card said it (Oct 20: the cards
               became the top bar). A resumed game is the TABLE: it gets the
