@@ -1,5 +1,7 @@
--- 146: XGame multiplayer, the foundation (Oct 21, 2026). Applied by the
--- owner on Oct 21 and checked live (CLAUDE.md, migrations).
+-- 147: XGame multiplayer, the foundation (Oct 21, 2026). Applied by the
+-- owner on Oct 21 and checked live (CLAUDE.md, migrations). Written as 146;
+-- renumbered 147 because XDuel's 146_music_rating_pool.sql took 146 the
+-- same day (both are applied).
 -- Plan: docs/XGAME-MULTIPLAYER-PLAN.md ("Step 1: chess and 象棋").
 --
 -- Until now a table had one person, its creator, and the creator's browser

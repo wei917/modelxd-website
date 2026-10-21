@@ -216,7 +216,7 @@ any of this, as a small change of their own.
 - `/api/xgame/shared`: the tables I joined as a guest, for the menu and
   the Library.
 
-**Migration 146** (`supabase/146_xgame_members.sql`, not run): the members
+**Migration 147** (`supabase/147_xgame_members.sql`; written as 146, applied by the owner Oct 21 and checked live): the members
 table (server only), `step_until` for later games, and the browser's writes
 to `xtalk_sessions` limited to renaming (it can read, rename and delete its
 own rows, as every page does today, and nothing else). Proven on PGlite
@@ -227,7 +227,7 @@ nor insert; nobody but the server reads members; one account cannot take two
 seats, two accounts cannot share one; the lease is won once; deleting a
 table removes its members; it runs twice cleanly.
 
-**Order.** The owner runs 146 first (it stands alone: it only removes writes
+**Order.** The owner runs 147 first (it stands alone: it only removes writes
 no page makes); I check it live in the owner's Chrome; then I build step 1
 on a branch, test it with scripts and the owner's account, and the last
 check needs a second account: the owner's other Google account in another
