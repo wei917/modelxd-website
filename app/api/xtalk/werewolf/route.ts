@@ -213,9 +213,12 @@ async function askModel(seat: Seat, s: Session, prompt: string, field: string) {
     const m = new RegExp(`["']${f}["']\\s*:\\s*["']([\\s\\S]*?)["']\\s*[,}]`).exec(full)
     return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : undefined
   }
+  // The hidden field is "why" since Oct 21 (app/xtalk/werewolf.ts
+  // outputContract); a reply that still says "reasoning" lands in the same
+  // hidden slot, and either key marks a reply as structured.
   const saidRaw   = grab(field)
-  const reasoning = grab('reasoning')
-  const looksStructured = /["']reasoning["']\s*:/.test(full) || new RegExp(`["']${field}["']\s*:`).test(full)
+  const reasoning = grab('why') ?? grab('reasoning')
+  const looksStructured = /["'](?:why|reasoning)["']\s*:/.test(full) || new RegExp(`["']${field}["']\s*:`).test(full)
   const say = saidRaw !== undefined
     ? saidRaw
     // No clean field, but the reply was clearly a (broken) structured answer:
@@ -562,7 +565,7 @@ export async function POST(req: Request) {
       const actor = s.players[s.turn_order[s.cursor]]
       const mates = wolves(s.players).filter(w => w.seat !== actor.seat).map(w => w.name)
       const targets = alive(s.players).filter(p => p.seat !== actor.seat)
-      const prompt = `${seatPrompt({ name: actor.name, role: actor.role } as any, s.players.map(p => ({ name: p.name })) as any, mates)}\n\nDay ${s.day} voting. You may vote for: ${targets.map(t => t.name).join(', ')}.\n\n${RULE}\n\n${outputContract('vote', 'the exact name of the player you vote to eliminate')}\n\nYour "reasoning" is private. Say aloud nothing here — this turn is the ballot only.`
+      const prompt = `${seatPrompt({ name: actor.name, role: actor.role } as any, s.players.map(p => ({ name: p.name })) as any, mates)}\n\nDay ${s.day} voting. You may vote for: ${targets.map(t => t.name).join(', ')}.\n\n${RULE}\n\n${outputContract('vote', 'the exact name of the player you vote to eliminate')}\n\nYour "why" is not shown to the table. Say aloud nothing here — this turn is the ballot only.`
       const r = await askModel(actor, s, prompt, 'vote')
       spent += r.cost
       const { seat: v } = resolveSeat(r.say, targets)
