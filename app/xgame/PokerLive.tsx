@@ -18,7 +18,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
-import { seatThinking } from '../../lib/game-thinking'
+import { isEligible, speedLevel } from '../../lib/xgame-speed'
 
 type Card = string
 type Act = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin'
@@ -198,7 +198,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
   const pool = useMemo(() => models.filter((m: any) => {
     const o = m.model_pricing?.tokens?.text_output
     const out = typeof o === 'number' ? o : o?.default
-    return typeof out === 'number' && out > 0
+    return typeof out === 'number' && out > 0 && isEligible('poker', m)
   }), [models])
 
   const post = async (body: any): Promise<TableView | null> => {
@@ -314,7 +314,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
       if (!a || a === 'me') return []
       const m: any = models.find((x: any) => x.id === a.modelId)
       if (!m) return []
-      return [{ pricing: m.model_pricing, thinking: seatThinking(m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] }]
+      return [{ pricing: m.model_pricing, thinking: speedLevel('poker', m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] }]
     })
     const est = ai.length ? pokerCostRange(ai, seats.length, hands) : null
     return (
@@ -324,7 +324,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
           {seats.map((a, i) => (
             <div key={i} style={{ position: 'relative', display: 'flex' }}>
               <SeatSlot
-                icon={String(i + 1)} assign={a} models={pool}
+                icon={String(i + 1)} game="poker" assign={a} models={pool}
                 seatOpts={seatOpts[i] ?? {}}
                 onSeatOpts={next => setSeatOpts(prev => ({ ...prev, [i]: next }))}
                 onAssign={assign(i)} onOpenPicker={() => setPickerFor(i)}
@@ -367,6 +367,7 @@ export default function PokerLive({ models, resumeId, onExit }: {
         {pickerFor != null && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text" slotIds={[]}
+            allow={(m: any) => isEligible('poker', m)}
             onClose={() => setPickerFor(null)}
             onSelect={(m: any) => { const i = pickerFor; setSeats(prev => prev.map((x, k) => k === i ? { modelId: m.id, name: m.display_name } : x)); setPickerFor(null) }}
           />

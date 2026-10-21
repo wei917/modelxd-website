@@ -20,6 +20,7 @@ import {
 } from '../../lib/xiangqi-board'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
+import { isEligible } from '../../lib/xgame-speed'
 import GridBoard, { type XY, type GridGeometry } from './GridBoard'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
@@ -243,13 +244,14 @@ export default function XiangqiLive({ models, resumeId, onExit }: {
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <SeatSlot icon={<General side="w" lang={lang} size={28} />} assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
-          <SeatSlot icon={<General side="b" lang={lang} size={28} />} assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
+          <SeatSlot icon={<General side="w" lang={lang} size={28} />} game="xiangqi" assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
+          <SeatSlot icon={<General side="b" lang={lang} size={28} />} game="xiangqi" assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
         </div>
         {pickerFor && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text"
             slotIds={[]}
+            allow={(m: any) => isEligible('xiangqi', m)}
             onClose={() => setPickerFor(null)}
             onSelect={(m: any) => { setSeats(prev => ({ ...prev, [pickerFor]: { modelId: m.id, name: m.display_name } })); setPickerFor(null) }}
           />

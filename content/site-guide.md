@@ -363,6 +363,13 @@ prompt and rules, published under the board. Today:
   side by side. You guess against the clock with hints from a host, then
   vote the better drawing; after five rounds the artists are revealed.
 
+**Time per move.** Chess, xiangqi, gomoku, Texas Hold'em and bridge give a
+model about 30 seconds a move. ModelXD tests every model on each game
+itself, at each thinking level, and a seat's model picker offers only the
+models (and thinking levels) that answered in time. A model that is missing
+from one game's picker was too slow for that game, or has not been tested
+yet.
+
 More games are coming.
 
 ### XKit — `/xkit` (called XDev until Oct 20; `/xdev` forwards here)

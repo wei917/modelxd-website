@@ -19,7 +19,7 @@ import { SUITS, suitOf, ALL_BIDS, type Seat, type Card } from '../../lib/bridge-
 import { BRIDGE } from '../../lib/bridge-engine'
 import { bridgeCostRange } from '../../lib/bridge-cost'
 import { usd } from '../../lib/poker-cost'
-import { seatThinking } from '../../lib/game-thinking'
+import { isEligible, speedLevel } from '../../lib/xgame-speed'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
 import type { SeatOpts } from '../xtalk/SeatConfig'
@@ -139,14 +139,14 @@ export default function BridgeLive({ models, resumeId, onExit }: {
       if (!ai.length) return null
       const rows = ai.map(({ a, i }) => {
         const m: any = models.find((mm: any) => mm.id === (a as any).modelId)
-        return m ? { pricing: m.model_pricing, thinking: seatThinking(m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] } : null
+        return m ? { pricing: m.model_pricing, thinking: speedLevel('bridge', m, seatOpts[i]?.[m.id]?.thinking), levels: m.output_config?.text?.thinking_levels ?? [] } : null
       })
       return rows.every(Boolean) ? bridgeCostRange(rows as any, deals) : null
     })()
     const slot = (i: number) => (
       <SeatSlot key={i}
         icon={<span style={{ display: 'inline-flex', width: 26, height: 26, borderRadius: 999, alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)', fontSize: 13, fontWeight: 800 }}>{seatName(i).slice(0, 1)}</span>}
-        assign={seats[i]} models={models}
+        game="bridge" assign={seats[i]} models={models}
         seatOpts={seatOpts[i] ?? {}} onSeatOpts={o => setSeatOpts(prev => ({ ...prev, [i]: o }))}
         onAssign={assign(i)} onOpenPicker={() => setPickerFor(i)} />
     )
@@ -161,6 +161,7 @@ export default function BridgeLive({ models, resumeId, onExit }: {
         {pickerFor != null && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text" slotIds={[]}
+            allow={(m: any) => isEligible('bridge', m)}
             onClose={() => setPickerFor(null)}
             onSelect={(m: any) => { setSeats(prev => prev.map((s, k) => (k === pickerFor ? { modelId: m.id, name: m.display_name } : s))); setPickerFor(null) }}
           />

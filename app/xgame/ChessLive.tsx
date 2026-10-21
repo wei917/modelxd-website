@@ -13,6 +13,7 @@ import { useT } from '../../lib/i18n'
 import { parseFen, squareName, squareXY, kingSquare, FILES, CHESS_HARNESS, type Color } from '../../lib/chess-board'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import SeatSlot, { type SeatAssign } from './SeatSlot'
+import { isEligible } from '../../lib/xgame-speed'
 import GridBoard, { type XY } from './GridBoard'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
@@ -193,13 +194,14 @@ export default function ChessLive({ models, resumeId, onExit }: {
     return (
       <div style={{ marginTop: 18, maxWidth: 720 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <SeatSlot icon={<King color="w" size={26} />} assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
-          <SeatSlot icon={<King color="b" size={26} />} assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
+          <SeatSlot icon={<King color="w" size={26} />} game="chess" assign={seats.w} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('w')} onOpenPicker={() => setPickerFor('w')} />
+          <SeatSlot icon={<King color="b" size={26} />} game="chess" assign={seats.b} models={models} seatOpts={seatOpts} onSeatOpts={setSeatOpts} onAssign={assign('b')} onOpenPicker={() => setPickerFor('b')} />
         </div>
         {pickerFor && (
           <ModelPickerDialog
             mode="text" recipeMode="text_to_text"
             slotIds={[]}
+            allow={(m: any) => isEligible('chess', m)}
             onClose={() => setPickerFor(null)}
             onSelect={(m: any) => { setSeats(prev => ({ ...prev, [pickerFor]: { modelId: m.id, name: m.display_name } })); setPickerFor(null) }}
           />

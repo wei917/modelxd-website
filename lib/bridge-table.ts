@@ -29,7 +29,7 @@ import {
 } from '@/lib/bridge-engine'
 import { biddingPrompt, playPrompt, readReply, askOnce, MODEL_TIMEOUT_MS, BRIDGE_HARNESS } from '@/lib/bridge-ai'
 import { sealer } from '@/lib/game-seal'
-import { seatThinking } from '@/lib/game-thinking'
+import { seatLevel } from '@/lib/xgame-speed'
 
 const LOG = '[xgame:bridge]'
 const { seal, unseal } = sealer('bridge')
@@ -363,11 +363,15 @@ async function create(body: any, d: BridgeDeps): Promise<Reply> {
     }
     const m = typeof c?.modelId === 'string' ? await d.getModel(c.modelId) : null
     if (!usable(m)) return fail(400, `Seat ${'NESW'[i]}: that model is not available.`)
+    // Only the models, and thinking levels, that passed bridge's speed test
+    // (lib/xgame-speed.ts); the picker offers no others.
+    const lv = seatLevel('bridge', m, c.thinking)
+    if (!lv.ok) return fail(400, `Seat ${'NESW'[i]}: ${m.display_name}: ${lv.reason}.`)
     // The same model may take several seats: "name (2)", as in Werewolf.
     const k = (counts.get(m.id) ?? 0) + 1
     counts.set(m.id, k)
     seats.push({
-      seat: i as Seat, isHuman: false, modelId: m.id, provider: m.provider, thinking: seatThinking(m, c.thinking),
+      seat: i as Seat, isHuman: false, modelId: m.id, provider: m.provider, thinking: lv.level,
       name: k > 1 ? `${m.display_name} (${k})` : m.display_name,
     })
   }
