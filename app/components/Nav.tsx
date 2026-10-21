@@ -852,10 +852,21 @@ export default function Nav() {
           menuOpen is true. Closes on route change via the useEffect
           above. Includes all the nav links, plus the auth action. */}
       <div className={`nav-mobile-overlay ${menuOpen ? 'open' : ''}`}>
-        {/* Your account first: the picture in the top bar alone did not read
-            as the way to the profile (owner, Oct 20: "there is no 'profile'
-            option in the nav bar ... not clear"). The top-bar picture stays.
-            No language globe here (owner, Oct 13); language is on /profile. */}
+        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={pathname === href ? 'active' : ''}
+            onClick={(e) => handleProtectedClick(e, href, isProtected)}
+          >
+            <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>
+          </Link>
+        ))}
+        {/* Your account, under the last app and above Terms (owner, Oct 20-21:
+            "there is no 'profile' option in the nav bar ... not clear"; "at
+            the bottom, below the last app option but above the terms"). The
+            top-bar picture stays. No language globe here (owner, Oct 13);
+            language is on /profile. */}
         {authLoaded && (user ? (
           <Link href="/profile" className={`nav-mobile-account${pathname === '/profile' ? ' active' : ''}`}>
             {face.photo ? (
@@ -871,16 +882,6 @@ export default function Nav() {
           <button type="button" className="nav-mobile-account" onClick={() => { setMenuOpen(false); show() }}>
             <NavIcon name="persona" /><span className="nav-label">{t('auth.signin')}</span>
           </button>
-        ))}
-        {NAV_LINKS.map(({ href, i18n, protected: isProtected, icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={pathname === href ? 'active' : ''}
-            onClick={(e) => handleProtectedClick(e, href, isProtected)}
-          >
-            <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>
-          </Link>
         ))}
         <div className="nav-foot" style={{ marginTop: 8 }}>
           <Link href="/terms">{t('nav.terms')}</Link>
