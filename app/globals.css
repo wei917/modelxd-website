@@ -3009,14 +3009,6 @@ button.vb-chip:hover .vb-go, button.vb-chip:focus-visible .vb-go {
   /* XDuel: notice above a full-width start button */
   .duel-footer { flex-wrap: wrap; justify-content: flex-start !important; }
   .duel-footer .prompt-counter { white-space: normal; flex: 1 1 100%; text-align: left !important; line-height: 1.5; }
-  /* XBoard: the sub-type rail becomes a chip row above the content; the
-     table keeps its 820px grid and scrolls inside its own wrapper */
-  .xb-layout { flex-direction: column; gap: 12px; align-items: stretch !important; }
-  .xb-layout > * { width: 100%; min-width: 0; box-sizing: border-box; }
-  .xb-rail { position: static !important; width: 100% !important; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; border-left: none !important; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-  .xb-rail > div:first-child { flex: 1 0 100%; padding-left: 0 !important; }
-  .xb-rail button { width: auto !important; margin-left: 0 !important; padding: 8px 10px !important; border-left: none !important; border-radius: 8px !important; }
-  .xb-rail button[style*="var(--red)"] { background: var(--red-dim) !important; }
   /* XDuel step bar: five steps scroll sideways instead of being cut */
   .step-bar { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding: 10px 12px; }
   .step-bar::-webkit-scrollbar { display: none; }
@@ -5270,4 +5262,116 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
 @media (max-width: 760px) {
   .xduel-feed-tools { flex: 1 1 100%; }
   .xduel-feed-search input, .xduel-feed-sort { font-size: 16px; min-height: 44px; }
+}
+
+/* ══ XBoard in XDuel's look (owner, Oct 22: "XBoard is from XDuel"): the
+   same top bar, paper and Mode row (.xduel-xt), the board a white box on
+   the rule. Each row is one grid with two layouts: the table's columns on
+   a desktop, a card on a phone, so nothing scrolls sideways at 360 px.
+   Only Video keeps a Mode row (Oct 22: too few votes to split the rest). ═══ */
+.xb .prompt-header { margin-bottom: 22px; }
+.xb-explain { max-width: 820px; margin: 12px 0 0; font-size: 14.5px; line-height: 1.7; color: var(--xtell-secondary); }
+.xb-explain a { color: var(--xtell-vermilion); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.xb-explain a:hover { text-decoration: underline; }
+
+.xb-tools { display: flex; gap: 10px; margin: 4px 0 18px; }
+.xb-search {
+  flex: 1 1 auto; min-width: 0; max-width: 420px; height: 46px; padding: 0 16px;
+  background: var(--xtell-white); border: 1px solid var(--xtell-rule); border-radius: 13px;
+  color: var(--xtell-ink); font: 400 15px var(--font-body), sans-serif; outline: none;
+}
+.xb-search:focus { border-color: var(--xtell-vermilion); }
+.xb-prov { position: relative; flex: 0 0 auto; }
+.xb .provider-filter-btn {
+  height: 46px; padding: 0 16px; gap: 8px; background: var(--xtell-white);
+  border: 1px solid var(--xtell-rule); border-radius: 13px;
+  font: 500 15px var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; color: var(--xtell-ink);
+}
+.xb .provider-filter-btn:hover, .xb .provider-filter-btn[aria-expanded="true"] { border-color: var(--xtell-vermilion); }
+.xb-prov-label, .xb-caret { color: var(--xtell-secondary); }
+.xb-caret { font-size: 11px; }
+.xb-prov-value { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xb .provider-filter-menu { border-color: var(--xtell-rule); border-radius: 12px; }
+.xb .provider-filter-item { font-family: var(--font-body), sans-serif; font-size: 14px; color: var(--xtell-ink); }
+
+.xb-count { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; font-size: 13.5px; color: var(--xtell-secondary); }
+.xb-sort { display: none; align-items: center; gap: 6px; }
+.xb-sort label { display: inline-flex; align-items: center; gap: 6px; }
+.xb-sort select {
+  height: 34px; padding: 0 30px 0 12px; border: 1px solid var(--xtell-rule); border-radius: 999px;
+  background: var(--xtell-white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2374685f' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  -webkit-appearance: none; appearance: none; font: 500 13.5px var(--font-body), sans-serif; color: var(--xtell-ink);
+}
+.xb-sort button {
+  width: 34px; height: 34px; border: 1px solid var(--xtell-rule); border-radius: 999px;
+  background: var(--xtell-white); color: var(--xtell-ink); font-size: 15px; cursor: pointer;
+}
+
+.xb-empty { padding: 72px 0; text-align: center; color: var(--xtell-secondary); }
+/* 音訊's two boards (speech, music), each under its own name. */
+.xb-board-title { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; font: 700 17px var(--font-body), sans-serif; color: var(--xtell-ink); }
+.xb-board-title span { font-size: 13px; font-weight: 400; color: var(--xtell-secondary); }
+
+/* The board: on a narrow desktop window the table scrolls inside its box. */
+.xb-table { margin-bottom: 40px; background: var(--xtell-white); border: 1px solid var(--xtell-rule); border-radius: 7px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.xb-grid { --xb-cols: minmax(220px, 2fr) 100px 130px 110px 100px 130px 150px; min-width: 840px; }
+.xb-head, .xb-row { display: grid; grid-template-columns: var(--xb-cols); align-items: center; padding: 0 20px; }
+.xb-head { min-height: 42px; border-bottom: 1px solid var(--xtell-rule); font-size: 12.5px; color: var(--xtell-secondary); }
+.xb-row { min-height: 54px; padding-top: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--xtell-rule); transition: background .12s; }
+.xb-row:last-child { border-bottom: 0; }
+.xb-row:hover { background: #fdfaf6; }
+/* Sort headers; the right-aligned ones keep the cells' 32px so labels sit
+   above their numbers. */
+.xb-sh { display: flex; align-items: center; gap: 4px; padding: 0; background: none; border: 0; font: inherit; color: inherit; cursor: pointer; }
+.xb-sh.right { justify-content: flex-end; padding-right: 32px; }
+.xb-sh:hover, .xb-sh.on { color: var(--xtell-ink); }
+.xb-sh.on { font-weight: 600; }
+.xb-sh-arrow { font-size: 8px; opacity: .3; }
+.xb-sh.on .xb-sh-arrow { opacity: 1; color: var(--xtell-vermilion); }
+
+.xb-c-name { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.xb-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14.5px var(--font-body), sans-serif; color: var(--xtell-ink); }
+.xb-c-q { padding-right: 32px; text-align: right; font: 600 13px var(--font-mono), monospace; color: var(--xtell-secondary); }
+.xb-c-xd { padding-right: 32px; text-align: right; }
+.xb-xd { display: inline-flex; align-items: center; gap: 7px; }
+.xb-early { padding: 2px 8px; border: 1px dashed var(--xtell-secondary); border-radius: 999px; font: 600 10px var(--font-mono), monospace; color: var(--xtell-secondary); white-space: nowrap; }
+.xb-dash { font: 600 13px var(--font-mono), monospace; color: var(--xtell-secondary); }
+.xb-c-maker { min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--xtell-secondary); text-transform: capitalize; }
+.xb-c-date { font: 500 12px var(--font-mono), monospace; color: var(--xtell-secondary); }
+.xb-c-in { display: flex; flex-wrap: wrap; gap: 4px; }
+.xb-badge { padding: 2px 7px; border-radius: 4px; font: 600 10px var(--font-mono), monospace; }
+.xb-c-price { text-align: right; font: 600 12px var(--font-mono), monospace; color: var(--xtell-ink); }
+.xb-amount { display: inline-block; min-width: 56px; text-align: right; }
+.xb-unit { display: inline-block; min-width: 56px; padding-left: 6px; text-align: left; color: var(--xtell-secondary); }
+.xb-via { margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--xtell-secondary); white-space: nowrap; }
+.xb-lbl { display: none; }
+
+/* Phones: each model a card (name and XD score; maker, date and Score;
+   inputs and price), sorted by the count line's picker. */
+@media (max-width: 760px) {
+  .xb-tools { gap: 8px; }
+  .xb-search { max-width: none; }
+  .xb .provider-filter-btn { padding: 0 12px; }
+  .xb-prov-value { max-width: 84px; }
+  .xb .provider-filter-menu { left: auto; right: 0; }
+  .xb-sort { display: inline-flex; }
+  .xb-grid { min-width: 0; }
+  .xb-head { display: none; }
+  .xb-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "name name xd" "maker date q" "in in price";
+    gap: 7px 8px; padding: 13px 14px;
+  }
+  .xb-row:hover { background: none; }
+  .xb-c-name { grid-area: name; }
+  .xb-name { font-size: 15.5px; }
+  .xb-c-xd { grid-area: xd; padding-right: 0; }
+  .xb-c-maker { grid-area: maker; font-size: 12.5px; }
+  .xb-c-date { grid-area: date; min-width: 0; }
+  .xb-c-date::before { content: '· '; }
+  .xb-c-q { grid-area: q; padding-right: 0; font-size: 12.5px; }
+  .xb-c-q .xb-lbl { display: inline; margin-right: 6px; font: 500 12px var(--font-body), sans-serif; }
+  .xb-c-in { grid-area: in; }
+  .xb-c-price { grid-area: price; }
+  .xb-amount, .xb-unit { min-width: 0; }
 }

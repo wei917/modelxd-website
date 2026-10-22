@@ -25,12 +25,14 @@ const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: numbe
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 )
 
-export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, names, icons }: {
+export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPick, t, kinds, names, icons, glyphs }: {
   recipe: K
   onPick: (r: K) => void
   t: (k: string) => string
   /** The kinds offered, in order; a duel's own when left out. */
   kinds?: readonly K[]
+  /** A drawn icon for a kind no input icon fits (XBoard's All, search, Werewolf). */
+  glyphs?: Partial<Record<string, React.ReactNode>>
 } & Overrides) {
   const row = useRef<HTMLDivElement>(null)
   const [ends, setEnds] = useState({ left: false, right: false })
@@ -51,7 +53,8 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
     return () => { ro.disconnect(); el.removeEventListener('scroll', measure) }
   }, [])
   // The chosen kind in view (the row only, never the page), e.g. after a
-  // link straight to 配樂・對嘴 at the row's end.
+  // link straight to 配樂・對嘴 at the row's end; also once kinds that load
+  // later (XBoard's, from the catalog) arrive.
   useEffect(() => {
     const el = row.current, on = el?.querySelector<HTMLElement>('.on')
     if (el && on) {
@@ -59,7 +62,7 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
       if (r.left < box.left || r.right > box.right) el.scrollLeft += r.left - box.left - 12
     }
     measure()
-  }, [recipe])
+  }, [recipe, kinds?.length])
 
   const step = (dir: -1 | 1) => row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.7, behavior: 'smooth' })
 
@@ -73,7 +76,7 @@ export default function RecipeBar<K extends string = VideoRecipe>({ recipe, onPi
         {(kinds ?? (KINDS as readonly string[] as readonly K[])).map(k => (
           <button key={k} type="button" role="tab" aria-selected={k === recipe}
             className={k === recipe ? 'on' : ''} onClick={() => onPick(k)}>
-            <InputIcon kind={iconOf(k, { icons })} size={20} />
+            {glyphs?.[k] ?? <InputIcon kind={iconOf(k, { icons })} size={20} />}
             <span>{t(nameKey(k, { names }))}</span>
           </button>
         ))}

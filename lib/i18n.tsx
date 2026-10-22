@@ -3046,6 +3046,8 @@ export const STRINGS: Record<string, Entry> = {
   'xboard.col.released': { en: 'Released', 'zh-Hant': '發布', 'zh-Hans': '发布', ja: 'リリース', ko: '출시' },
   'xboard.col.input':    { en: 'Input', 'zh-Hant': '輸入', 'zh-Hans': '输入', ja: '入力', ko: '입력' },
   'xboard.col.price':    { en: 'Price', 'zh-Hant': '價格', 'zh-Hans': '价格', ja: '価格', ko: '가격' },
+  'xboard.sort':         { en: 'Sort:', 'zh-Hant': '排序：', 'zh-Hans': '排序：', ja: '並び替え：', ko: '정렬:' },
+  'xboard.sortdir':      { en: 'Reverse the order', 'zh-Hant': '反轉順序', 'zh-Hans': '反转顺序', ja: '順番を逆にする', ko: '순서 뒤집기' },
   'profile.account':     { en: 'Account', 'zh-Hant': '帳戶', 'zh-Hans': '账户', ja: 'アカウント', ko: '계정' },
   'profile.signedin':    { en: 'Signed in', 'zh-Hant': '已登入', 'zh-Hans': '已登录', ja: 'ログイン中', ko: '로그인됨' },
   'profile.balance':     { en: 'Credit Balance', 'zh-Hant': '點數餘額', 'zh-Hans': '点数余额', ja: 'クレジット残高', ko: '크레딧 잔액' },

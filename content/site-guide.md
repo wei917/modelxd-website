@@ -62,7 +62,8 @@ aloud; you listen, vote, see the prices per minute of speech, and vote
 again. In Audio, the Mode row also offers Music (音樂): describe a song (up
 to 500 characters) and two music models (Lyria 3.5 and ElevenLabs Music
 2.5) each make about a minute of it; prices are shown per song. Speech and
-music have their own leaderboards on XBoard (the Speech and Music tabs).
+music have their own leaderboards on XBoard (under Audio, Speech and
+Music one under the other).
 No web search here by design — it is meant to be a clean like-for-like test.
 
 Under the composer, XDuel also shows other people's duels of the chosen type
@@ -417,11 +418,13 @@ Billing over it would make the leaderboard false.
 
 ### XBoard — `/xboard`
 The leaderboard. Models ranked by **XD Score**, a Bradley-Terry rating
-computed from real blind head-to-head votes — not a vendor benchmark. Filter
-by text, image or video, and by sub-type. Separate boards exist for
-search-enabled models and for Werewolf results (Werewolf is scored as its own
-pool and deliberately kept out of the main XD Score, because talking six
-models into mislynching a villager is not the skill the duels measure).
+computed from real blind head-to-head votes — not a vendor benchmark. The
+top bar picks the type, as in XDuel: Text, Image, Video or Audio (Audio
+shows a Speech board and a Music board, one under the other, since they are
+rated separately). Video also has a Mode row (text to video, image to video,
+video edit). You can search by name and filter by provider. There is no
+separate board for search-enabled models or for Werewolf results on XBoard
+any more (too few votes for now).
 
 ### XEval — `/xeval`
 ModelXD's benchmark replication lab, now multi-benchmark: a switcher at the
