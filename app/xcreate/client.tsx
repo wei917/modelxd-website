@@ -41,7 +41,7 @@ import AttachmentButton, { attachSampleFile, commitAttachments, pendingAttachmen
 import MaskEditor from '../components/MaskEditor'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import ModeIcon from '../components/ModeIcon'
-import { RECIPES, RECIPE_ICONS, InputIcon, type ModelMode } from './recipes'
+import { RECIPES, RECIPE_ICONS, InputIcon, recipesFor, type AudioTab, type ModelMode } from './recipes'
 import RecipeBar from '../xduel/RecipeBar'
 import TemplatePicker from '../components/TemplatePicker'
 import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
@@ -123,11 +123,13 @@ interface OutputConfig {
  *  `reference_frames` is dual-use — it produces an image output when the
  *  model's output_modalities include 'image' (Nano Banana / Gemini 3 Image
  *  with reference shots) and a video output for video-output models. */
-function modeMatchesMode(modePattern: string, m: Mode): boolean {
-  // Speech and music are both the Audio tab: one writes a script, the
-  // other a song, and the slot card tells them apart by the options the
-  // row declares (a music row has no voices, so no voice picker).
-  if (m === 'audio') return modePattern === 'text_to_speech' || modePattern === 'text_to_music' || modePattern === 'voice_clone'
+function modeMatchesMode(modePattern: string, m: Mode, tab?: AudioTab): boolean {
+  // Speech and music are the studio's 'audio' mode, in two tabs since Oct 22
+  // (語音 / 音樂; owner: "should we split them into two tabs?"): each tab
+  // offers only its own models. With no tab, both.
+  if (m === 'audio') return tab === 'music' ? modePattern === 'text_to_music'
+    : tab === 'speech' ? modePattern === 'text_to_speech' || modePattern === 'voice_clone'
+    : modePattern === 'text_to_speech' || modePattern === 'text_to_music' || modePattern === 'voice_clone'
   if (m === 'text')  return (
     modePattern === 'text_to_text'  ||
     modePattern === 'image_to_text' ||
@@ -1030,7 +1032,13 @@ function CreateStudio() {
   // right tab instead of 影片 until the page wakes up.
   const firstType: StudioType | null = searchFanParam || searchRemakeParam ? 'remake'
     : searchFilmParam ? 'film' : isStudioType(searchTypeParam) ? searchTypeParam : null
-  const [mode,           setMode]           = useState<Mode>(firstType && firstType !== 'film' && firstType !== 'remake' ? firstType : 'video')
+  const [mode,           setMode]           = useState<Mode>(firstType === 'music' ? 'audio' : firstType && firstType !== 'film' && firstType !== 'remake' ? firstType : 'video')
+  // 語音 or 音樂 (Oct 22): both are 'audio'; the tab picks the models and the
+  // recipe. studioTab is the tab on the type bar and in the address.
+  const [audioTab,       setAudioTab]       = useState<AudioTab>(firstType === 'music' ? 'music' : 'speech')
+  const audioTabRef = useRef(audioTab)
+  audioTabRef.current = audioTab
+  const studioTab: StudioType = mode === 'audio' && audioTab === 'music' ? 'music' : mode
   const openedModeRef = useRef(mode)
   const fromRecipeRef = useRef<string | null>(useSearchParams()?.get('from') ?? null)
   const [prompt,         setPrompt]         = useState('')
@@ -1158,7 +1166,7 @@ function CreateStudio() {
     // current top-level mode (text/image/video). For example, a video
     // model declares `text_to_video` and `image_to_video`; in video mode
     // both are valid here.
-    const modeOpts = (model.modes ?? []).filter(x => modeMatchesMode(x, m))
+    const modeOpts = (model.modes ?? []).filter(x => modeMatchesMode(x, m, audioTab))
     const mode = opts.mode && modeOpts.includes(opts.mode) ? opts.mode : (modeOpts[0] ?? null)
 
     // Modes that consume a non-text input file (image_to_video, image_to_image,
@@ -1642,7 +1650,8 @@ function CreateStudio() {
     // ?type=audio&from=voice_clone). Any other type forgets it.
     if (mode !== openedModeRef.current) fromRecipeRef.current = null
     const want = fromRecipeRef.current
-    setRecipeMode(want && RECIPES[mode].some(r => r.id === want) ? want as ModelMode : RECIPES[mode][0].id)
+    const list = recipesFor(mode, audioTabRef.current)
+    setRecipeMode(want && list.some(r => r.id === want) ? want as ModelMode : list[0].id)
   }, [mode])
 
   // ?tool=<id> opens a one-tap tool (an ad, a LINE post, the sign-in return),
@@ -2964,7 +2973,7 @@ function CreateStudio() {
       error:        !!slots[i]?.error,
     })))
     setMatchResult({
-      eyebrow: t('xc.done.eyebrow').replace('{n}', String(activeModels.length)).replace('{mode}', t(`mode.${mode}`)),
+      eyebrow: t('xc.done.eyebrow').replace('{n}', String(activeModels.length)).replace('{mode}', t(mode === 'audio' ? (audioTab === 'music' ? 'mode.music' : 'mode.speech') : `mode.${mode}`)),
       title:   t('xc.done.wins').replace('{name}', chosen.display_name),
       winnerName: chosen.display_name,
       winnerProvider: makerKey(chosen.provider, chosen.model_name),
@@ -3393,12 +3402,12 @@ function CreateStudio() {
     // Strip ?id=... from the URL so refreshing doesn't re-load the
     // run we just abandoned, and so the address bar matches the fresh
     // setup state.
-    if (typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('type') !== mode) {
+    if (typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('type') !== studioTab) {
       urlClearedByCodeRef.current = true
       const url = new URL(window.location.href)
       url.search = ''
-      url.searchParams.set('type', mode)
-      typeUrlRef.current = mode
+      url.searchParams.set('type', studioTab)
+      typeUrlRef.current = studioTab
       window.history.replaceState({}, '', url.toString())
     }
   }
@@ -3498,7 +3507,19 @@ function CreateStudio() {
     if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setFanView(null); setRemakeUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
-    if (next !== mode) { setMode(next); setActiveTemplateId(null); templateAspectRef.current = null }
+    // 語音 and 音樂 are both 'audio': the tab changes the models and the
+    // recipe, so a switch between them starts a fresh composer here (the
+    // [mode] effect does it for a change of mode, reading the tab's ref).
+    const nextMode: Mode = next === 'music' ? 'audio' : next
+    const tab: AudioTab = next === 'music' ? 'music' : 'speech'
+    if (nextMode === 'audio' && tab !== audioTab) {
+      setAudioTab(tab); audioTabRef.current = tab
+      if (mode === 'audio') {
+        setSelectedModels([null, null, null, null]); setSlotOptions([null, null, null, null]); setAttachments([])
+        setRecipeMode(recipesFor('audio', tab)[0].id)
+      }
+    }
+    if (nextMode !== mode) { setMode(nextMode); setActiveTemplateId(null); templateAspectRef.current = null }
     setTypeUrl(next)
   }
   const switchTypeRef = useRef(switchType)
@@ -3577,7 +3598,7 @@ function CreateStudio() {
   useEffect(() => {
     return onStudioTypeRequest(type => switchTypeRef.current(type))
   }, [])
-  useEffect(() => { publishStudioType(remakeOpen ? 'remake' : filmOpen ? 'film' : mode) }, [mode, filmOpen, remakeOpen])
+  useEffect(() => { publishStudioType(remakeOpen ? 'remake' : filmOpen ? 'film' : studioTab) }, [studioTab, filmOpen, remakeOpen])
   useEffect(() => {
     if (!searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
     setRemakeOpen(false)
@@ -3626,6 +3647,9 @@ function CreateStudio() {
     // Block the mode-change useEffect from wiping the state we're about to set.
     modeClearedRef.current = true
     setMode(itemMode)
+    // A saved song opens on 音樂, a voice on 語音 (Oct 22).
+    const itemTab: AudioTab = itemMode === 'audio' && (rawSlots[0] as any)?.options?.mode === 'text_to_music' ? 'music' : 'speech'
+    if (itemMode === 'audio') { setAudioTab(itemTab); audioTabRef.current = itemTab }
     setPrompt(item.prompt)
     // Restore the original uploads (rows created July 19+ persist them).
     // Signed URLs give images their previews — owner-read storage policy
@@ -3660,7 +3684,7 @@ function CreateStudio() {
     // mode's default.
     if (rawSlots.length === 0) {
       setLoadError('This run never finished. Your prompt and files are restored — hit Generate to run it again.')
-      setRecipeMode(RECIPES[itemMode][0].id)
+      setRecipeMode(recipesFor(itemMode, itemTab)[0].id)
       setSlots([]); setXcreateId(null); setRetryOfId(item.id)
       setChosenIdx(null); setChatHistory([]); setPhase('setup')
       return
@@ -3868,7 +3892,7 @@ function CreateStudio() {
         // recipe the run actually used — otherwise the composer renders the
         // wrong slot layout and the re-tagged attachments stay hidden.
         const savedRecipe = restoredOptions.find(Boolean)?.mode
-        if (savedRecipe && RECIPES[itemMode].some(r => r.id === savedRecipe)) {
+        if (savedRecipe && recipesFor(itemMode, itemTab).some(r => r.id === savedRecipe)) {
           setRecipeMode(savedRecipe)
         }
         setSlots([])
@@ -3986,8 +4010,9 @@ function CreateStudio() {
   // Mode row): www's sits above the prompt box, the door's inside it (owner,
   // Oct 3).
   const fromMenu = fromOpen && (() => {
-    const avail = RECIPES[mode].filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
-    const recipes = avail.length ? avail : RECIPES[mode]
+    const all = recipesFor(mode, audioTab)
+    const avail = all.filter(r => catalog.some(c => (c.output_modalities ?? []).includes(mode) && (c.modes ?? []).includes(r.id)))
+    const recipes = avail.length ? avail : all
     return (
       <div className="from-menu" role="listbox">
         {recipes.map(r => {
@@ -4079,8 +4104,9 @@ function CreateStudio() {
                     const generic = !slots || slots.length === 0
                     // 影片 has none: its Mode row says what is uploaded, and
                     // 文字 takes nothing (as XDuel's). 我的聲音 takes no file
-                    // either: the voice above is its input.
-                    if (generic && (mode === 'video' || ownVoiceRun)) return null
+                    // either: the voice above is its input; nor 音樂 (one
+                    // way in, words only).
+                    if (generic && (mode === 'video' || ownVoiceRun || studioTab === 'music')) return null
                     if (generic) {
                       slots = [{ label: t('xc.slot.attach'), hint: t('xc.slot.optional') }]
                     }
@@ -4262,7 +4288,7 @@ function CreateStudio() {
                     maxLength={XCREATE_PROMPT_MAX}
                     placeholder={mode === 'video'
                       ? tOr(t, 'xduel.ph.video.' + recipeMode, tOr(t, 'xcreate.ph.video.' + recipeMode, t('xcreate.ph.video')))
-                      : t('xcreate.ph.' + mode)}
+                      : t(studioTab === 'music' ? 'xcreate.ph.music' : 'xcreate.ph.' + mode)}
                     value={prompt} onChange={e => setPrompt(e.target.value)}
                     // Locked once a run starts. The user can still see what
                     // prompt was used, but can't edit it until Start Over.
@@ -4287,7 +4313,8 @@ function CreateStudio() {
                         Oct 20: "we can still have the dropdown in the prompt
                         box"); both set the same mode. */}
                     <div className="xcs-prompt-tools">
-                      <div className="xcs-source" ref={fromRef}>
+                      {/* 音樂 has one way in: no From. */}
+                      {studioTab !== 'music' && <div className="xcs-source" ref={fromRef}>
                         <button type="button" className="xcs-source-btn" disabled={isLocked}
                           aria-haspopup="listbox" aria-expanded={fromOpen}
                           onClick={() => !isLocked && setFromOpen(o => !o)}>
@@ -4296,7 +4323,7 @@ function CreateStudio() {
                           <span aria-hidden className="xcs-source-caret">▾</span>
                         </button>
                         {fromMenu}
-                      </div>
+                      </div>}
                       {/* 圖1 / 圖2 name the reference pictures; each model
                           gets them in its own words (lib/reference-tokens.ts). */}
                       {recipeMode === 'reference_frames' && <span className="xcs-ref-hint">{t('ref.howto')}</span>}
@@ -4389,7 +4416,7 @@ function CreateStudio() {
         </div>
       )}
 
-      <StudioTypeBar initial={remakeOpen ? 'remake' : filmOpen ? 'film' : mode} />
+      <StudioTypeBar initial={remakeOpen ? 'remake' : filmOpen ? 'film' : studioTab} />
       <div className="xduel-page">
         <div className="arena xcreate-arena xcs-studio" id="xcreate-main" tabIndex={-1}>
 
@@ -4846,7 +4873,7 @@ function CreateStudio() {
                     ) {
                       vidDurations = vidDurations.includes(8) ? [8] : vidDurations
                     }
-                    const availableModes = (model.modes ?? []).filter(x => modeMatchesMode(x, mode))
+                    const availableModes = (model.modes ?? []).filter(x => modeMatchesMode(x, mode, audioTab))
                     // Watermark is Alibaba-only — applies to both video (HappyHorse, Wan)
                     // and image (Qwen Image). Hidden for OpenAI / Google / Anthropic.
                     const showWatermark = (mode === 'video' || mode === 'image') && model.provider === 'alibaba'
@@ -5499,7 +5526,7 @@ function CreateStudio() {
                   {(mode === 'image' || mode === 'video') && (
                     <StandaloneTrending kind={mode} onUse={template => { void applyTemplate(template) }} />
                   )}
-                  {userId && <StudioWorks type={mode} userId={userId} />}
+                  {userId && <StudioWorks type={studioTab} userId={userId} />}
                 </>}
 
                 {/* Results */}
@@ -5590,7 +5617,7 @@ function CreateStudio() {
                               const dbr   = mode === 'video' ? (oc.video?.durations_by_resolution ?? {}) : {}
                               const allDurations = Array.from(new Set(Object.values(dbr).flat()))
                               const qualities = mode === 'image' ? (model.output_config?.image?.qualities ?? []) : []
-                              const compatibleModes = (model.modes ?? []).filter(x => modeMatchesMode(x, mode))
+                              const compatibleModes = (model.modes ?? []).filter(x => modeMatchesMode(x, mode, audioTab))
 
                               const parts: string[] = []
                               if (used.mode         && compatibleModes.length > 1)         parts.push(tOr(t, `ml.${used.mode}`, modeLabel(used.mode)))

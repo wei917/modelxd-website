@@ -84,7 +84,10 @@ export async function GET(req: NextRequest) {
     // `options.remake`: its own filter, and out of Video too.
     if (filter === 'film') q = q.eq('mode', 'video').not('slots->0->options->>film', 'is', null)
     else if (filter === 'remake') q = q.eq('mode', 'video').not('slots->0->options->>remake', 'is', null)
+    // 語音 and 音樂 are both audio rows (Oct 22): the recipe on the first slot tells them apart.
+    else if (filter === 'music') q = q.eq('mode', 'audio').eq('slots->0->options->>mode', 'text_to_music')
     else if (filter !== 'all') q = q.eq('mode', filter)
+    if (filter === 'audio') q = q.or('slots->0->options->>mode.is.null,slots->0->options->>mode.neq.text_to_music')
     if (filter === 'video') q = q.is('slots->0->options->>film', null).is('slots->0->options->>remake', null)
     // The studio's own grid (Oct 3): runs made in the studio only, not XDirect
     // board nodes, upload "Source:" rows or XCut renders (they carry a node_kind).

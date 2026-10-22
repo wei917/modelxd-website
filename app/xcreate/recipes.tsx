@@ -74,6 +74,14 @@ export const RECIPES: Record<StudioMode, Recipe[]> = {
 }
 
 
+/** 音樂 (Oct 22): its own tab beside 語音, one way in. Both are the studio's
+ *  'audio' mode; the tab picks which list the From menu and the picker use. */
+export type AudioTab = 'speech' | 'music'
+export const MUSIC_RECIPES: Recipe[] = [
+  { id: 'text_to_music', title: 'Text to Music', recipe: 'TEXT → MUSIC', provide: 'a description of the song' },
+]
+export const recipesFor = (mode: StudioMode, tab: AudioTab): Recipe[] => mode === 'audio' && tab === 'music' ? MUSIC_RECIPES : RECIPES[mode]
+
 // Input-type icon for the sub-mode menu (superset of ModeIcon: adds
 // pdf / frames / references). Same 16px stroke style as ModeIcon.
 export function InputIcon({ kind, size = 16 }: { kind: InputKind; size?: number }) {
@@ -105,4 +113,5 @@ export const RECIPE_ICONS: Record<string, [InputKind, StudioMode]> = {
   audio_to_video:   ['audio',      'video'],
   text_to_speech:   ['text',       'audio'],
   voice_clone:      ['mic',        'audio'],
+  text_to_music:    ['text',       'audio'],
 }

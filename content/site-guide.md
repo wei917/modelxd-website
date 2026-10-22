@@ -55,15 +55,15 @@ on it blind. Free to use, up to
 shows no counter: once the
 day's duels are used up it says so and asks you to come back tomorrow (the
 day resets at midnight UTC, 8 a.m. in Taiwan, 9 a.m. in Japan). Supports
-text, image, video and speech (語音). Pick the type (Text, Image, Video,
-Audio) in the bar across the top of the page. A speech duel: type a short
-text (up to 300 characters) and two anonymous text-to-speech models read it
-aloud; you listen, vote, see the prices per minute of speech, and vote
-again. In Audio, the Mode row also offers Music (音樂): describe a song (up
-to 500 characters) and two music models (Lyria 3.5 and ElevenLabs Music
-2.5) each make about a minute of it; prices are shown per song. Speech and
-music have their own leaderboards on XBoard (under Audio, Speech and
-Music one under the other).
+text, image, video, speech (語音) and music (音樂). Pick the type (Text,
+Image, Video, Speech, Music) in the bar across the top of the page. A speech
+duel: type a short text (up to 300 characters) and two anonymous
+text-to-speech models read it aloud; you listen, vote, see the prices per
+minute of speech, and vote again. A music duel: describe a song (up to 500
+characters) and two music models (Lyria 3.5 and ElevenLabs Music 2.5) each
+make about a minute of it; prices are shown per song. Speech and music have
+their own leaderboards on XBoard (under Audio, Speech and Music one under
+the other).
 No web search here by design — it is meant to be a clean like-for-like test.
 
 Under the composer, XDuel also shows other people's duels of the chosen type
@@ -87,7 +87,7 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean. A bar along the top of the page picks what to make (Text, Image,
-Video, Audio, Film, 同款 / Remake). You can look around without an account; signing in is
+Video, Speech, Music, Film, 同款 / Remake). You can look around without an account; signing in is
 asked for when you make something. The From choice (text, image,
 video ...) is inside the prompt box; the model picker lists every model with
 what it can do and its list price. On the Image tab, one-tap tools (beta) do
@@ -119,12 +119,16 @@ image and video, plus recipes like image-to-video, reference-to-video,
 start-and-end-frames, and video editing. Per-seat settings let you choose a
 model's thinking depth and switch web search on. Costs real credits.
 
-**Audio delivery.** In Audio, the Gemini, GPT-4o mini and Qwen TTS Instruct
+**Music (音樂).** Describe the song you want (genre, mood, instruments or
+lyrics) and pick Lyria 3.5 (US$0.08 a song) or ElevenLabs Music 2.5
+(US$0.15 a minute), or both to compare.
+
+**Audio delivery.** In Speech, the Gemini, GPT-4o mini and Qwen TTS Instruct
 voices take a delivery instruction (the ⚙ settings under the model: accent,
 mood, pace). For a Taiwanese Mandarin accent, pick Gemini 3.8 Flash TTS and
 write 「用台灣腔的國語說，溫暖親切。」. The MiniMax voices speak standard accents.
 
-**My voice (我的聲音).** In Audio, pick From → My voice to have scripts read
+**My voice (我的聲音).** In Speech, pick From → My voice to have scripts read
 in your own voice. Record yourself once reading the two sentences shown on
 the page (about 10 seconds, your own voice only; a recording of someone else
 will not pass the check), then any script is spoken in it by the MiniMax Speech 2.8

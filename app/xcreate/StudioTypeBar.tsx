@@ -12,8 +12,8 @@
 // a new tab (`/xcreate?type=`).
 //
 // Icons: the approved ModelXD media set (MediaIcon, Oct 17) for Text, Image,
-// Video and Audio, in full colour; Film has no approved icon yet and keeps
-// its line drawing.
+// Video, Speech and Music, in full colour; Film has no approved icon yet and
+// keeps its line drawing.
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
@@ -59,7 +59,8 @@ export default function StudioTypeBar({ initial = null }: { initial?: StudioType
             event.preventDefault()
             requestStudioType(type)
           }}>
-          {hasMediaIcon(type) ? <span className="xcs-type-icon"><MediaIcon kind={type} /></span> : <ModeIcon m={type} />}<span>{t('mode.' + type)}</span>
+          {/* 'audio' is 語音 since 音樂 has its own tab (Oct 22). */}
+          {hasMediaIcon(type) ? <span className="xcs-type-icon"><MediaIcon kind={type === 'audio' ? 'speech' : type} /></span> : <ModeIcon m={type} />}<span>{t(type === 'audio' ? 'mode.speech' : 'mode.' + type)}</span>
         </Link>)}
       </nav>
       {more.left && <button type="button" className="xcs-types-arrow is-left" tabIndex={-1} aria-hidden="true" onClick={() => scrollRow(-1)}>‹</button>}
