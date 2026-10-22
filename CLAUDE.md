@@ -684,8 +684,16 @@ Multi-model rooms. Two templates:
   history.
 
 ### XBoard — `/xboard`
-Models ranked by XD Score. Filter by mode and sub-type. Separate pools exist
-for search-enabled runs and for Werewolf.
+Models ranked by XD Score. **In XDuel's look since Oct 22** (owner: "XBoard
+is from XDuel"): XDuel's top bar (`XDuelBar` with `base="/xboard"`; Text /
+Image / Video / Audio, `?mode=` in the address), its paper (`.xduel-xt`),
+no Omnibox bar. Only Video has a Mode row (`RecipeBar`; All / text / image
+/ edit, `&sub=`): text, image and audio have too few votes to split (owner:
+"only keep the output type"), so the text-search pool and the Werewolf
+scoreboard left the page (their pools and `/api/xboard/werewolf` stay).
+Audio shows the Speech and Music boards one under the other (separate
+pools, never one ranking). On phones each row is a card (`.xb-row` grid
+areas in globals.css) with a Sort picker; desktop keeps the table.
 
 ## The Site Agent
 
@@ -1626,9 +1634,8 @@ can sit at the table honestly. One act per request; the client loops.
    `xtalk_discussion` blocks aren't enforced there yet. One line.
    (`/api/v1` DOES enforce its own `api` key — `lib/inference.ts`. The
    `xcreate` block is still unenforced on `/api/xcreate` itself.)
-3. **XBoard is badly broken in mobile portrait** — the table has
-   `minWidth: 820/830`, ~640px of overflow at 390px. XCreate/Profile are fine;
-   XTalk and home are ~10–15px out. Desktop-first, so this is deliberate debt.
+3. ~~XBoard is badly broken in mobile portrait~~ — fixed Oct 22 (cards on
+   phones). XTalk and home were ~10–15px out at 390px when last measured.
 4. **XTalk attachments** are still not accepted by `/api/xtalk`.
 5. **`lib/ThemeContext.tsx` is dead code** — wire it up or delete it.
 6. **Owner has TWO account ids — SOLVED (Aug 6):** they are two real Google

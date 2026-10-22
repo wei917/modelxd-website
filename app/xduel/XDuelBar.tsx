@@ -13,9 +13,11 @@ import { useT } from '../../lib/i18n'
 export type DuelKind = 'text' | 'image' | 'video' | 'audio'
 const KINDS: DuelKind[] = ['text', 'image', 'video', 'audio']
 
-export default function XDuelBar({ current, onPick, busy }: {
+export default function XDuelBar({ current, onPick, busy, base = '/xduel' }: {
   current: DuelKind | null
   onPick?: (k: DuelKind) => void
+  /** Where the types link: XBoard wears the same bar (Oct 22). */
+  base?: string
   // A duel is still running: the other types wait for it (switching would
   // leave its stream writing into the next duel).
   busy?: boolean
@@ -29,7 +31,7 @@ export default function XDuelBar({ current, onPick, busy }: {
             {KINDS.map(k => {
               const waiting = busy && k !== current
               return (
-                <a key={k} href={`/xduel?mode=${k}`} aria-current={current === k ? 'page' : undefined}
+                <a key={k} href={`${base}?mode=${k}`} aria-current={current === k ? 'page' : undefined}
                   aria-disabled={waiting || undefined}
                   onClick={onPick ? e => { e.preventDefault(); if (!waiting) onPick(k) } : undefined}>
                   <span className="xtell-nav-icon xduel-bar-icon"><MediaIcon kind={k} /></span>
