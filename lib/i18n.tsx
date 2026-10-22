@@ -932,7 +932,8 @@ export const STRINGS: Record<string, Entry> = {
   'xcut.track.audio':{ en: 'AUDIO', 'zh-Hant': '音訊', 'zh-Hans': '音频', ja: '音声', ko: '오디오' },
   'xcut.track.subs': { en: 'SUBTITLES', 'zh-Hant': '字幕', 'zh-Hans': '字幕', ja: '字幕', ko: '자막' },
   'xcut.assets':     { en: 'Assets', 'zh-Hant': '素材', 'zh-Hans': '素材', ja: '素材', ko: '에셋' },
-  'xcut.src.xdirect':{ en: 'XDirect', 'zh-Hant': 'XDirect', 'zh-Hans': 'XDirect', ja: 'XDirect', ko: 'XDirect' },
+  // XFilm's 導演 tab since Oct 22 (was the app XDirect).
+  'xcut.src.xdirect':{ en: 'Direct', 'zh-Hant': '導演', 'zh-Hans': '导演', ja: '監督', ko: '연출' },
   'xcut.src.xcreate':{ en: 'XCreate', 'zh-Hant': 'XCreate', 'zh-Hans': 'XCreate', ja: 'XCreate', ko: 'XCreate' },
   'xcut.src.xduel':  { en: 'XDuel', 'zh-Hant': 'XDuel', 'zh-Hans': 'XDuel', ja: 'XDuel', ko: 'XDuel' },
   'xcut.src.uploads':{ en: 'Uploads', 'zh-Hant': '上傳', 'zh-Hans': '上传', ja: 'アップロード', ko: '업로드' },
