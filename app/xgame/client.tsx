@@ -20,9 +20,9 @@
 //
 // Oct 22 (owner: "you missed the landing page for XGame. Can you check
 // XOracle page?"): /xgame with no ?game= is a landing page, as /xoracle is:
-// nothing marked in the bar, the slideshow, 你的對局 across every game, every
-// game as a card and four steps (XGameLanding), XOracle's footer. A card, the
-// bar or the slideshow's button opens a game's tab in place.
+// nothing marked in the bar, the slideshow, the guide box and four steps
+// (XGameLanding), XOracle's footer. The bar, the slideshow's button or a
+// game the guide offers opens that game's tab in place.
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -171,11 +171,8 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
             </div>}
           </>}
 
-          {/* The landing page: your games of every game, then every game. */}
-          {landing && <>
-            <GameHistory game={null} />
-            <XGameLanding onPick={game => { pick(game); setHeroVersion(v => v + 1); window.scrollTo({ top: 0, behavior: 'instant' }) }} />
-          </>}
+          {/* The landing page: the guide, then the steps. */}
+          {landing && <XGameLanding onOpen={game => { pick(game); setHeroVersion(v => v + 1); window.scrollTo({ top: 0, behavior: 'instant' }) }} />}
 
           {/* The chosen game's setup, headed by its icon, name, seats and
               blurb. A resumed game is the TABLE: it gets the page to itself.

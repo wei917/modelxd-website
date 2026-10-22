@@ -2,15 +2,17 @@
 // app/xgame/XGameLanding.tsx — /xgame with no game chosen (Oct 22; owner:
 // "you missed the landing page for XGame. Can you check XOracle page?").
 // XOracle's homepage on XGame's paper: the page (client.tsx) draws the top
-// bar with nothing marked, the slideshow and 你的對局; this is the rest:
-// every game as a card (icon, name, seats, blurb, who you play with) that
-// opens its tab in place, and four steps in XOracle's how-to style
-// (.xtell-how, globals.css). The footer is XOracle's with XGame's own line.
+// bar with nothing marked and the slideshow; this is the rest, as on
+// /xoracle: the guide box right under the slideshow (XGameGuide) and four
+// steps in XOracle's how-to style (.xtell-how, globals.css). The footer is
+// XOracle's with XGame's own line. No recent games and no card per game
+// (owner, Oct 22: XOracle has no recent visits there, "we already have top
+// nav bar so no need to list all games"), and no today's card.
 
 import { useId } from 'react'
 import { useLang } from '../../lib/i18n'
-import { FRIEND_GAMES, GAME_INTRO, GAME_NAME_KEY, gamesFor, type GameKey } from '../../lib/xgame-games'
-import { gameIconStyle } from './XGameBar'
+import type { GameKey } from '../../lib/xgame-games'
+import XGameGuide from './XGameGuide'
 
 const STEP_ICONS = [
   // A game: the grid of tiles.
@@ -23,44 +25,12 @@ const STEP_ICONS = [
   <svg key="4" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3h11A2.5 2.5 0 0 1 19 5.5v7a2.5 2.5 0 0 1-2.5 2.5H9l-4 3.5V15H5.5A2.5 2.5 0 0 1 3 12.5z" /><path d="M7 7.5h8M7 10.5h5" /></svg>,
 ]
 
-export default function XGameLanding({ onPick }: { onPick: (game: GameKey) => void }) {
-  const { lang, t } = useLang()
-  const gamesId = useId(), howId = useId()
+export default function XGameLanding({ onOpen }: { onOpen: (game: GameKey) => void }) {
+  const { t } = useLang()
+  const howId = useId()
   return (
     <>
-      <section className="xgame-cards" aria-labelledby={gamesId}>
-        <h2 id={gamesId} className="xgame-section-title">{t('xg.land.games')}</h2>
-        <ul>
-          {gamesFor(lang).map(game => {
-            const intro = GAME_INTRO[game]
-            return (
-              <li key={game}>
-                <a href={`/xgame?game=${game}`} className="xgame-card"
-                  onClick={e => {
-                    // A new tab or window keeps the browser's own behaviour.
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-                    e.preventDefault(); onPick(game)
-                  }}>
-                  <span className="xgame-bar-icon xgame-card-icon" style={gameIconStyle(game)} aria-hidden="true" />
-                  <span className="xgame-card-body">
-                    <span className="xgame-card-name">
-                      <strong>{t(GAME_NAME_KEY[game])}</strong>
-                      <span className="xgame-card-seats">{t('xt.seats').replace('{n}', intro.seats)}</span>
-                    </span>
-                    <span className="xgame-card-blurb">{t(intro.blurb)}</span>
-                    <span className="xgame-card-tags">
-                      <span>{t('xg.land.tag.ai')}</span>
-                      {FRIEND_GAMES.includes(game) && <span className="is-friend">{t('xg.land.tag.friend')}</span>}
-                    </span>
-                  </span>
-                  <span className="xgame-card-go" aria-hidden="true">→</span>
-                </a>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-
+      <XGameGuide onOpen={onOpen} />
       <section className="xtell-how xgame-how" aria-labelledby={howId}>
         <h2 id={howId} className="xtell-how-title">{t('xg.how.title')}</h2>
         <ol className="xtell-how-steps">
