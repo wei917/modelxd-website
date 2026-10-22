@@ -169,11 +169,12 @@ export default function XTellNav({ user, embedded = false }: { user: User | null
   )
 }
 
-export function XTellFooter() {
+/** `noteKey`: another page's own line in X先知's footer (XGame, Oct 22). */
+export function XTellFooter({ noteKey = 'xtell.site.footerNote' }: { noteKey?: string } = {}) {
   const { t } = useLang()
   return <footer className="xtell-footer">
     {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
-    <p className="xtell-footer-note">{t('xtell.site.footerNote')}</p>
+    <p className="xtell-footer-note">{t(noteKey)}</p>
     {/* A way to reach us (owner, Sep 27: the street had none): 聯絡我們 as
         a mail link (owner, Oct 4), the address in its hover text, and the
         bug report form, which works signed out too. */}

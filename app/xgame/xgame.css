@@ -72,6 +72,35 @@
 .xgame-history-when { flex-shrink: 0; font: 11.5px var(--font-mono), monospace; color: var(--muted2); white-space: nowrap; }
 .xgame-history-go { flex-shrink: 0; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--red); color: var(--red); font-size: 12px; font-weight: 700; text-decoration: none; }
 .xgame-history-go:hover { background: var(--red-dim); }
+.xgame-history-icon { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; }
+.xgame-mine { margin-top: 28px; }
+.xgame-mine .xgame-history { margin-top: 0; }
+/* The landing page (XGameLanding.tsx, Oct 22): every game as a card, four
+   steps in XOracle's style, XOracle's footer. Cards: four across on a wide
+   screen, two on a tablet, one row each (icon left) on a phone. */
+.xgame-section-title { margin: 0 0 14px; font: 400 24px/1.3 var(--xtell-serif); color: var(--xtell-ink); }
+.xgame-cards { margin-top: 28px; }
+.xgame-cards ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.xgame-card { position: relative; display: flex; flex-direction: column; gap: 14px; height: 100%; box-sizing: border-box; padding: 20px 20px 18px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; color: var(--xtell-ink); text-decoration: none; box-shadow: 0 6px 24px rgba(60,40,20,.035); transition: border-color .15s, box-shadow .15s, transform .15s; }
+.xgame-card:hover { border-color: var(--red); box-shadow: 0 10px 28px rgba(100,30,20,.08); transform: translateY(-2px); color: var(--xtell-ink); }
+.xgame-card:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.xgame-card-icon { width: 64px; height: 64px; flex-shrink: 0; border-radius: 14px; }
+.xgame-card-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.xgame-card-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.xgame-card-name strong { font: 400 21px/1.25 var(--xtell-serif); }
+.xgame-card-seats { padding: 3px 8px; border-radius: 99px; background: #f4eee5; color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.xgame-card-blurb { font-size: 13px; line-height: 1.6; color: var(--muted); }
+.xgame-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
+.xgame-card-tags span { padding: 3px 9px; border-radius: 99px; border: 1px solid var(--xtell-rule); font-size: 11.5px; color: var(--muted); }
+.xgame-card-tags .is-friend { border-color: transparent; background: var(--red-dim); color: var(--red); font-weight: 600; }
+.xgame-card-go { position: absolute; top: 20px; right: 20px; color: var(--muted2); font-size: 18px; transition: color .15s, transform .15s; }
+.xgame-card:hover .xgame-card-go { color: var(--red); transform: translateX(3px); }
+.xgame-shell .xgame-how { margin: 28px 0 0; padding: 20px 22px; }
+.xgame-shell .xgame-how .xtell-how-title { font-size: 18px; }
+.xgame-shell .xtell-footer { max-width: none; margin: 40px 0 0; }
+@media (max-width: 1100px) {
+  .xgame-cards ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* A table's two chats (TableChat.tsx): public with the house commentator,
    private with the player's hired helper. */
 .xgame-chat { margin-bottom: 12px; border: 1px solid var(--xtell-rule); border-radius: 16px; background: #fff; overflow: hidden; }
@@ -147,6 +176,17 @@
   .xgame-history { padding: 12px 14px 4px; border-radius: 16px; }
   .xgame-history li { flex-wrap: wrap; gap: 6px 10px; }
   .xgame-history-name { flex-basis: 100%; }
+  .xgame-history li:has(.xgame-history-icon) .xgame-history-name { flex-basis: calc(100% - 40px); }
+  .xgame-section-title { font-size: 21px; }
+  .xgame-cards, .xgame-mine { margin-top: 24px; }
+  .xgame-cards ul { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .xgame-card { flex-direction: row; align-items: flex-start; gap: 14px; padding: 16px 40px 16px 16px; border-radius: 16px; }
+  .xgame-card-icon { width: 52px; height: 52px; border-radius: 12px; }
+  .xgame-card-name strong { font-size: 19px; }
+  .xgame-card-blurb { font-size: 12.5px; }
+  .xgame-card-go { top: 18px; right: 16px; }
+  .xgame-shell .xgame-how { margin-top: 24px; padding: 16px; }
+  .xgame-shell .xtell-footer { margin: 32px 0 0; }
   .xgame-chat-list { height: 220px; }
 }
 @media (prefers-reduced-motion: reduce) {

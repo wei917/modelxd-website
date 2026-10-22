@@ -8,18 +8,21 @@
 // host's to rename or delete. The list comes from /api/xgame/mine
 // (lib/xgame-history.ts); renaming and deleting your own row use the browser
 // client, as the menu did (migration 147 leaves the browser exactly those).
+// On the landing page (`game` null, Oct 22) it is 你的對局: the newest five
+// of every game, each with its game's icon.
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../lib/i18n'
-import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
+import { GAME_NAME_KEY, isGameKey, type GameKey } from '../../lib/xgame-games'
+import { gameIconStyle } from './XGameBar'
 import { TitleEditor } from '../components/xtell/TitleEditor'
 import type { HistoryRow, TableState } from '../../lib/xgame-history'
 
 const STATE_COLOR: Partial<Record<TableState, string>> = { yourturn: 'var(--red)', won: 'var(--green)' }
 
-export default function GameHistory({ game }: { game: GameKey }) {
+export default function GameHistory({ game }: { game: GameKey | null }) {
   const { lang, t } = useLang()
   const [rows, setRows] = useState<HistoryRow[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -32,7 +35,7 @@ export default function GameHistory({ game }: { game: GameKey }) {
   useEffect(() => {
     let active = true
     setLoaded(false)
-    fetch(`/api/xgame/mine?game=${game}`).then(r => r.ok ? r.json() : { tables: [] }).catch(() => ({ tables: [] }))
+    fetch(`/api/xgame/mine?game=${game ?? 'all'}`).then(r => r.ok ? r.json() : { tables: [] }).catch(() => ({ tables: [] }))
       .then(d => { if (active) { setRows(d.tables ?? []); setLoaded(true) } })
     return () => { active = false }
   }, [game])
@@ -59,12 +62,15 @@ export default function GameHistory({ game }: { game: GameKey }) {
   }
   const link = { flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' } as const
 
-  return (
+  // On the landing page the heading sits above the card, as 全部遊戲's does.
+  const heading = <h2 id="xgame-history-title" className={game ? undefined : 'xgame-section-title'}>{t(game ? 'xg.history.title' : 'xg.land.mine')}</h2>
+  const card = (
     <section aria-labelledby="xgame-history-title" className="xgame-history">
-      <h2 id="xgame-history-title">{t('xg.history.title')}</h2>
+      {game && heading}
       <ul>
         {rows.map((r, i) => {
-          const title = r.title || t(GAME_NAME_KEY[game])
+          const rowGame = isGameKey(r.game) ? r.game : game
+          const title = r.title || (rowGame ? t(GAME_NAME_KEY[rowGame]) : 'XGame')
           if (renaming === r.id) return (
             <li key={r.id} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
               <TitleEditor value={r.title ?? ''} onSave={text => rename(r.id, text)} onCancel={() => setRenaming(null)} />
@@ -72,6 +78,7 @@ export default function GameHistory({ game }: { game: GameKey }) {
           )
           return (
             <li key={r.id} style={{ borderTop: i ? '1px solid var(--border)' : 'none', flexWrap: confirming === r.id || failed === r.id ? 'wrap' : undefined }}>
+              {!game && rowGame && <span className="xgame-bar-icon xgame-history-icon" style={gameIconStyle(rowGame)} aria-hidden="true" />}
               <span className="xgame-history-name" title={title}>{title}</span>
               <span className="xgame-history-state" style={{ color: STATE_COLOR[r.state] ?? 'var(--muted)', fontWeight: r.state === 'yourturn' ? 800 : 600 }}>
                 {t(`xg.state.${r.state}`)}
@@ -95,4 +102,5 @@ export default function GameHistory({ game }: { game: GameKey }) {
       </ul>
     </section>
   )
+  return game ? card : <div className="xgame-mine">{heading}{card}</div>
 }

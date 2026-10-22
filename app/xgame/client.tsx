@@ -17,12 +17,18 @@
 // Spectate panel, and the setup in a white card headed by the game's icon,
 // name, seats and blurb (app/xgame/xgame.css). No XGAME eyebrow or slogan in
 // the lobby (owner, Oct 21); a saved table keeps XGAME and its game's name.
+//
+// Oct 22 (owner: "you missed the landing page for XGame. Can you check
+// XOracle page?"): /xgame with no ?game= is a landing page, as /xoracle is:
+// nothing marked in the bar, the slideshow, 你的對局 across every game, every
+// game as a card and four steps (XGameLanding), XOracle's footer. A card, the
+// bar or the slideshow's button opens a game's tab in place.
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useT } from '../../lib/i18n'
+import { useLang } from '../../lib/i18n'
 import { templateById, type Speaker } from '../xtalk/templates'
 import GomokuLive from './GomokuLive'
 import DrawLive from './DrawLive'
@@ -31,9 +37,11 @@ import PokerLive from './PokerLive'
 import XiangqiLive from './XiangqiLive'
 import BridgeLive from './BridgeLive'
 import XGameBar, { gameIconStyle } from './XGameBar'
-import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
+import { GAME_INTRO, GAME_NAME_KEY, gamesFor, isGameKey, type GameKey } from '../../lib/xgame-games'
 import XGameHero from './XGameHero'
 import GameHistory from './GameHistory'
+import XGameLanding from './XGameLanding'
+import { XTellFooter } from '../components/xtell/XTellNav'
 import './xgame.css'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -41,31 +49,21 @@ const createSupabaseBrowser = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
 )
 
-/** Each game's blurb and seat count, as its lobby card had them (the line
- *  under the name became the feature's headline, xg.hero.<game>.title). */
-const INTRO: Record<Exclude<GameKey, 'werewolf'>, { blurb: string; seats: string }> = {
-  gomoku: { blurb: 'xg.gomoku.blurb', seats: '2' },
-  draw: { blurb: 'xg.draw.blurb', seats: '2' },
-  chess: { blurb: 'xg.chess.blurb', seats: '2' },
-  poker: { blurb: 'xg.poker.blurb', seats: '2–9' },
-  xiangqi: { blurb: 'xg.xiangqi.blurb', seats: '2' },
-  bridge: { blurb: 'xg.bridge.blurb', seats: '4' },
-}
-
 export default function XGameClient({ resumeId = null, initialGame = null }: {
   resumeId?: string | null
   /** From ?game= on the server, so the first paint is the right game. */
   initialGame?: GameKey | null
 }) {
   useRequireAuth()
-  const t = useT()
+  const { lang, t } = useLang()
   const router = useRouter()
   const [models, setModels] = useState<Speaker[]>([])
   const [resume, setResume] = useState<string | null>(resumeId)
-  // null = resume probe still deciding which game this id is. Defaulting to
-  // werewolf here made every gomoku permalink phantom-mount WerewolfLive
-  // with a gomoku id. Render NOTHING until we know. (CC, Aug 6)
-  const [active, setActive] = useState<GameKey | null>(resumeId ? null : (initialGame ?? 'werewolf'))
+  // null at a table = the resume probe still deciding which game this id is
+  // (defaulting to werewolf made every gomoku permalink phantom-mount
+  // WerewolfLive; render NOTHING until we know, CC Aug 6). null in the lobby
+  // = the landing page (Oct 22).
+  const [active, setActive] = useState<GameKey | null>(resumeId ? null : (initialGame ?? null))
   // A resumed id names a row whose game we can't know client-side; probe
   // each game's state action in turn, fall back to werewolf on 404s.
   useEffect(() => {
@@ -113,12 +111,27 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
     // The game already open keeps its table and the seats set on it.
     if (k === active) return
     setActive(k); setNonce(n => n + 1)
-    try { window.history.replaceState(window.history.state, '', `/xgame?game=${k}`) } catch { /* the address is a nicety */ }
+    // Leaving the landing page is a step Back undoes; moving between games
+    // only rewrites the address, as before.
+    try {
+      if (active) window.history.replaceState(window.history.state, '', `/xgame?game=${k}`)
+      else window.history.pushState(window.history.state, '', `/xgame?game=${k}`)
+    } catch { /* the address is a nicety */ }
   }
+  // Back and Forward between the landing page and a game.
+  useEffect(() => {
+    if (resume) return
+    const onPop = () => {
+      const g = new URLSearchParams(window.location.search).get('game')
+      setActive(isGameKey(g) ? g : null); setNonce(n => n + 1); setHeroVersion(v => v + 1)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [resume])
   // "New game" at a table goes back to that game's lobby.
   const exit = () => { router.push(active ? `/xgame?game=${active}` : '/xgame'); setResume(null); setNonce(n => n + 1) }
 
-  const intro = active && active !== 'werewolf' ? INTRO[active] : null
+  const landing = !resume && !active
 
   return (
     <div className="xduel-xt xgame-shell">
@@ -133,8 +146,8 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
           {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
               seats you OR runs AI against AI. The Practice (練習) card left
               the lobby on Oct 14; /xgame/practice is still served, unlinked. */}
-          {!resume && active && <>
-            <XGameHero key={`${active}-${heroVersion}`} initialGame={active} onEnter={game => {
+          {!resume && <>
+            <XGameHero key={`${active ?? 'landing'}-${heroVersion}`} initialGame={active ?? gamesFor(lang)[0]} onEnter={game => {
               pick(game)
               requestAnimationFrame(() => {
                 const table = document.getElementById('xgame-table')
@@ -142,7 +155,7 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
                 table?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
               })
             }} />
-            <div className="xgame-ways">
+            {active && <div className="xgame-ways">
               <div className="xgame-way">
                 <span className="xgame-way-icon" aria-hidden="true">
                   <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3M3 14l3 3m15-3-3 3"/></svg>
@@ -155,19 +168,25 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
                 </span>
                 <div><strong>{t('xg.lobby.spectate').replace(/[:：]$/, '')}</strong><p>{t('xg.lobby.spectate.desc')}</p></div>
               </div>
-            </div>
+            </div>}
+          </>}
+
+          {/* The landing page: your games of every game, then every game. */}
+          {landing && <>
+            <GameHistory game={null} />
+            <XGameLanding onPick={game => { pick(game); setHeroVersion(v => v + 1); window.scrollTo({ top: 0, behavior: 'instant' }) }} />
           </>}
 
           {/* The chosen game's setup, headed by its icon, name, seats and
               blurb. A resumed game is the TABLE: it gets the page to itself.
               (owner, Aug 6) */}
-          <section id="xgame-table" className={resume ? 'xgame-live-table' : 'xgame-table'} tabIndex={-1}
+          {!landing && <section id="xgame-table" className={resume ? 'xgame-live-table' : 'xgame-table'} tabIndex={-1}
             aria-label={active ? t(GAME_NAME_KEY[active]) : 'XGame'}>
             {!resume && active && <header className="xgame-table-heading">
               <span className="xgame-bar-icon" style={gameIconStyle(active)} aria-hidden="true" />
               <div>
-                <h2>{t(GAME_NAME_KEY[active])}<span>{t('xt.seats').replace('{n}', active === 'werewolf' ? String(tpl.minPlayers) : intro!.seats)}</span></h2>
-                <p>{t(active === 'werewolf' ? tpl.blurbKey : intro!.blurb)}</p>
+                <h2>{t(GAME_NAME_KEY[active])}<span>{t('xt.seats').replace('{n}', active === 'werewolf' ? String(tpl.minPlayers) : GAME_INTRO[active].seats)}</span></h2>
+                <p>{t(active === 'werewolf' ? tpl.blurbKey : GAME_INTRO[active].blurb)}</p>
               </div>
             </header>}
           {active === 'chess' ? (
@@ -185,10 +204,12 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
           ) : active === 'werewolf' ? (
             <Room key={`werewolf-${nonce}`} models={models} resumeId={resume} onExit={exit} />
           ) : null}
-          </section>
+          </section>}
           {/* Your games of this game, under its setup: XOracle keeps each
               temple's visits there, not in the menu (owner, Oct 21). */}
           {!resume && active && <GameHistory game={active} />}
+          {/* XOracle's footer, with XGame's own line; a table keeps the page. */}
+          {!resume && <XTellFooter noteKey="xg.footer.note" />}
         </div>
       </div>
     </div>

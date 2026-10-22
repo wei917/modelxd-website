@@ -25,3 +25,19 @@ export const GAME_NAME_KEY: Record<GameKey, string> = {
 }
 
 export const isGameKey = (v: unknown): v is GameKey => typeof v === 'string' && (GAMES as string[]).includes(v)
+
+/** Each game's blurb and seats, for its setup heading and its card on the
+ *  landing page (Werewolf's 7 is its template's minPlayers). */
+export const GAME_INTRO: Record<GameKey, { blurb: string; seats: string }> = {
+  werewolf: { blurb: 'xt.tpl.werewolf.blurb', seats: '7' },
+  gomoku: { blurb: 'xg.gomoku.blurb', seats: '2' },
+  draw: { blurb: 'xg.draw.blurb', seats: '2' },
+  chess: { blurb: 'xg.chess.blurb', seats: '2' },
+  poker: { blurb: 'xg.poker.blurb', seats: '2–9' },
+  xiangqi: { blurb: 'xg.xiangqi.blurb', seats: '2' },
+  bridge: { blurb: 'xg.bridge.blurb', seats: '4' },
+}
+
+/** The games two people can play together by an invite link (multiplayer
+ *  step 1, Oct 21; docs/XGAME-MULTIPLAYER-PLAN.md). */
+export const FRIEND_GAMES: GameKey[] = ['chess', 'xiangqi']
