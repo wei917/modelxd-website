@@ -34,6 +34,7 @@ import BridgeLive from './BridgeLive'
 import XGameBar, { gameIconStyle } from './XGameBar'
 import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
 import XGameHero from './XGameHero'
+import GameHistory from './GameHistory'
 import './xgame.css'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -193,6 +194,9 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
             <Room key={`werewolf-${nonce}`} models={models} resumeId={resume} onExit={exit} />
           ) : null}
           </section>
+          {/* Your games of this game, under its setup: XOracle keeps each
+              temple's visits there, not in the menu (owner, Oct 21). */}
+          {!resume && active && <GameHistory game={active} />}
         </div>
       </div>
     </div>

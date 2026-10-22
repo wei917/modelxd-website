@@ -169,7 +169,6 @@ export default function Nav() {
     setEditing(null)
     if (table === 'xcreates') setRecent(prev => prev.map(r => r.id === id ? { ...r, title } : r))
     else if (table === 'xtalk_sessions') {
-      setRecentGames(prev => prev.map(g => g.id === id ? { ...g, title } : g))
       setRecentTalks(prev => prev.map(g => g.id === id ? { ...g, title } : g))
     }
     else setRecentConvs(prev => prev.map(c => c.id === id ? { ...c, title } : c))
@@ -260,7 +259,6 @@ export default function Nav() {
   const onXcreate = pathname?.startsWith('/xcreate') ?? false
   const onXtalk   = pathname?.startsWith('/xtalk') ?? false
   // Werewolf history follows the games to /xgame (CC, Aug 6).
-  const onXgame   = pathname?.startsWith('/xgame') ?? false
   // Your characters, most-recently-talked first (owner ask, Aug 8) —
   // owner-read RLS, deep link via /xtalk?char=<id>.
   const [recentChars, setRecentChars] = useState<Array<{ id: string; name: string; avatar_path: string | null; last_chat_at: string | null }>>([])
@@ -304,33 +302,9 @@ export default function Nav() {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onXdirect, user?.id, pathname])
-  // Werewolf games are server-held sessions with owner-read RLS, so the
-  // browser client lists them the same way it lists xcreates. Discussions
-  // aren't here: they live in client state and have no row to link to.
-  // `shared`: a table someone else created and this account joined by its
-  // link (Oct 21, /api/xgame/shared); it is the host's to rename or delete.
-  const [recentGames, setRecentGames] = useState<Array<{ id: string; status: string; day: number; winner: string | null; created_at: string; title: string | null; shared?: boolean; at?: string }>>([])
-  useEffect(() => {
-    if (!onXgame || !user) { setRecentGames([]); return }
-    let cancelled = false
-    // Discussions share the table since Aug 6 — they are /xtalk rows, not
-    // games, so keep them out of this list.
-    const gsel = (cols: string) => supabase.from('xtalk_sessions')
-      .select(cols).eq('user_id', user.id).neq('game', 'discussion')
-      .order('updated_at', { ascending: false }).limit(10)
-    const joined = fetch('/api/xgame/shared').then(r => r.ok ? r.json() : { tables: [] }).catch(() => ({ tables: [] }))
-    gsel('id, status, day, winner, created_at, updated_at, title').then(async res => {
-      const r = res.error ? await gsel('id, status, day, winner, created_at') : res
-      const own = ((r.data ?? []) as any[]).map(g => ({ ...g, title: g.title ?? null, at: g.updated_at ?? g.created_at }))
-      const guest = (((await joined).tables ?? []) as any[]).map(g => ({
-        id: g.id, status: g.status, day: 0, winner: null, created_at: g.created_at, title: g.title ?? null, shared: true, at: g.updated_at,
-      }))
-      const all = [...own, ...guest].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 10)
-      if (!cancelled) setRecentGames(all)
-    })
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onXgame, user?.id, pathname])
+  // XGame's games are listed under each game's setup, not here (owner,
+  // Oct 21: "you should put the history in the tab page not on the left nav
+  // bar", as XOracle does): app/xgame/GameHistory.tsx.
   useEffect(() => {
     if (!onXcreate || !user) { setRecent([]); return }
     let cancelled = false
@@ -594,70 +568,6 @@ export default function Nav() {
         </div>
       )}
 
-      {/* XTalk history — same layer as XCreate's, one row per werewolf
-          game. The glyph is the outcome: live, wolves won, village won. */}
-      {onXgame && recentGames.length > 0 && (
-        <div className="nav-history">
-          <div className="nav-history-head" style={{ cursor: 'default' }}>
-            <span className="nav-history-cap">{t('xt.recent')}</span>
-          </div>
-          {recentGames.map(g => (
-            editing && editing.table === 'xtalk_sessions' && editing.id === g.id ? (
-              <input
-                key={`edit-${g.id}`} autoFocus value={nameDraft}
-                onChange={e => setNameDraft(e.target.value)}
-                onBlur={() => renameRow('xtalk_sessions', g.id, nameDraft)}
-                onKeyDown={e => { if (e.key === 'Enter') renameRow('xtalk_sessions', g.id, nameDraft); if (e.key === 'Escape') setEditing(null) }}
-                className="nav-history-item"
-                style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--red)', borderRadius: 6, color: 'var(--white)', fontFamily: 'inherit', fontSize: 12.5, padding: '4px 8px', outline: 'none' }}
-              />
-            ) : (
-            <div key={g.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link
-                href={`/xgame/${g.id}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
-                title={`${g.title || t('xt.tpl.werewolf.name')} · ${new Date(g.created_at).toLocaleString()}`}
-              >
-                <span aria-hidden style={{ fontSize: 12, flexShrink: 0 }}>
-                  {g.status === 'active' ? '🎲' : g.winner === 'wolves' ? '🐺' : '🏘️'}
-                </span>
-                <span className="nav-history-text">
-                  {g.title || `${t('xt.tpl.werewolf.name')} · D${g.day}${g.status === 'active' ? '' : ` · ${g.winner === 'wolves' ? t('ww.role.wolf') : t('xt.village')}`}`}
-                </span>
-              </Link>
-              {!g.shared && <><button
-                aria-label="rename" title={t('hist.rename')}
-                onClick={() => { setNameDraft(g.title || ''); setEditing({ table: 'xtalk_sessions', id: g.id }) }}
-                style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 11, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}
-              >✏</button>
-              {confirmDel === g.id ? (
-                <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                  <button
-                    aria-label="confirm delete" title={t('hist.delete.confirm')}
-                    onClick={async () => {
-                      setConfirmDel(null)
-                      await supabase.from('xtalk_sessions').delete().eq('id', g.id)
-                      setRecentGames(prev => prev.filter(x => x.id !== g.id))
-                      if (pathname === `/xgame/${g.id}`) router.push('/xgame')
-                    }}
-                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
-                  >{t('hist.delete')}</button>
-                  <button aria-label="cancel" onClick={() => setConfirmDel(null)}
-                    style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 12, lineHeight: 1, flexShrink: 0 }}>×</button>
-                </span>
-              ) : (
-                <button
-                  aria-label="delete game"
-                  title={t('hist.delete')}
-                  onClick={() => { setConfirmDel(g.id); setTimeout(() => setConfirmDel(c => c === g.id ? null : c), 4000) }}
-                  style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--muted)', fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.55 }}
-                >×</button>
-              )}</>}
-            </div>
-            )
-          ))}
-        </div>
-      )}
 
       {/* Your characters — one row each, straight into the chat. */}
       {/* XTalk history — ONE 'Recent' layer like every other page

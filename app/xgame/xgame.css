@@ -62,6 +62,16 @@
 .xgame-shell .xgame-setup-action .btn-next:disabled { background: #eee5da; color: #8a7b6b; opacity: 1; cursor: not-allowed; }
 .xgame-shell :is(a, button, input):focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .xgame-table:focus { outline: none; }
+/* Your games of this game, under its setup (XOracle's temple history card). */
+.xgame-history { margin-top: 16px; padding: 14px 18px 6px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
+.xgame-history h2 { margin: 0 0 4px; font: 600 11px/1.5 var(--font-mono), monospace; letter-spacing: .08em; color: var(--muted2); }
+.xgame-history ul { list-style: none; margin: 0; padding: 0; }
+.xgame-history li { display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 13.5px; }
+.xgame-history-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xgame-history-state { flex-shrink: 0; font-size: 12px; white-space: nowrap; }
+.xgame-history-when { flex-shrink: 0; font: 11.5px var(--font-mono), monospace; color: var(--muted2); white-space: nowrap; }
+.xgame-history-go { flex-shrink: 0; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--red); color: var(--red); font-size: 12px; font-weight: 700; text-decoration: none; }
+.xgame-history-go:hover { background: var(--red-dim); }
 @media (max-width: 1000px) {
   .xgame-shell .arena.xgame-arena { padding-bottom: 48px; }
   .xgame-hero-copy { max-width: 580px; padding-left: 60px; padding-right: 60px; }
@@ -99,6 +109,9 @@
   .xgame-shell .xgame-role-chip { padding: 4px 8px; }
   .xgame-shell .xgame-model-seats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
   .xgame-shell .xgame-human-seats { grid-template-columns: 1fr !important; }
+  .xgame-history { padding: 12px 14px 4px; border-radius: 16px; }
+  .xgame-history li { flex-wrap: wrap; gap: 6px 10px; }
+  .xgame-history-name { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .xgame-shell *, .xgame-shell *::after { transition: none !important; }
