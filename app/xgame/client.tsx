@@ -13,9 +13,10 @@
 // left /xgame (app/components/Omnibox.tsx).
 //
 // Oct 21 (Codex's XOracle-style tab pages, approved by the owner): under the
-// bar, a scenic feature that browses every game (XGameHero), the Play /
-// Spectate panel, and the setup in a white card headed by the game's icon,
-// name, seats and blurb (app/xgame/xgame.css). No XGAME eyebrow or slogan in
+// bar, a scenic feature that browses every game (XGameHero) and the setup in
+// a white card headed by the game's icon, name, seats and blurb
+// (app/xgame/xgame.css); the Play / Spectate panel between them went on
+// Oct 22 (owner). No XGAME eyebrow or slogan in
 // the lobby (owner, Oct 21); a saved table keeps XGAME and its game's name.
 //
 // Oct 22 (owner: "you missed the landing page for XGame. Can you check
@@ -143,33 +144,19 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
               eyebrow and slogan on the tab pages, and not "XGAME / 西洋棋"
               above a table either; the bar already says which game it is. */}
 
-          {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
-              seats you OR runs AI against AI. The Practice (練習) card left
-              the lobby on Oct 14; /xgame/practice is still served, unlinked. */}
-          {!resume && <>
-            <XGameHero key={`${active ?? 'landing'}-${heroVersion}`} initialGame={active ?? gamesFor(lang)[0]} onEnter={game => {
-              pick(game)
-              requestAnimationFrame(() => {
-                const table = document.getElementById('xgame-table')
-                table?.focus({ preventScroll: true })
-                table?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
-              })
-            }} />
-            {active && <div className="xgame-ways">
-              <div className="xgame-way">
-                <span className="xgame-way-icon" aria-hidden="true">
-                  <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3M3 14l3 3m15-3-3 3"/></svg>
-                </span>
-                <div><strong>{t('xg.lobby.play').replace(/[:：]$/, '')}</strong><p>{t('xg.lobby.play.desc')}</p></div>
-              </div>
-              <div className="xgame-way">
-                <span className="xgame-way-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
-                </span>
-                <div><strong>{t('xg.lobby.spectate').replace(/[:：]$/, '')}</strong><p>{t('xg.lobby.spectate.desc')}</p></div>
-              </div>
-            </div>}
-          </>}
+          {/* The slideshow. No 對戰 / 觀戰 row under it any more (owner,
+              Oct 22: "why do you need this row for every game?"): each setup
+              already offers 我來下 or a model for every seat, and the landing
+              page's steps say so. The Practice (練習) card left the lobby on
+              Oct 14; /xgame/practice is still served, unlinked. */}
+          {!resume && <XGameHero key={`${active ?? 'landing'}-${heroVersion}`} initialGame={active ?? gamesFor(lang)[0]} onEnter={game => {
+            pick(game)
+            requestAnimationFrame(() => {
+              const table = document.getElementById('xgame-table')
+              table?.focus({ preventScroll: true })
+              table?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })
+            })
+          }} />}
 
           {/* The landing page: the guide, then the steps. */}
           {landing && <XGameLanding onOpen={game => { pick(game); setHeroVersion(v => v + 1); window.scrollTo({ top: 0, behavior: 'instant' }) }} />}

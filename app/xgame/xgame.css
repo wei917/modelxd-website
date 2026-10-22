@@ -36,14 +36,7 @@
 .xgame-hero[data-game="werewolf"] { background: #12222b; color: #fff9ef; }
 .xgame-hero[data-game="werewolf"] .xgame-hero-shade { background: linear-gradient(90deg, rgba(9,22,30,.9), rgba(9,22,30,.67) 35%, rgba(9,22,30,.12) 72%); }
 .xgame-hero[data-game="werewolf"] .xgame-hero-description, .xgame-hero[data-game="werewolf"] .xgame-hero-kicker { color: #e1e2df; }
-.xgame-ways { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0 24px; padding: 20px 24px; border: 1px solid var(--xtell-rule); border-radius: 16px; background: #fff; box-shadow: 0 4px 16px rgba(60,40,20,.025); }
-.xgame-way { display: flex; align-items: center; gap: 14px; min-width: 0; }
-.xgame-way + .xgame-way { border-left: 1px solid var(--xtell-rule); padding-left: 24px; }
-.xgame-way-icon { display: grid; place-items: center; flex: 0 0 42px; height: 42px; border-radius: 50%; background: #f6efe6; color: #9a5b3f; }
-.xgame-way:last-child .xgame-way-icon { color: #587368; background: #edf2ed; }
-.xgame-way strong { display: block; margin-bottom: 3px; font: 600 17px/1.4 var(--xtell-serif); }
-.xgame-way p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
-.xgame-table { scroll-margin-top: 100px; padding: 28px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
+.xgame-table { margin-top: 16px; scroll-margin-top: 100px; padding: 28px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
 .xgame-table-heading { display: flex; align-items: start; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--xtell-rule); }
 .xgame-table-heading > .xgame-bar-icon { width: 48px; height: 48px; flex-shrink: 0; }
 .xgame-table-heading h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 6px; font: 400 27px/1.25 var(--xtell-serif); }
@@ -120,8 +113,6 @@
 @media (max-width: 1000px) {
   .xgame-shell .arena.xgame-arena { padding-bottom: 48px; }
   .xgame-hero-copy { max-width: 580px; padding-left: 60px; padding-right: 60px; }
-  .xgame-ways { padding: 18px; gap: 18px; }
-  .xgame-way + .xgame-way { padding-left: 18px; }
 }
 @media (max-width: 700px) {
   .xgame-shell .arena.xgame-arena { padding: 0 16px 36px; }
@@ -137,11 +128,6 @@
   .xgame-hero-arrow.is-prev { left: 4px; }
   .xgame-hero-arrow.is-next { right: 4px; }
   .xgame-hero-count { display: none; }
-  .xgame-ways { grid-template-columns: 1fr; gap: 14px; margin: 12px 0 18px; padding: 16px; border-radius: 14px; }
-  .xgame-way { gap: 12px; }
-  .xgame-way + .xgame-way { border-left: 0; border-top: 1px solid var(--xtell-rule); padding: 14px 0 0; }
-  .xgame-way strong { font-size: 16px; }
-  .xgame-way p { font-size: 12px; }
   .xgame-table { padding: 18px 16px; border-radius: 16px; scroll-margin-top: 140px; }
   .xgame-table-heading { gap: 10px; }
   .xgame-table-heading h2 { font-size: 24px; gap: 8px; }
