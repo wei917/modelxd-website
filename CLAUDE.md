@@ -80,6 +80,12 @@ rating system (XDRating) surfaced on XBoard.
   live: 42501 for the publishable key on read and write and on updating
   chat_ais (signed in too); an AI row without its model, 1001 characters
   and a negative cost refused (23514), a made-up table 23503; nothing stored.
+  `150_xcreate_music_pool.sql` applied 2026-10-22 by the owner: an X創作
+  song pick (audio row, first slot recipe text_to_music) rates in 'music',
+  not 'audio' (`xd_xcreate_pool`). Proven on PGlite (11/11). Checked live
+  through the function: a sample song row → 'music', speech → 'audio', a
+  song with search on → 'music'; no picked X創作 song existed, so no vote
+  moved. 148 and 149 are XGame's (messages, private chat).
   `147_xgame_members.sql` applied 2026-10-21 by the owner: XGame
   multiplayer's foundation, `xgame_members` (who sits where; service role
   only), `xtalk_sessions.step_until` (a lease for model turns), and the
