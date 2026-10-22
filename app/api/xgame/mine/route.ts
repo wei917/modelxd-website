@@ -1,8 +1,7 @@
 // app/api/xgame/mine/route.ts — the history card under a game's setup
 // (Oct 21): the asking account's newest tables of that game, its own and
 // those a friend invited it to, each with where it stands for them
-// (lib/xgame-history.ts). GET ?game=chess, or ?game=all for the landing
-// page's 你的對局 (every game).
+// (lib/xgame-history.ts). GET ?game=chess
 
 export const runtime = 'nodejs'
 
@@ -15,6 +14,6 @@ export async function GET(req: Request) {
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return Response.json({ tables: [] })
   const game = new URL(req.url).searchParams.get('game') ?? ''
-  if (game !== 'all' && !isGameKey(game)) return Response.json({ error: 'unknown game' }, { status: 400 })
+  if (!isGameKey(game)) return Response.json({ error: 'unknown game' }, { status: 400 })
   return Response.json({ tables: await tablesFor(user.id, game) })
 }

@@ -593,14 +593,17 @@ export const STRINGS: Record<string, Entry> = {
   'gm.theirmove':        { en: '{name} to move', 'zh-Hant': '輪到 {name}', 'zh-Hans': '轮到 {name}', ja: '{name}の手番', ko: '{name} 차례' },
   'gm.cancelled':        { en: 'Table closed', 'zh-Hant': '對局已取消', 'zh-Hans': '对局已取消', ja: '対局は取り消されました', ko: '대국이 취소됨' },
   // Your games of one game, under its setup (Oct 21, app/xgame/GameHistory.tsx).
-  // XGame's landing page (app/xgame/XGameLanding.tsx, Oct 22).
-  'xg.land.mine':       { en: 'Your games', 'zh-Hant': '你的對局', 'zh-Hans': '你的对局', ja: 'あなたの対局', ko: '내 대국' },
-  'xg.land.games':      { en: 'All games', 'zh-Hant': '全部遊戲', 'zh-Hans': '全部游戏', ja: 'すべてのゲーム', ko: '모든 게임' },
-  'xg.land.tag.ai':     { en: 'With AI', 'zh-Hant': '和 AI 玩', 'zh-Hans': '和 AI 玩', ja: 'AIと遊ぶ', ko: 'AI와 함께' },
-  'xg.land.tag.friend': { en: 'With a friend', 'zh-Hant': '和朋友對戰', 'zh-Hans': '和朋友对战', ja: '友達と対戦', ko: '친구와 대전' },
+  // XGame's landing page (app/xgame/XGameLanding.tsx, XGameGuide.tsx, Oct 22).
+  'xg.guide.ask':       { en: 'Not sure what to play? Ask our guide', 'zh-Hant': '不知道玩什麼？問問嚮導', 'zh-Hans': '不知道玩什么？问问向导', ja: '何で遊ぶか迷ったら、ガイドに聞いてみましょう', ko: '뭘 할지 모르겠다면 안내에게 물어보세요' },
+  'xg.guide.ph':        { en: 'e.g. a game to play with a friend', 'zh-Hant': '例如：可以和朋友玩的遊戲', 'zh-Hans': '例如：可以和朋友玩的游戏', ja: '例：友達と遊べるゲーム', ko: '예: 친구와 할 수 있는 게임' },
+  'xg.guide.chip.1':    { en: 'Which game is best for a beginner?', 'zh-Hant': '哪個遊戲最適合新手？', 'zh-Hans': '哪个游戏最适合新手？', ja: '初心者にはどのゲームがいい？', ko: '초보자에게 맞는 게임은?' },
+  'xg.guide.chip.2':    { en: 'Can I play with a friend?', 'zh-Hant': '可以和朋友一起玩嗎？', 'zh-Hans': '可以和朋友一起玩吗？', ja: '友達と一緒に遊べる？', ko: '친구와 같이 할 수 있나요?' },
+  'xg.guide.chip.3':    { en: 'What does 3NT mean in bridge?', 'zh-Hant': '橋牌的 3NT 是什麼意思？', 'zh-Hans': '桥牌的 3NT 是什么意思？', ja: 'ブリッジの3NTって何？', ko: '브리지에서 3NT는 무슨 뜻인가요?' },
+  'xg.guide.chip.4':    { en: 'Does watching AI play cost anything?', 'zh-Hant': '看 AI 對戰要花錢嗎？', 'zh-Hans': '看 AI 对战要花钱吗？', ja: 'AI同士の対戦を見るのにお金はかかる？', ko: 'AI 대전을 보는 데 비용이 드나요?' },
+  'xg.guide.note':      { en: 'The guide explains and points the way. It never starts a game or spends your credits.', 'zh-Hant': '嚮導只做說明與指路，不會替你開局，也不會花你的點數。', 'zh-Hans': '向导只做说明与指路，不会替你开局，也不会花你的点数。', ja: 'ガイドは説明と案内だけで、対局を始めたりクレジットを使ったりはしません。', ko: '안내는 설명과 길 안내만 하며, 대국을 시작하거나 크레딧을 쓰지 않습니다.' },
   'xg.how.title':       { en: 'Four steps to a game', 'zh-Hant': '簡單四步，開始一局', 'zh-Hans': '简单四步，开始一局', ja: '4ステップで対局', ko: '네 단계로 한 판' },
   'xg.how.1.title':     { en: 'Choose a game', 'zh-Hant': '選擇遊戲', 'zh-Hans': '选择游戏', ja: 'ゲームを選ぶ', ko: '게임 고르기' },
-  'xg.how.1.desc':      { en: 'From the bar above or the cards here.', 'zh-Hant': '從上方的遊戲列或這裡的卡片選一款。', 'zh-Hans': '从上方的游戏栏或这里的卡片选一款。', ja: '上のバーか、ここのカードから選びます。', ko: '위쪽 게임 바나 여기 카드에서 고르세요.' },
+  'xg.how.1.desc':       { en: 'From the bar above, or ask the guide.', 'zh-Hant': '從上方的遊戲列選一款，或問問嚮導。', 'zh-Hans': '从上方的游戏栏选一款，或问问向导。', ja: '上のバーから選ぶか、ガイドに聞いてみましょう。', ko: '위쪽 게임 바에서 고르거나 안내에게 물어보세요.' },
   'xg.how.2.title':     { en: 'Set the seats', 'zh-Hant': '安排座位', 'zh-Hans': '安排座位', ja: '席を決める', ko: '자리 정하기' },
   'xg.how.2.desc':      { en: 'Each seat is you or an AI model; chess and Chinese chess can also seat a friend.', 'zh-Hant': '每個座位可以是你或 AI 模型；西洋棋和象棋還能邀請朋友。', 'zh-Hans': '每个座位可以是你或 AI 模型；国际象棋和象棋还能邀请朋友。', ja: '各席はあなたかAIモデル。チェスとシャンチーは友達も招待できます。', ko: '각 자리는 나 또는 AI 모델입니다. 체스와 샹치는 친구도 초대할 수 있어요.' },
   'xg.how.3.title':     { en: 'Start the game', 'zh-Hant': '開始對局', 'zh-Hans': '开始对局', ja: '対局開始', ko: '대국 시작' },

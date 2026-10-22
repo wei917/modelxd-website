@@ -37,7 +37,3 @@ export const GAME_INTRO: Record<GameKey, { blurb: string; seats: string }> = {
   xiangqi: { blurb: 'xg.xiangqi.blurb', seats: '2' },
   bridge: { blurb: 'xg.bridge.blurb', seats: '4' },
 }
-
-/** The games two people can play together by an invite link (multiplayer
- *  step 1, Oct 21; docs/XGAME-MULTIPLAYER-PLAN.md). */
-export const FRIEND_GAMES: GameKey[] = ['chess', 'xiangqi']
