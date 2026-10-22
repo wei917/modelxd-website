@@ -87,7 +87,7 @@ failed and your daily quota is refunded.
 ### XCreate — `/xcreate`
 Called X創作 in Chinese (X创作 in Simplified), X作成 in Japanese and X창작 in
 Korean. A bar along the top of the page picks what to make (Text, Image,
-Video, Speech, Music, Film, 同款 / Remake). You can look around without an account; signing in is
+Video, Speech, Music). Film and 同款 / Remake moved to XFilm (`/xfilm`) in October. You can look around without an account; signing in is
 asked for when you make something. The From choice (text, image,
 video ...) is inside the prompt box; the model picker lists every model with
 what it can do and its list price. On the Image tab, one-tap tools (beta) do
@@ -99,8 +99,8 @@ the prompt; its model is chosen for you, and you can change it or add more
 models to compare, each with its price. The result is saved to your works,
 and 「再做一次」 runs it again with the same photo. Under Generate, each type's
 page also shows what is trending on social media and your own latest works
-of that type as pictures (tap one to reopen it). All of your past work (the Library, filterable by type, Film
-included, with rename and delete) is on the account page. A run where you
+of that type as pictures (tap one to reopen it). All of your past work (the Library, filterable by type,
+with rename and delete) is on the account page. A run where you
 already picked a winner reopens on its canvas. On www's XCreate, four platform
 templates do the store and social work, the output chosen inside each (a row
 of chips in the prompt box): 電商商品圖 (淘寶主圖 and
@@ -138,45 +138,6 @@ and rename or delete them in X創作 or on your Profile page (My voices); a
 voice not used within 7 days is deleted by MiniMax. The recording itself is
 not kept.
 
-**Film (成片 in Chinese, ムービー in Japanese, 필름 in Korean).** The fifth
-type in XCreate's top bar: describe a short film (what it is
-for, what happens, the feel, any words that must appear), pick the shape
-(vertical 9:16, wide 16:9 or square 1:1), the length (15, 30 or 60 seconds)
-and a budget ($5, $7, $10 or $15; $7 is the default). Claude Opus 5.5 plans
-the scenes, has ModelXD's models make the pictures (GPT Image 2), clips
-(HappyHorse 1.1) and voice (MiniMax, or Gemini for an accent such as
-Taiwanese Mandarin, which a brief written for Taiwan gets), draws the titles and transitions in
-code, adds music it makes itself, and edits one finished MP4. It takes about
-10 to 20 minutes and keeps going if you leave; the film is in your Library.
-The budget is reserved when you start; you pay what it used at list price,
-the rest comes back, and if no film comes out you pay nothing.
-
-**同款 (Remake; 做同款 in Chinese, リメイク in Japanese, 리메이크 in Korean).** The
-sixth type: make your own version of a video you saw, with the same shots
-and rhythm. Paste a YouTube or X link, or upload the video (for TikTok,
-Instagram and others, save it first and upload it). It is read into its
-shots and the materials you can swap: the people, things, places, music,
-voices and on-screen text (reading is free, 10 videos a day). Pick how long
-and from which shot, swap what you want (a description, a famous person, or
-your own photo with the person's permission), and choose the music: a new
-track in the original's style, the same tuned toward another style with
-sliders (pop, country, rock, K-pop and more, with tempo and energy), your
-own track, or none. The original plays at the top of the page while you
-choose. Making it reserves about $0.25 per second of the remake plus $1.70;
-you pay what it used at list price, the rest comes back, and nothing if no
-video comes out. Each read has its own link and stays in your Library with
-the video made from it. The original's footage, sound, music and words are
-never reused.
-
-**Templates in 同款.** 風扇變裝 (fan outfit change): add one front photo (the
-side views are drawn for you) and 2 to 5 outfits, each described in words or
-shown with a photo; you roll off a sofa, press a remote, and each pass of a
-ceiling fan changes your outfit, with music in a style you pick. The room is
-a palace salon (gilded sofa, Persian rug, marble floor) under a walnut fan
-with a gold hub; optionally describe or show your own fan blades, sofa,
-carpet and floor. No captions are added. About 9 seconds and $1.60 for two outfits, up to about 19 seconds and
-$3 for five (a little more is reserved; you pay what it used).
-
 **Region editing (inpainting).** When editing an image, an "Edit region"
 button appears if a selected model supports masks (currently GPT Image 2):
 paint over the exact area to change and everything outside it is kept. Models
@@ -200,7 +161,18 @@ models, and writes a starting prompt for you; you can edit any of it before
 running. If someone describes one of these tasks, send them straight to that
 preset rather than to an empty studio.
 
-### XDirect — `/xdirect`
+### XFilm — `/xfilm`
+Called X影音 in Chinese, X映像 in Japanese and X영상 in Korean. Everything
+that makes a film of several shots lives here, under one bar with four tabs:
+**Direct** (導演), **Edit** (剪輯), **Auto** (自動成片) and **Remake** (同款).
+It brings together what used to be XDirect, XCut and XCreate's Film and 同款
+tabs (October); their old links all still open the right place. A single
+picture, clip or voice is XCreate's job; a film planned, made and cut
+together is XFilm's. Direct and Edit are built for a computer screen; Auto
+and Remake work well on a phone.
+
+#### Direct (導演) — `/xfilm/direct`
+Was XDirect. It opens on your boards, newest first; **New** starts one.
 A director you talk to, working beside a live canvas board. Describe the
 video you want — "an ad for my sneakers", "a product video from these
 photos" — and the director first puts a **storyboard on the board**: scene
@@ -214,7 +186,7 @@ built. Still images skip the storyboard and generate directly. Every
 generation bills and appears in your history like a normal run. Available
 to every signed-in account.
 
-Templates on the XDirect start screen set up a whole production: **Music
+Templates on Direct's start screen (New) set up a whole production: **Music
 Video** (a song or lyrics in; cast locked, cut to the music), **Animation**
 (one art style, character model sheets, still-first), **Story to Video** (a
 novel, a chapter or any story — PDF, .txt or pasted text, any length — is
@@ -222,7 +194,7 @@ summarized into at most ten scenes that matter, every recurring character
 cast as a three-view sheet first, then storyboarded in one style), **Social
 Post** and a product-video pipeline. In every template the recurring
 characters are locked as three-view character sheets (front, three-quarter,
-profile) before a scene is shot, so the same face carries through the film. (Old `/xdirector` and "Agent Mode" links land
+profile) before a scene is shot, so the same face carries through the film. (Old `/xdirect`, `/xdirector` and "Agent Mode" links land
 here.)
 
 The **Music Video** setup can also take a **reference video**: paste a public
@@ -239,12 +211,12 @@ rather than the look. For the cast, the shelf card asks rather than assumes:
 attach 1-3 photos of the person you want as the lead, or have an original one
 created — either is one click.
 
-### XCut — `/xcut`
-The cutting room. A video editor with three tracks — video, audio,
+#### Edit (剪輯) — `/xfilm/edit`
+Was XCut. The cutting room. A video editor with three tracks — video, audio,
 subtitles — where every shot knows which model made it and what it cost.
-Open an XDirect board's storyboard as a **rough cut** with one click
+Open a Direct board's storyboard as a **rough cut** with one click
 (**Assemble film** on the storyboard), or start blank and drop in clips, stills and
-audio from your own generations (XDirect, XCreate, XDuel) or upload your
+audio from your own generations (Direct boards, XCreate, XDuel) or upload your
 own video, music and images. Trim clips by dragging their edges, split at
 the playhead, reorder by dragging, choose a hard cut or a dissolve between
 clips, lay a music track with fades over the clips' own sound (or mute
@@ -257,6 +229,45 @@ MP4 (720p or 1080p, 16:9 / 9:16 / 1:1) on ModelXD's servers: it lands as a
 FINAL CUT node on the source board, in your history, and as a download.
 Exporting is free — it is compute, not a model. Available to every
 signed-in account.
+
+#### Auto (自動成片 in Chinese, 自動ムービー in Japanese, 자동 필름 in Korean) — `/xfilm/auto`
+Was XCreate's Film (成片) tab. Describe a short film (what it is
+for, what happens, the feel, any words that must appear), pick the shape
+(vertical 9:16, wide 16:9 or square 1:1), the length (15, 30 or 60 seconds)
+and a budget ($5, $7, $10 or $15; $7 is the default). Claude Opus 5.5 plans
+the scenes, has ModelXD's models make the pictures (GPT Image 2), clips
+(HappyHorse 1.1) and voice (MiniMax, or Gemini for an accent such as
+Taiwanese Mandarin, which a brief written for Taiwan gets), draws the titles and transitions in
+code, adds music it makes itself, and edits one finished MP4. It takes about
+10 to 20 minutes and keeps going if you leave; the film is in your Library.
+The budget is reserved when you start; you pay what it used at list price,
+the rest comes back, and if no film comes out you pay nothing.
+
+#### Remake (同款; 做同款 in Chinese, リメイク in Japanese, 리메이크 in Korean) — `/xfilm/remake`
+Was XCreate's 同款 tab. Make your own version of a video you saw, with the same shots
+and rhythm. Paste a YouTube or X link, or upload the video (for TikTok,
+Instagram and others, save it first and upload it). It is read into its
+shots and the materials you can swap: the people, things, places, music,
+voices and on-screen text (reading is free, 10 videos a day). Pick how long
+and from which shot, swap what you want (a description, a famous person, or
+your own photo with the person's permission), and choose the music: a new
+track in the original's style, the same tuned toward another style with
+sliders (pop, country, rock, K-pop and more, with tempo and energy), your
+own track, or none. The original plays at the top of the page while you
+choose. Making it reserves about $0.25 per second of the remake plus $1.70;
+you pay what it used at list price, the rest comes back, and nothing if no
+video comes out. Each read has its own link and stays in your Library with
+the video made from it. The original's footage, sound, music and words are
+never reused.
+
+**Templates in Remake.** 風扇變裝 (fan outfit change): add one front photo (the
+side views are drawn for you) and 2 to 5 outfits, each described in words or
+shown with a photo; you roll off a sofa, press a remote, and each pass of a
+ceiling fan changes your outfit, with music in a style you pick. The room is
+a palace salon (gilded sofa, Persian rug, marble floor) under a walnut fan
+with a gold hub; optionally describe or show your own fan blades, sofa,
+carpet and floor. No captions are added. About 9 seconds and $1.60 for two outfits, up to about 19 seconds and
+$3 for five (a little more is reserved; you pay what it used).
 
 <!-- app:xworld -->
 ### XWorld — `/xworld`
@@ -295,7 +306,7 @@ $0.30). Both bill list price for what they actually use.
   with a sentence ("replace the sofa with a grey L-shaped sofa", "Scandinavian
   style", "paint the walls sage green"), optionally painting the exact area;
   GPT Image 2, about $0.06 a photo. The original is kept.
-- **Design agent**: a chat beside the plan, like XDirect. Ask questions ("is
+- **Design agent**: a chat beside the plan, like XFilm's director. Ask questions ("is
   this wall load-bearing?") or ask for changes to the plan or a photo.
 - **Free sample**: a real 1890s Washington DC rowhouse (Library of Congress
   survey drawing), already read, with room photos to try the tools on.
@@ -521,7 +532,7 @@ explain when asked: the CHART is computed exactly by open calendar engines
 belongs to the previous 干支 year; iztro for 紫微) and is shown for the user
 to verify against any 排盤 site — collapsed behind「查看命盤」so the room
 stays simple. Casting the chart is free. The READING is a conversation, same
-composer as XDirect: up to FOUR masters can be seated — their answers
+composer as XFilm's director: up to FOUR masters can be seated — their answers
 show side by side (scrolling sideways) or one at a time behind a button
 group, every master keeps answering unless the user keeps only one, the default master is preselected (currently Qwen 3.8 Flash, thinking on) and can be
 swapped by clicking its name, each seated master has its own thinking-level
@@ -587,7 +598,7 @@ rooms so two people with the same name can be told apart. ModelXD gives you
 one when you sign up (your X username if you signed in with X, otherwise a
 neutral one like swift_otter_482; never your email or real name), and you
 can change it under **Edit** on `/profile`, once every 30 days.
-XDuel is free within its daily quota; XCreate, XDirect and XTalk spend
+XDuel is free within its daily quota; XCreate, XFilm and XTalk spend
 credits at the model's real rate, always shown per run before and after.
 Top up from your Profile. Your balance and a full itemised activity ledger
 live at `/profile` (its Profile tab; the Library tab holds your work, one
@@ -629,9 +640,12 @@ demand.
 - **Which model is best / cheapest?** XBoard ranks by XD Score with prices;
   filter by medium.
 - **How do I make a video?** XCreate, set Generate to Video. For something
-  complex — an ad, several shots, a small production — go to XDirect and
-  describe it to the director.
-- **How do I talk to an agent / the director?** XDirect (`/xdirect`).
+  complex — an ad, several shots, a small production — go to XFilm's Direct
+  tab and describe it to the director, or let Auto make a whole short film
+  from a brief.
+- **How do I talk to an agent / the director?** XFilm, Direct tab (`/xfilm/direct`).
+- **Where did XDirect, XCut, Film and 同款 go?** Into XFilm (`/xfilm`), as
+  its Direct, Edit, Auto and Remake tabs. Old links forward.
 - **Where are my past generations and games?** In the left nav history, and
   in full at `/profile`.
 - **Is it free?** XDuel is, within a daily quota. Everything that runs a model

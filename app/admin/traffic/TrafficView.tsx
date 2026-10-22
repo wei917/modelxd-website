@@ -464,7 +464,7 @@ const PRODUCTS: Series<ProductDay>[] = [
  *  home, or the first part of another path. */
 const PRODUCT_NAMES: Record<string, string> = {
   xtell: 'X先知', xcreate: 'X創作', xsports: 'X體育', www: 'www home', xpersona: 'XPersona',
-  xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xdirect: 'XDirect', xcut: 'XCut', xworld: 'XWorld', xarch: 'XArch',
+  xduel: 'XDuel', xtalk: 'XTalk', xgame: 'XGame', xfilm: 'XFilm', xdirect: 'XFilm Direct', xcut: 'XFilm Edit', xworld: 'XWorld', xarch: 'XArch',
   xkit: 'XKit', xdev: 'XKit', xoracle: 'X先知', xboard: 'XBoard', xeval: 'XEval', xvote: 'XVote', profile: 'Account page', login: 'Sign-in page', unknown: 'Unknown',
 }
 const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`

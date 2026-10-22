@@ -1,7 +1,7 @@
 'use client'
 // app/components/XDirectorChat.tsx
 // The director — a personal video director you talk to (CC, July 26 2026).
-// Lives on /xdirect as the chat rail beside the canvas (CC, Aug 5 — the
+// Lives on /xfilm/direct (XDirect until Oct 22) as the chat rail beside the canvas (CC, Aug 5 — the
 // "agent is a mode, not a destination" call from July was right until the
 // agent owned a stage; now it owns one).
 //
@@ -35,7 +35,7 @@ type Bubble = {
   role: 'user' | 'agent' | 'gen' | 'ask' | 'plan'
   text?: string
   /** The STORY BIBLE bubble (Story to Video) — gets the "open as a page ·
-   *  save as PDF" link to /xdirect/bible/<id>. */
+   *  save as PDF" link to /xfilm/bible/<id>. */
   bible?: boolean
   files?: string[]          // attachment names shown under a user bubble
   /** Committed attachment descriptors (storagePath etc.), persisted with the
@@ -86,6 +86,9 @@ function setConversationUrl(id: string | null) {
   const p = new URLSearchParams(window.location.search)
   if (id) p.set('c', id)
   else p.delete('c')
+  // XFilm's New (?new=1, Oct 22) only opened the start screen; once the
+  // board exists its address is the board alone.
+  if (id) p.delete('new')
   const qs = p.toString()
   window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
 }
@@ -1882,7 +1885,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                     <button
                       key={sk.name}
                       className={on ? 'xt-tpl xd-tpl is-on' : 'xt-tpl xd-tpl'}
-                      onClick={() => router.push(`/xdirect/${sk.name}`)}
+                      onClick={() => router.push(`/xfilm/direct/${sk.name}`)}
                     >
                       <span className="xt-tpl-banner" style={banner || bannerVideo ? undefined : { background: `linear-gradient(135deg, ${color}, #14161a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
                         {bannerVideo
@@ -1915,7 +1918,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
                     like the others. */}
                 <button
                   className="xt-tpl xd-tpl"
-                  onClick={() => router.push('/xdirect/scratch')}
+                  onClick={() => router.push('/xfilm/direct/scratch')}
                 >
                   <span className="xt-tpl-banner" style={{ background: 'linear-gradient(135deg, #4a4c52, #14161a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>
                     <span aria-hidden>✏️</span>
@@ -2057,7 +2060,7 @@ export default function XDirectorChat({ onConversationId, onMintedConversation, 
               }}>
                 <div className="markdown-body"><ReactMarkdown skipHtml remarkPlugins={REMARK_PLUGINS}>{b.text ?? ''}</ReactMarkdown></div>
                 {(b.bible || /📖/.test(b.text ?? '')) && convIdRef.current && (
-                  <a href={`/xdirect/bible/${convIdRef.current}`} target="_blank" rel="noreferrer"
+                  <a href={`/xfilm/bible/${convIdRef.current}`} target="_blank" rel="noreferrer"
                      style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontFamily: 'var(--font-mono), monospace', color: 'var(--red)', textDecoration: 'none', letterSpacing: '0.04em' }}>
                     📄 {t('xd.bible.open')} ↗
                   </a>

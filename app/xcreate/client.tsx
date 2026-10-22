@@ -23,8 +23,6 @@ import { toolById, nearestRatio, type XTool, type ToolChoice } from '../../lib/x
 import ExportBar from './ExportBar'
 import VideoExportBar from './VideoExportBar'
 import ConvertDialog from './ConvertDialog'
-import FilmStudio from './FilmStudio'
-import RemakeStudio from './RemakeStudio'
 import { makerKey } from '../../lib/model-maker'
 import { xcreateStudioCopy } from './standalone-copy'
 import './standalone.css'
@@ -55,7 +53,6 @@ import { perImageRate, perSecondRate } from '../../lib/model-facts'
 import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video' | 'audio'
-const isUuid = (v: string | null): v is string => !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 type Phase = 'setup' | 'generating' | 'picking' | 'chatting' | 'workflow'
 
 // Pricing + capabilities — see docs/ai_models-schema.md.
@@ -987,7 +984,7 @@ export default function CreateClient() {
 function CreateStudio() {
   const { lang, t } = useLang()
   const copy = xcreateStudioCopy(lang)
-  const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to /xdirect
+  const router = useRouter()   // legacy ?agent=1 / ?c= forwarding to XFilm's 導演
   // The studio the xcreate.modelxd.com door had is the only studio since Oct
   // 13 (owner: the door was never released; "I will only keep
   // dev.modelxd.com/xcreate or www.modelxd.com/xcreate"): /xcreate shows it
@@ -1001,13 +998,8 @@ function CreateStudio() {
   // another page, or any link that wants one).
   const viewParam = useSearchParams()?.get('view')
   const searchTypeParam = useSearchParams()?.get('type') ?? null
-  // ?film=<id> is one film, the fifth type (Sep 29): its progress, then the video.
-  const searchFilmParam = useSearchParams()?.get('film') ?? null
-  // ?remake=<id> is one kept 同款 read (Oct 17): it opens back into RemakeStudio.
-  const searchRemakeParam = useSearchParams()?.get('remake') ?? null
-  // ?fan=<id> is one 風扇變裝 run and ?fan=new its form (Oct 18): the
-  // template lives in 同款's tab.
-  const searchFanParam = useSearchParams()?.get('fan') ?? null
+  // 成片 (?film=) and 同款 (?remake=, ?fan=) moved to XFilm on Oct 22
+  // (/xfilm/auto, /xfilm/remake); next.config.js forwards their old links.
   const cursorRef = useRef<HTMLDivElement>(null)
   const ringRef   = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -1030,9 +1022,8 @@ function CreateStudio() {
   // change when I change tab"): the tab is ?type=<tab>, and a read, a
   // template run or a film opens on its own type, so the server draws the
   // right tab instead of 影片 until the page wakes up.
-  const firstType: StudioType | null = searchFanParam || searchRemakeParam ? 'remake'
-    : searchFilmParam ? 'film' : isStudioType(searchTypeParam) ? searchTypeParam : null
-  const [mode,           setMode]           = useState<Mode>(firstType === 'music' ? 'audio' : firstType && firstType !== 'film' && firstType !== 'remake' ? firstType : 'video')
+  const firstType: StudioType | null = isStudioType(searchTypeParam) ? searchTypeParam : null
+  const [mode,           setMode]           = useState<Mode>(firstType === 'music' ? 'audio' : firstType ?? 'video')
   // 語音 or 音樂 (Oct 22): both are 'audio'; the tab picks the models and the
   // recipe. studioTab is the tab on the type bar and in the address.
   const [audioTab,       setAudioTab]       = useState<AudioTab>(firstType === 'music' ? 'music' : 'speech')
@@ -1604,13 +1595,13 @@ function CreateStudio() {
           setLoadError("This XCreate doesn't exist or you don't have access. It may belong to another account.")
           return
         }
-        // A film's row (the fifth type) opens back into the film view.
-        const filmRef = (data as any).slots?.[0]?.options?.film
-        if (typeof filmRef === 'string') { openFilm(filmRef); return }
-        // A 同款 read (Oct 17) opens back into 同款 under its own link.
-        if ((data as any).slots?.[0]?.options?.remake) { openRemake(String(idParam)); return }
-        // A 風扇變裝 run (Oct 18) opens back into the template in 同款's tab.
-        if ((data as any).slots?.[0]?.options?.fan) { openFan(String(idParam)); return }
+        // A film's row, a 同款 read and a 風扇變裝 run open in XFilm (Oct 22):
+        // 自動成片 and 同款 live there now.
+        const opts = (data as any).slots?.[0]?.options
+        const elsewhere = typeof opts?.film === 'string' ? `/xfilm/auto?film=${encodeURIComponent(opts.film)}`
+          : opts?.remake ? `/xfilm/remake?remake=${encodeURIComponent(String(idParam))}`
+          : opts?.fan ? `/xfilm/remake?fan=${encodeURIComponent(String(idParam))}` : null
+        if (elsewhere) { window.location.replace(elsewhere); return }
         // Rows are born at run start, so this ?id= may name a run that is
         // still generating — resume its job (live cards + polling) instead
         // of restoring a half-written snapshot. Owner-read RLS on
@@ -1685,7 +1676,7 @@ function CreateStudio() {
     draftCheckedRef.current = true
     let draft: any = null
     try { draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) ?? 'null'); sessionStorage.removeItem(DRAFT_KEY) } catch { return }
-    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode) || draft.mode === 'film' || draft.mode === 'remake') return
+    if (!draft || draft.v !== 1 || Date.now() - Number(draft.at) > 30 * 60_000 || !isStudioType(draft.mode)) return
     // A link that names what to open outranks the draft.
     const params = new URLSearchParams(window.location.search)
     if (['id', 'job', 'template', 'model', 'type', 'film', 'tool'].some(k => params.has(k))) return
@@ -3433,40 +3424,8 @@ function CreateStudio() {
   // takes the bar's requests. With a run or its results on screen, a request
   // opens a fresh composer in that type, as New does: the run goes on
   // server-side and waits in the Library.
-  // The fifth type, the film, has its own composer and view (FilmStudio);
-  // the studio's own state waits underneath it. A film is ?film=<id>.
-  const [filmOpen, setFilmOpen] = useState(firstType === 'film')
-  const [filmId, setFilmId] = useState<string | null>(() => isUuid(searchFilmParam) ? searchFilmParam.toLowerCase() : null)
-  // The sixth type, 同款 (Remake, Oct 10), has its own page too (RemakeStudio).
-  const [remakeOpen, setRemakeOpen] = useState(firstType === 'remake')
-  // A kept read is ?remake=<id> (Oct 17), set once a read is saved.
-  const [remakeId, setRemakeId] = useState<string | null>(() => isUuid(searchRemakeParam) ? searchRemakeParam.toLowerCase() : null)
-  // The 風扇變裝 template in 同款's tab: 'new' (its form) or a run's id.
-  const [fanView, setFanView] = useState<string | null>(() => searchFanParam === 'new' ? 'new' : isUuid(searchFanParam) ? searchFanParam.toLowerCase() : null)
-  const setFilmUrl = (id: string | null) => {
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    url.searchParams.delete('id')
-    url.searchParams.delete('job')
-    url.searchParams.delete('remake')
-    url.searchParams.delete('type')
-    if (id) url.searchParams.set('film', id)
-    else url.searchParams.delete('film')
-    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-  }
-  const setRemakeUrl = (id: string | null) => {
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    url.searchParams.delete('id')
-    url.searchParams.delete('job')
-    url.searchParams.delete('film')
-    url.searchParams.delete('type')
-    if (id) url.searchParams.set('remake', id)
-    else url.searchParams.delete('remake')
-    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-  }
   /** The tab in the address: ?type=<tab>, replaced, never a Back step. A run
-   *  (?id=), a film, a read or a template run has its own link instead. */
+   *  (?id=) or a tool has its own link instead. */
   const typeUrlRef = useRef<string | null>(null)
   const setTypeUrl = (t: StudioType) => {
     if (typeof window === 'undefined') return
@@ -3477,34 +3436,8 @@ function CreateStudio() {
     typeUrlRef.current = t
     window.history.replaceState({}, '', url.pathname + url.search + url.hash)
   }
-  /** The template's address: ?fan=<id> for a run, ?fan=new for its form. */
-  const setFanUrl = (v: string | null) => {
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    for (const k of ['id', 'job', 'film', 'remake', 'fan', 'type']) url.searchParams.delete(k)
-    if (v) url.searchParams.set('fan', v)
-    window.history.replaceState({}, '', url.pathname + url.search + url.hash)
-  }
-  const openFan = (v: string) => {
-    setFilmOpen(false); setFilmId(null)
-    setRemakeOpen(true); setRemakeId(null); setFanView(v); setFanUrl(v)
-  }
-  const openFilm = (id: string | null) => { setRemakeOpen(false); setRemakeId(null); setFanView(null); setFilmOpen(true); setFilmId(id); if (id) setFilmUrl(id); else setTypeUrl('film') }
-  const openRemake = (id: string | null) => {
-    setFilmOpen(false); setFilmId(null)
-    setRemakeOpen(true); setRemakeId(id); setRemakeUrl(id)
-  }
   const switchType = (next: StudioType) => {
     setFromOpen(false)
-    if (next === 'film') { openFilm(null); return }
-    if (filmOpen) { setFilmOpen(false); setFilmId(null); setFilmUrl(null) }
-    if (next === 'remake') {
-      if (fanView) setFanView(null)
-      setRemakeOpen(true)
-      if (remakeId) setRemakeUrl(remakeId); else setTypeUrl('remake')
-      return
-    }
-    if (remakeOpen) { setRemakeOpen(false); setRemakeId(null); setFanView(null); setRemakeUrl(null) }
     if (phase !== 'setup' || slots.length > 0) reset()
     if (toolId) leaveTool()
     // 語音 and 音樂 are both 'audio': the tab changes the models and the
@@ -3526,20 +3459,18 @@ function CreateStudio() {
   switchTypeRef.current = switchType
 
   // ── One-tap tool mode: enter, leave, run again ──
-  const toolLiveRef = useRef({ mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen, remakeOpen })
-  toolLiveRef.current = { mode, phase, slotsLen: slots.length, ratio: toolRatio, filmOpen, remakeOpen }
+  const toolLiveRef = useRef({ mode, phase, slotsLen: slots.length, ratio: toolRatio })
+  toolLiveRef.current = { mode, phase, slotsLen: slots.length, ratio: toolRatio }
   /** The address for a tool (or none), without the run's ?id=. */
   const toolUrl = (id: string | null) => {
     const url = new URL(window.location.href)
     if (url.searchParams.has('id')) urlClearedByCodeRef.current = true
-    url.searchParams.delete('id'); url.searchParams.delete('job'); url.searchParams.delete('remake')
+    url.searchParams.delete('id'); url.searchParams.delete('job')
     if (id) url.searchParams.set('tool', id); else url.searchParams.delete('tool')
     return url.pathname + url.search + url.hash
   }
   const applyTool = async (tool: XTool, { push = true }: { push?: boolean } = {}) => {
     const live = toolLiveRef.current
-    if (live.filmOpen) { setFilmOpen(false); setFilmId(null) }
-    if (live.remakeOpen) { setRemakeOpen(false); setRemakeId(null) }
     if (live.phase !== 'setup' || live.slotsLen > 0) {
       stopPolling(); activeJobRef.current = null; galleryLoadedRef.current = null
       setPhase('setup'); setSlots([]); setChosenIdx(null); setChatHistory([]); setXcreateId(null); setRetryOfId(null)
@@ -3598,23 +3529,7 @@ function CreateStudio() {
   useEffect(() => {
     return onStudioTypeRequest(type => switchTypeRef.current(type))
   }, [])
-  useEffect(() => { publishStudioType(remakeOpen ? 'remake' : filmOpen ? 'film' : studioTab) }, [studioTab, filmOpen, remakeOpen])
-  useEffect(() => {
-    if (!searchFilmParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFilmParam)) return
-    setRemakeOpen(false)
-    setFilmOpen(true)
-    setFilmId(searchFilmParam.toLowerCase())
-  }, [searchFilmParam])
-  useEffect(() => {
-    if (!searchRemakeParam || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchRemakeParam)) return
-    setFilmOpen(false)
-    setRemakeOpen(true)
-    setRemakeId(searchRemakeParam.toLowerCase())
-  }, [searchRemakeParam])
-  useEffect(() => {
-    if (searchFanParam !== 'new' && !(searchFanParam && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(searchFanParam))) return
-    setFilmOpen(false); setRemakeOpen(true); setFanView(searchFanParam.toLowerCase())
-  }, [searchFanParam])
+  useEffect(() => { publishStudioType(studioTab) }, [studioTab])
   useEffect(() => () => publishStudioType(null), [])
   // ?type= is the tab (Oct 18; it used to be a seed, stripped on load): a
   // link or Back to another tab switches to it; the studio's own writes
@@ -3982,7 +3897,8 @@ function CreateStudio() {
   // ── Surface: how you drive XCreate ────────────────────────────────────
   // XCreate is the PLACE you create things; the studio and XDirector are two
   // ways to drive it, not two destinations — which was true until the agent
-  // owned a stage. Agent mode moved OUT to /xdirect (CC, Aug 5): the
+  // owned a stage. Agent mode moved OUT to /xdirect (CC, Aug 5; XFilm's
+  // /xfilm/direct since Oct 22): the
   // director now lives beside the canvas, so this page is purely the studio
   // again. The old entrances stay live as redirects — ?agent=1 and ?c=
   // permalinks forward with their query intact, so every link the site
@@ -3992,7 +3908,7 @@ function CreateStudio() {
     if (p.get('agent') === '1' || p.get('c')) {
       p.delete('agent')
       const qs = p.toString()
-      const to = `/xdirect${qs ? `?${qs}` : ''}`
+      const to = `/xfilm/direct${qs ? `?${qs}` : ''}`
       router.replace(to)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4416,11 +4332,11 @@ function CreateStudio() {
         </div>
       )}
 
-      <StudioTypeBar initial={remakeOpen ? 'remake' : filmOpen ? 'film' : studioTab} />
+      <StudioTypeBar initial={studioTab} />
       <div className="xduel-page">
         <div className="arena xcreate-arena xcs-studio" id="xcreate-main" tabIndex={-1}>
 
-          {!filmOpen && !remakeOpen && (activeTool ? (
+          {activeTool ? (
             <header className="xcs-heading xtool-heading">
               <button type="button" className="xtool-back" onClick={() => leaveTool()}>‹ {t('xtools.backprompt')}</button>
               <h1>{t(`xtool.${activeTool.id}.name`)}</h1>
@@ -4431,7 +4347,7 @@ function CreateStudio() {
                 earlier slogan read as nothing); its eyebrow would repeat it. */}
             <h1>{t('xcreate.subtitle')}</h1>
             <p>{copy.subtitle}</p>
-          </header>)}
+          </header>}
 
           {/* Error banner — surfaces ?id= load failures (row not found,
               row belongs to another user) so the user understands why
@@ -4484,22 +4400,7 @@ function CreateStudio() {
               composer = describe an edit + pick ANY edit-capable model.
               Cross-model editing is the point — same price-honesty framing
               as the main grid, one output at a time. */}
-          {remakeOpen ? (
-            <RemakeStudio signedIn={!!userId} onSignIn={next => showAuth(next ?? '/xcreate?type=remake')}
-              remakeId={remakeId} onRemakeId={id => { setRemakeId(id); if (id) setRemakeUrl(id); else setTypeUrl('remake') }}
-              fan={fanView} onFan={v => {
-                setFanView(v)
-                if (v) setFanUrl(v); else if (remakeId) setRemakeUrl(remakeId); else setTypeUrl('remake')
-                window.scrollTo({ top: 0 })
-              }} />
-          ) : filmOpen ? (
-            <>
-              <FilmStudio filmId={filmId} onFilm={openFilm} signedIn={!!userId}
-                onSignIn={next => showAuth(next ?? '/xcreate?type=film')} />
-              {/* Past films under the brief, like the other types' history. */}
-              {!filmId && userId && <StudioWorks type="film" userId={userId} />}
-            </>
-          ) : phase === 'workflow' ? (
+          {phase === 'workflow' ? (
             <div>
               {/* The canvas is the only view (owner, Oct 1): the old step strip
                   drew a multi-model run as model 1 → model 2 → model 3, as if

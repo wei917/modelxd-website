@@ -44,15 +44,15 @@ type Row = {
 // search bar?"). /xduel left on Oct 16 for the same bar (owner: "remove the
 // search top nav bar and match what XTell has"). /xgame left on Oct 20 for
 // the same bar with its games (owner: "remove the search bar"). /xboard
-// left on Oct 22 with XDuel's bar (owner: "XBoard is from XDuel").
-const SURFACES = ['/xdirect', '/xcut', '/xworld', '/xarch', '/xpersona', '/xtalk', '/xeval', '/xkit', '/xdirector']
+// left on Oct 22 with XDuel's bar (owner: "XBoard is from XDuel"). /xdirect
+// and /xcut left the same day as XFilm's 導演 and 剪輯, under XFilm's bar.
+const SURFACES = ['/xworld', '/xarch', '/xpersona', '/xtalk', '/xeval', '/xkit']
 
 /** Static destinations. Ordered as the nav is, so the list reads familiar. */
 const ALL_PAGES: { key: string; i18n: string; href: string }[] = [
   { key: 'xduel',   i18n: 'nav.xduel',   href: '/xduel' },
   { key: 'xcreate', i18n: 'nav.xcreate', href: '/xcreate' },
-  { key: 'xdirect', i18n: 'nav.xdirect', href: '/xdirect' },
-  { key: 'xcut', i18n: 'nav.xcut', href: '/xcut' },
+  { key: 'xfilm', i18n: 'nav.xfilm', href: '/xfilm' },
   { key: 'xworld', i18n: 'nav.xworld', href: '/xworld' },
   { key: 'xarch', i18n: 'nav.xarch', href: '/xarch' },
   { key: 'xpersona', i18n: 'nav.xpersona', href: '/xpersona' },

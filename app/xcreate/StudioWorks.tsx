@@ -19,7 +19,14 @@ type Row = {
 
 const SHOW = 10
 
-export default function StudioWorks({ type, userId }: { type: StudioType; userId: string }) {
+// A film opens in XFilm's 自動成片; every other run in the studio.
+const workHref = (r: Row) => {
+  const film = r.slots?.[0]?.options?.film
+  return typeof film === 'string' ? `/xfilm/auto?film=${encodeURIComponent(film)}` : `/xcreate?id=${encodeURIComponent(r.id)}`
+}
+
+/** `film`: XFilm's 自動成片 lists its films with the same grid (Oct 22). */
+export default function StudioWorks({ type, userId }: { type: StudioType | 'film'; userId: string }) {
   const { lang, t } = useLang()
   const [rows, setRows] = useState<Row[]>([])
   useEffect(() => { setRows([]) }, [type])
@@ -48,7 +55,7 @@ export default function StudioWorks({ type, userId }: { type: StudioType; userId
           const title = r.title || r.prompt || t('xcs.works.untitled')
           const day = new Date(r.created_at).toLocaleDateString(lang, { month: 'numeric', day: 'numeric' })
           return (
-            <Link key={r.id} href={`/xcreate?id=${encodeURIComponent(r.id)}`} className="xcs-work" title={title}>
+            <Link key={r.id} href={workHref(r)} className="xcs-work" title={title}>
               {media && (slot?.isImage || r.mode === 'image')
                 ? <img src={media} alt="" loading="lazy" />
                 : media && (slot?.isVideo || r.mode === 'video')

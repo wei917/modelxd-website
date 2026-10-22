@@ -31,7 +31,7 @@
 // track, or none. Never the original's recording.
 //
 // Each read is kept as a Library item (Oct 17; owner: "there is no uuid link
-// to continue?"): the address becomes /xcreate?remake=<id>, the choices
+// to continue?"): the address becomes /xfilm/remake?remake=<id>, the choices
 // follow the read there a moment after each change, and the link (or the
 // Library card) opens it again on any device (lib/remake/saved.ts).
 //
@@ -42,8 +42,8 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLang, type Lang } from '@/lib/i18n'
 import { createSupabaseBrowser } from '@/lib/supabase-client'
-import { pendingAttachment, commitAttachments } from '../components/AttachmentButton'
-import ModeIcon from '../components/ModeIcon'
+import { pendingAttachment, commitAttachments } from '@/app/components/AttachmentButton'
+import ModeIcon from '@/app/components/ModeIcon'
 import {
   DEFAULT_TUNE, MUSIC_TARGETS, REMAKE_LENGTHS, REMAKE_LOOKS, estimateRemakeCents,
   type Breakdown, type BreakdownResult, type CastChoice, type Character, type MusicChoice, type MusicTune, type Place,
@@ -171,12 +171,12 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   signedIn: boolean
   /** Opens sign-in; `next` is where to come back to. */
   onSignIn: (next?: string) => void
-  /** A kept read to open (/xcreate?remake=<id>, Oct 17). */
+  /** A kept read to open (/xfilm/remake?remake=<id>, Oct 17). */
   remakeId?: string | null
   /** The read on the page changed: its id goes in the address, or none. */
   onRemakeId?: (id: string | null) => void
   /** The 風扇變裝 template (Oct 18): 'new' for its form, a run's id to follow
-   *  it (/xcreate?fan=new, /xcreate?fan=<id>), null for 同款 itself. */
+   *  it (/xfilm/remake?fan=new, /xfilm/remake?fan=<id>), null for 同款 itself. */
   fan?: string | null
   onFan?: (v: string | null) => void
 }) {
@@ -255,7 +255,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   /** Set when a kept read was just loaded, so loading it does not count as a change to save. */
   const skipSave = useRef(false)
 
-  // A kept read opens from its link (Oct 17): /xcreate?remake=<id>. The read
+  // A kept read opens from its link (Oct 17): /xfilm/remake?remake=<id>. The read
   // that just finished already sits in the draft under the same id.
   useEffect(() => {
     if (!remakeId) return
@@ -269,7 +269,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
     setStage('opening'); setError(null)
     fetch(`/api/xcreate/remake/${remakeId}`).then(async res => {
       if (!live) return
-      if (res.status === 401) { onSignIn(`/xcreate?remake=${remakeId}`); return }
+      if (res.status === 401) { onSignIn(`/xfilm/remake?remake=${remakeId}`); return }
       const body = await res.json().catch(() => null)
       if (!res.ok || !body?.result?.breakdown) { setError(c.missingRead); return }
       const r = body.result as BreakdownResult
@@ -410,7 +410,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
         body: JSON.stringify({ ...payload, start: d.start || 0, lang }),
       })
       const body = await res.json().catch(() => ({}))
-      if (res.status === 401) { onSignIn('/xcreate?type=remake'); return }
+      if (res.status === 401) { onSignIn('/xfilm/remake'); return }
       if (!res.ok || !body?.breakdown) { setError(errorText(body)); return }
       const r = body as BreakdownResult
       const dur = r.breakdown.duration
@@ -429,7 +429,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
   }
 
   const readLink = () => {
-    if (!signedIn) { onSignIn('/xcreate?type=remake'); return }
+    if (!signedIn) { onSignIn('/xfilm/remake'); return }
     if (!d.link.trim() || busy) return
     void read({ url: d.link.trim() })
   }
@@ -445,7 +445,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
 
   const uploadAndRead = async (file: File) => {
     const { data } = await createSupabaseBrowser().auth.getUser()
-    if (!data.user) { onSignIn('/xcreate?type=remake'); return }
+    if (!data.user) { onSignIn('/xfilm/remake'); return }
     if (file.size > MAX_VIDEO_BYTES) { setError(c.errors.too_large); return }
     setStage('uploading'); setError(null)
     try {
@@ -728,7 +728,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
    *  go up, and the route reserves the price and starts the job. */
   const startMake = async () => {
     if (!d.rowId || !b || starting || makeActive) return
-    if (!signedIn) { onSignIn(`/xcreate?remake=${d.rowId}`); return }
+    if (!signedIn) { onSignIn(`/xfilm/remake?remake=${d.rowId}`); return }
     if (d.music === 'mine' && !files.music) { setMakeError({ text: c.makeErrors.no_track, topUp: false }); return }
     const keys: string[] = []
     let missing = false
@@ -758,7 +758,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
         music: { choice: d.music, tune: d.tune, ...(at.music ? { track: at.music } : {}) },
       }
       const res = await fetch(`/api/xcreate/remake/${d.rowId}/make`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ choices }) })
-      if (res.status === 401) { onSignIn(`/xcreate?remake=${d.rowId}`); return }
+      if (res.status === 401) { onSignIn(`/xfilm/remake?remake=${d.rowId}`); return }
       const body = await res.json().catch(() => ({}))
       if (!res.ok || !body?.job) { setMakeError(makeErrorText(body)); return }
       setMake(body.job as MakeView)
@@ -858,7 +858,7 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
           <button className="xcs-primary xcs-remake-go" disabled={signedIn && !d.link.trim()} onClick={readLink}>
             {signedIn ? c.read : c.signIn}
           </button>
-          <button type="button" className="xcs-remake-upload" onClick={() => signedIn ? fileRef.current?.click() : onSignIn('/xcreate?type=remake')}>
+          <button type="button" className="xcs-remake-upload" onClick={() => signedIn ? fileRef.current?.click() : onSignIn('/xfilm/remake')}>
             <UploadIcon /><span>{c.upload}</span>
           </button>
           <p className="xcs-remake-note">{c.orUpload}</p>

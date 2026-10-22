@@ -1,12 +1,12 @@
 'use client'
-// app/xcut/client.tsx — the XCut shell: your cuts (list / new / from a
+// app/xfilm/edit/client.tsx (XFilm 剪輯; was /xcut, Oct 22) — the XCut shell: your cuts (list / new / from a
 // board) and the editor for one cut. The editor itself is XCutEditor.
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useT } from '../../lib/i18n'
-import { useRequireAuth } from '../../lib/useRequireAuth'
-import XCutEditor, { type XCutProject } from '../components/XCutEditor'
+import { useT } from '@/lib/i18n'
+import { useRequireAuth } from '@/lib/useRequireAuth'
+import XCutEditor, { type XCutProject } from '@/app/components/XCutEditor'
 
 type ProjectRow = { id: string; title: string | null; source_board_id: string | null; duration_s: number | null; render: any; updated_at: string
   /** First clip of the video track, signed per request by the list API. */
@@ -36,7 +36,7 @@ export default function XCutClient() {
         const res = await fetch('/api/xcut/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: { board: from } }) })
         const d = await res.json().catch(() => null)
         if (!res.ok) throw new Error(d?.error ?? `HTTP ${res.status}`)
-        if (!cancelled) router.replace(`/xcut?p=${d.project.id}`)
+        if (!cancelled) router.replace(`/xfilm/edit?p=${d.project.id}`)
       } catch (e: any) { if (!cancelled) setError(e?.message ?? 'Could not start the cut') }
       finally { if (!cancelled) setBusy(false) }
     })()
@@ -78,19 +78,19 @@ export default function XCutClient() {
       const res = await fetch('/api/xcut/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
       const d = await res.json().catch(() => null)
       if (!res.ok) throw new Error(d?.error ?? `HTTP ${res.status}`)
-      router.push(`/xcut?p=${d.project.id}`)
+      router.push(`/xfilm/edit?p=${d.project.id}`)
     } catch (e: any) { setError(e?.message ?? 'Could not create') }
     finally { setBusy(false) }
   }
 
   if (!ready || !user) return null
 
-  if (pid && project) return <XCutEditor project={project} onExit={() => router.push('/xcut')} />
+  if (pid && project) return <XCutEditor project={project} onExit={() => router.push('/xfilm/edit')} />
 
   const mono: React.CSSProperties = { fontSize: 10.5, fontFamily: 'var(--font-mono), monospace', letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--muted)' }
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px 60px' }}>
-      <div style={mono}>// {t('xcut.title')}</div>
+      <div style={mono}>// {t('nav.xfilm')}</div>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, margin: '6px 0 4px' }}>{t('xcut.title')}</h1>
       <div style={{ color: 'var(--muted)', fontSize: 13.5, marginBottom: 22 }}>{t('xcut.tagline')}</div>
       {error && <div style={{ color: 'var(--red)', fontSize: 13, marginBottom: 14 }}>⚠ {error}</div>}
@@ -105,7 +105,7 @@ export default function XCutClient() {
           {projects && projects.length === 0 && <div style={{ color: 'var(--muted)', fontSize: 13.5, lineHeight: 1.6 }}>{t('xcut.empty')}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {(projects ?? []).map(p => (
-              <button key={p.id} onClick={() => router.push(`/xcut?p=${p.id}`)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: 'var(--surface)', cursor: 'pointer' }}>
+              <button key={p.id} onClick={() => router.push(`/xfilm/edit?p=${p.id}`)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', background: 'var(--surface)', cursor: 'pointer' }}>
                 {/* A cut is a picture, so the card leads with one, and no
                     poster file is generated or stored — the clip draws its own
                     first frame.

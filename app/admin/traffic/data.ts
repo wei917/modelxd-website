@@ -129,8 +129,9 @@ type ChartKey = (typeof CHART_PRODUCTS)[number] | 'other'
 const CHART_KEYS: ChartKey[] = [...CHART_PRODUCTS, 'other']
 
 /** An app's old and new landing names are one app (lib/renamed-apps.js):
- *  history landed on /xtell and /xdev, new visits on /xoracle and /xkit. */
-const RENAMED_PRODUCT: Record<string, string> = { xoracle: 'xtell', xdev: 'xkit' }
+ *  history landed on /xtell and /xdev, new visits on /xoracle and /xkit;
+ *  /xdirect and /xcut are XFilm's since Oct 22. */
+const RENAMED_PRODUCT: Record<string, string> = { xoracle: 'xtell', xdev: 'xkit', xdirect: 'xfilm', xcut: 'xfilm' }
 
 export function productDays(rows: ProductRow[], today: string): { days: ProductDay[]; avg: ProductAvgDay[]; totals: ProductTotal[] } {
   const data = rows.map(r => ({ ...r, product: RENAMED_PRODUCT[r.product] ?? r.product }))

@@ -7,11 +7,11 @@
 // "users can describe or upload reference images") and the music. No
 // captions (owner: "users can use their own app to do that"). The run is the
 // method in lib/fan-template, followed here until the video is on its Library
-// item. A run opens again at /xcreate?fan=<id>.
+// item. A run opens again at /xfilm/remake?fan=<id>.
 
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '@/lib/i18n'
-import { pendingAttachment, commitAttachments } from '../components/AttachmentButton'
+import { pendingAttachment, commitAttachments } from '@/app/components/AttachmentButton'
 import { DEFAULT_OUTFITS, DEMO, FAN_MUSIC_STYLES, MAX_OUTFITS, MIN_OUTFITS, fanQuote, type FanMusic, type FanMusicStyle, type FanScene } from '@/lib/fan-template/recipe'
 import type { FanView } from '@/lib/fan-template/job'
 import { fanCopy } from './fan-copy'
@@ -35,7 +35,7 @@ type Picked = { url: string; name: string; file: File }
 export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack }: {
   signedIn: boolean
   onSignIn: (next?: string) => void
-  /** A run to follow (/xcreate?fan=<id>), or null for the form. */
+  /** A run to follow (/xfilm/remake?fan=<id>), or null for the form. */
   runId: string | null
   onRunId: (id: string | null) => void
   onBack: () => void
@@ -89,7 +89,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
         first = false; asking = true
         try {
           const res = await fetch(`/api/xcreate/remake/fan/${runId}`)
-          if (res.status === 401) { finished = true; onSignIn(`/xcreate?fan=${runId}`) }
+          if (res.status === 401) { finished = true; onSignIn(`/xfilm/remake?fan=${runId}`) }
           else if (res.status === 404) { finished = true; if (!stopped) setMissing(true) }
           else if (res.ok) {
             const v = ((await res.json()) as { job: FanView }).job
@@ -131,7 +131,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
 
   const start = async () => {
     if (starting) return
-    if (!signedIn) { onSignIn('/xcreate?fan=new'); return }
+    if (!signedIn) { onSignIn('/xfilm/remake?fan=new'); return }
     const errs = c.errors
     if (!files.front) { setError({ text: errs.missing_photo, topUp: false }); return }
     if (!d.consent) { setError({ text: errs.consent, topUp: false }); return }
@@ -154,7 +154,7 @@ export default function FanTemplate({ signedIn, onSignIn, runId, onRunId, onBack
           music: { choice: d.music, style: d.style, ...(at.track ? { track: at.track } : {}) },
         }),
       })
-      if (res.status === 401) { onSignIn('/xcreate?fan=new'); return }
+      if (res.status === 401) { onSignIn('/xfilm/remake?fan=new'); return }
       const body = await res.json().catch(() => ({}))
       if (!res.ok || typeof body?.id !== 'string') {
         const code = String(body?.code ?? '')

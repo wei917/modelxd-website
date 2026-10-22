@@ -1,5 +1,5 @@
 // app/api/xcreate/remake/[id]/route.ts: one 同款 read, kept as a Library item
-// (lib/remake/saved.ts, Oct 17), so /xcreate?remake=<id> opens it again.
+// (lib/remake/saved.ts, Oct 17), so /xfilm/remake?remake=<id> opens it again.
 //
 //   GET   → { result, choices }   the viewer's own read, pictures signed for an hour
 //   PATCH { choices } → { ok }    keeps the viewer's latest choices on it

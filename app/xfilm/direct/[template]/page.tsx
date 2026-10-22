@@ -1,4 +1,4 @@
-// app/xdirect/[template]/page.tsx
+// app/xfilm/direct/[template]/page.tsx (was /xdirect/<template>, Oct 22)
 // One page per template (owner, Aug 27: "when user clicks a template, we
 // should go to that template's dedicated page?").
 //

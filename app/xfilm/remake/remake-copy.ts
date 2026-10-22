@@ -51,7 +51,7 @@ type Copy = {
   /** The make bar's button; the price sits beside it. */
   make: string
   another: string
-  /** A kept read opening from its link (/xcreate?remake=<id>). */
+  /** A kept read opening from its link (/xfilm/remake?remake=<id>). */
   opening: string
   /** Its link names no read of this account (deleted, mistyped, someone else's). */
   missingRead: string

@@ -1,4 +1,4 @@
-// app/xdirect/bible/[id]/page.tsx — the STORY BIBLE of a Story to Video
+// app/xfilm/bible/[id]/page.tsx (was /xdirect/bible, Oct 22) — the STORY BIBLE of a Story to Video
 // conversation as a print-ready page (owner, Aug 22: "are we able to save
 // the output to a new pdf?"). No server-side PDF library, no font
 // embedding: the page prints cleanly and the browser's own print dialog
@@ -50,7 +50,7 @@ export default async function BiblePage({ params }: { params: Promise<{ id: stri
         }
       `}</style>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-        <a href={`/xdirect?c=${data.id}`} style={{ fontSize: 12.5, color: 'var(--muted)' }}>← XDirect</a>
+        <a href={`/xfilm/direct?c=${data.id}`} style={{ fontSize: 12.5, color: 'var(--muted)' }}>← XDirect</a>
         <span style={{ flex: 1 }} />
         <SaveAsPdfButton />
       </div>

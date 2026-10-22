@@ -46,8 +46,11 @@ const MODEL_CANDIDATES = [
 const ROUTES: Record<string, string> = {
   '/xduel':   'XDuel',
   '/xcreate': 'XCreate',
-  '/xdirect': 'XDirect',
-  '/xcut': 'XCut',
+  // XFilm (Oct 22): XDirect, XCut and X創作's 成片 and 同款 as four tabs.
+  '/xfilm/direct': 'XFilm Direct (the AI director: storyboard, shots, canvas)',
+  '/xfilm/edit':   'XFilm Edit (the cutting room: trim, music, subtitles, MP4)',
+  '/xfilm/auto':   'XFilm Auto (a brief becomes a finished short film)',
+  '/xfilm/remake': 'XFilm Remake (remake a video from a link or upload)',
   '/xworld': 'XWorld (3D worlds + photo to 3D object)',
   '/xarch': 'XArch (floor plans + interior design)',
   '/xpersona': 'XPersona (create and manage your AI characters)',
@@ -143,8 +146,8 @@ function resolveDestination(
   // A route into the director carries the original request, so the user does
   // not have to retype the thing they just asked for. Prefill, never
   // auto-send — that surface spends credits.
-  if (surface === '/xdirect') {
-    return { route: `/xdirect?q=${encodeURIComponent(question)}`, routeLabel: ROUTES[surface] }
+  if (surface === '/xfilm/direct') {
+    return { route: `/xfilm/direct?q=${encodeURIComponent(question)}`, routeLabel: ROUTES[surface] }
   }
 
   return { route: surface, routeLabel: ROUTES[surface] }
@@ -236,7 +239,7 @@ export async function POST(req: Request) {
     '3. They described something that takes several steps or several shots — an',
     '   ad, a commercial, a product video, a campaign, "a video of my product',
     '   from different angles", anything where the result is a small production',
-    '   rather than one generation → "/xdirect". That is XDirect: it',
+    '   rather than one generation → "/xfilm/direct". That is XFilm\'s Direct tab: it',
     '   plans the shots, builds a board of images and turns them into video,',
     '   which a single generation cannot do. Tell them you are opening the',
     '   director with their request.',

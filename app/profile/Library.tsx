@@ -25,7 +25,7 @@ import { TitleEditor } from '../components/xtell/TitleEditor'
 import { TempleArtwork, TEMPLE_ART, type TempleKey } from '../components/xtell/TempleArtwork'
 
 export type SectionKey =
-  | 'duels' | 'xcreates' | 'xdirects' | 'xcuts' | 'xworlds' | 'xarchs'
+  | 'duels' | 'xcreates' | 'xfilm' | 'xworlds' | 'xarchs'
   | 'xpersonas' | 'xtalks' | 'xgames' | 'xtell' | 'votes'
 export type Mode = 'all' | 'text' | 'image' | 'video'
 export type Sort = 'newest' | 'oldest'
@@ -58,8 +58,9 @@ type SectionDef = { key: SectionKey; nameKey: string; icon: string; view: View; 
 const SECTIONS: SectionDef[] = [
   { key: 'duels',     nameKey: 'nav.xduel',    icon: 'duel',     view: 'duel',    modes: true, preview: 3, previewPhone: 1, isPublic: true },
   { key: 'xcreates',  nameKey: 'nav.xcreate',  icon: 'create',   view: 'media',   modes: true, preview: 4, previewPhone: 2 },
-  { key: 'xdirects',  nameKey: 'nav.xdirect',  icon: 'director', view: 'list',    preview: 4, previewPhone: 3 },
-  { key: 'xcuts',     nameKey: 'nav.xcut',     icon: 'cut',      view: 'list',    preview: 4, previewPhone: 3 },
+  // XFilm (Oct 22): its boards, cuts, films and 同款 makes in one section
+  // (were the XDirect and XCut sections, and part of XCreate's).
+  { key: 'xfilm',     nameKey: 'nav.xfilm',    icon: 'film',     view: 'list',    preview: 4, previewPhone: 3 },
   { key: 'xworlds',   nameKey: 'nav.xworld',   icon: 'world',    view: 'thumb',   preview: 4, previewPhone: 2 },
   { key: 'xarchs',    nameKey: 'nav.xarch',    icon: 'arch',     view: 'thumb',   preview: 4, previewPhone: 2 },
   { key: 'xpersonas', nameKey: 'nav.xpersona', icon: 'persona',  view: 'persona', preview: 4, previewPhone: 2 },
@@ -71,6 +72,8 @@ const SECTIONS: SectionDef[] = [
 export const DEFAULT_SECTIONS: SectionKey[] = ['duels', 'xcreates']
 const PAGE = 12
 const STORE_KEY = 'modelxd.library.sections'
+// Saved choices from before XFilm (Oct 22) name its old sections.
+const RENAMED_SECTIONS: Record<string, SectionKey> = { xdirects: 'xfilm', xcuts: 'xfilm' }
 // null until the browser has answered, so the server and the first client
 // render agree, and a section waits for it: one fetch, at the right size.
 const PHONE = '(max-width: 760px)'
@@ -136,7 +139,8 @@ export function makeLoader(userId: string): Loader {
         }) }
       }
       case 'xcreates': {
-        const params = new URLSearchParams({ offset: String(p.offset), size: String(p.limit), filter: p.mode, sort: p.sort })
+        // XFilm's films and 同款 makes are in its own section (Oct 22).
+        const params = new URLSearchParams({ offset: String(p.offset), size: String(p.limit), filter: p.mode, sort: p.sort, exclude: 'xfilm' })
         if (p.q) params.set('q', p.q)
         const j = await okJson(await fetch(`/api/profile/xcreates?${params}`))
         return { total: j.total ?? null, items: (j.rows ?? []).map((x: any) => {
@@ -152,13 +156,6 @@ export function makeLoader(userId: string): Loader {
         const { data, count, error } = await q.order('created_at', { ascending: asc }).range(p.offset, to)
         if (error) throw error
         return { total: count, items: (data ?? []).map((v: any) => ({ id: v.id, title: v.duels?.prompt ?? '', created: v.created_at, href: `/xduel/${v.duel_id}`, mode: v.duels?.mode, metaKey: 'mode.' + (v.duels?.mode ?? 'text'), badge: v.vote_choice === 'T' ? 'tie' : 'voted' })) }
-      }
-      case 'xdirects': {
-        let q = client.from('xdirector_conversations').select('id, title, created_at, updated_at', { count: 'exact' }).eq('user_id', userId).is('deleted_at', null)
-        if (p.q) q = q.ilike('title', like(p.q))
-        const { data, count, error } = await q.order('updated_at', { ascending: asc }).range(p.offset, to)
-        if (error) throw error
-        return { total: count, items: (data ?? []).map((c: any) => ({ id: c.id, title: c.title ?? '', created: c.updated_at ?? c.created_at, href: `/xdirect?c=${c.id}`, metaKey: 'nav.xdirect' })) }
       }
       case 'xtalks': {
         let q = client.from('xtalk_sessions').select('id, title, created_at, updated_at', { count: 'exact' }).eq('user_id', userId).eq('game', 'discussion')
@@ -189,10 +186,30 @@ export function makeLoader(userId: string): Loader {
           thumb: c.avatar_path ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/x-characters/${c.avatar_path}` : null,
           meta: c.msg_count > 0 ? String(c.msg_count) : undefined })) }
       }
-      case 'xcuts':
-        return fromWholeList(listCache, 'xcuts', async () => {
-          const d = await okJson(await fetch('/api/xcut/projects'))
-          return (d.projects ?? []).map((c: any) => ({ id: c.id, title: c.title ?? '', created: c.updated_at ?? c.created_at, href: `/xcut?p=${c.id}`, meta: `${Math.round(c.duration_s ?? 0)}s`, badge: c.render?.url ? 'mp4' : undefined }))
+      case 'xfilm':
+        // Four kinds in one list, each opening in its own tab: 導演's boards,
+        // 剪輯's cuts, and the xcreates rows 自動成片 and 同款 keep (a film
+        // names its film id, a 同款 read and a 風扇變裝 run their own rows).
+        return fromWholeList(listCache, 'xfilm', async () => {
+          const [boards, cuts, rows] = await Promise.all([
+            client.from('xdirector_conversations').select('id, title, created_at, updated_at').eq('user_id', userId).is('deleted_at', null)
+              .order('updated_at', { ascending: false }).limit(300)
+              .then(({ data, error }) => { if (error) throw error; return data ?? [] }),
+            fetch('/api/xcut/projects').then(okJson).then(d => d.projects ?? []),
+            client.from('xcreates').select('id, title, prompt, created_at, opts:slots->0->options').eq('user_id', userId).is('deleted_at', null)
+              .or('slots->0->options->>film.not.is.null,slots->0->options->>remake.not.is.null,slots->0->options->>fan.not.is.null')
+              .order('created_at', { ascending: false }).limit(300)
+              .then(({ data, error }) => { if (error) throw error; return data ?? [] }),
+          ])
+          return [
+            ...boards.map((c: any): Item => ({ id: c.id, title: c.title ?? '', created: c.updated_at ?? c.created_at, href: `/xfilm/direct?c=${c.id}`, metaKey: 'xfilm.tab.direct' })),
+            ...cuts.map((c: any): Item => ({ id: c.id, title: c.title ?? '', created: c.updated_at ?? c.created_at, href: `/xfilm/edit?p=${c.id}`, metaKey: 'xfilm.tab.edit', badge: c.render?.url ? 'mp4' : undefined })),
+            ...rows.map((r: any): Item => {
+              const o = r.opts ?? {}
+              const href = typeof o.film === 'string' ? `/xfilm/auto?film=${o.film}` : o.remake ? `/xfilm/remake?remake=${r.id}` : `/xfilm/remake?fan=${r.id}`
+              return { id: r.id, title: r.title || r.prompt || '', created: r.created_at, href, metaKey: typeof o.film === 'string' ? 'xfilm.tab.auto' : 'xfilm.tab.remake' }
+            }),
+          ]
         }, p)
       case 'xworlds':
         return fromWholeList(listCache, 'xworlds', async () => {
@@ -230,6 +247,7 @@ export function LibIcon({ name, size = 22 }: { name: string; size?: number }) {
   switch (name) {
     case 'duel':     return <svg {...p}><path d="M21 3v5l-11 9l-4 4l-3-3l4-4l9-11z"/><path d="M5 13l6 6"/><path d="M14.32 17.32l3.68 3.68l3-3l-3.68-3.68"/><path d="M10 5.5l-2-2.5h-5v5l3 2.5"/></svg>
     case 'create':   return <svg {...p}><path d="M12 3c.4 4.6 4.4 8.6 9 9c-4.6.4-8.6 4.4-9 9c-.4-4.6-4.4-8.6-9-9c4.6-.4 8.6-4.4 9-9z"/></svg>
+    case 'film':     return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14"/><path d="M17 5v14"/><path d="M3 9.5h4"/><path d="M3 14.5h4"/><path d="M17 9.5h4"/><path d="M17 14.5h4"/></svg>
     case 'director': return <svg {...p}><path d="M4 11h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z"/><path d="M4 11l-1-4l16-4l1 4z"/><path d="M8 10l2-4"/><path d="M13 9l2-4"/></svg>
     case 'cut':      return <svg {...p}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg>
     case 'world':    return <svg {...p}><path d="M12 3l7 4v8l-7 4l-7-4V7z"/><path d="M5 7l7 4l7-4"/><path d="M12 11v8"/></svg>
@@ -290,7 +308,10 @@ export default function ProfileLibrary({ loader, actions }: { loader: Loader; ac
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null')
-      if (Array.isArray(saved)) setOn(SECTIONS.map(s => s.key).filter(k => saved.includes(k)))
+      if (Array.isArray(saved)) {
+        const keys = saved.map((k: unknown) => RENAMED_SECTIONS[String(k)] ?? k)
+        setOn(SECTIONS.map(s => s.key).filter(k => keys.includes(k)))
+      }
     } catch { /* keep the default */ }
   }, [])
   const save = (next: SectionKey[]) => {

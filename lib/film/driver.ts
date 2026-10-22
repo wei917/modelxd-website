@@ -36,7 +36,7 @@ const PIXELS: Record<FilmAspect, string> = { '9:16': '720x1280', '16:9': '1280x7
 const ACTIVE = ['starting', 'running', 'finishing']
 
 /** Why a film failed, as codes the page words in the viewer's language
- *  (app/xcreate/film-copy.ts). Anything else is a provider's own message. */
+ *  (app/xfilm/auto/film-copy.ts). Anything else is a provider's own message. */
 const FILM_ERROR_TEXT: Record<string, string> = {
   not_started: 'The film could not start.',
   not_finished: 'Claude stopped before saving the film.',

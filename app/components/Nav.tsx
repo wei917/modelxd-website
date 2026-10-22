@@ -20,8 +20,8 @@ import { goToRoom } from '../../lib/xtell-room'
 const ALL_NAV_LINKS = [
   { href: '/xduel',       i18n: 'nav.xduel',       protected: true,  icon: 'duel'   },
   { href: '/xcreate',     i18n: 'nav.xcreate',     protected: true,  icon: 'create' },
-  { href: '/xdirect',     i18n: 'nav.xdirect',     protected: true,  icon: 'director' },
-  { href: '/xcut',        i18n: 'nav.xcut',        protected: true,  icon: 'cut' },
+  // XFilm (Oct 22): XDirect, XCut and X創作's 成片 and 同款, one entry.
+  { href: '/xfilm',       i18n: 'nav.xfilm',       protected: true,  icon: 'film' },
   { href: '/xworld',      i18n: 'nav.xworld',      protected: true,  icon: 'world' },
   { href: '/xarch',       i18n: 'nav.xarch',       protected: true,  icon: 'arch' },
   { href: '/xpersona',    i18n: 'nav.xpersona',    protected: true,  icon: 'persona' },
@@ -40,6 +40,10 @@ const ALL_NAV_LINKS = [
 ]
 // A hidden app (lib/hidden-apps), whichever its level, is not in the menu.
 const NAV_LINKS = ALL_NAV_LINKS.filter(l => !isHiddenHref(l.href))
+// The current entry: its own page, and for XFilm any of its tabs (/xfilm
+// itself only forwards to 導演).
+const isCurrentLink = (pathname: string | null, href: string) =>
+  pathname === href || (href === '/xfilm' && !!pathname?.startsWith('/xfilm/'))
 
 // Inline SVG icons (no icon-font dependency). 18px, inherit color via
 // currentColor so the active/hover states tint them automatically.
@@ -57,6 +61,8 @@ function NavIcon({ name }: { name: string }) {
     // whole difference between this and every other page.
     case 'talk':   return (<svg {...p}><path d="M8 13H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/><path d="M6 13v3l3-3"/><path d="M19 20h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2z"/><path d="M18 20v3l-3-3"/></svg>)
     // Angle brackets around a key stem: agents plug in here.
+    // A film strip: XFilm.
+    case 'film':   return (<svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14"/><path d="M17 5v14"/><path d="M3 9.5h4"/><path d="M3 14.5h4"/><path d="M17 9.5h4"/><path d="M17 14.5h4"/></svg>)
     case 'cut':    return (<svg {...p}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88"/><path d="M14.47 14.48L20 20"/><path d="M8.12 8.12L12 12"/></svg>)
     // A house outline over a floor-plan grid line.
     case 'arch':   return (<svg {...p}><path d="M3 11l9-7l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>)
@@ -287,7 +293,8 @@ export default function Nav() {
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onXtalk, user?.id, pathname])
-  const onXdirect = pathname?.startsWith('/xdirect') ?? false
+  // XFilm's 導演 (was /xdirect until Oct 22) lists your recent boards here.
+  const onXdirect = pathname?.startsWith('/xfilm/direct') ?? false
   // Director conversations — same owner-read RLS pattern as the other two
   // lists. Soft-delete only (deleted_at), matching the API's GET filter.
   const [recentConvs, setRecentConvs] = useState<Array<{ id: string; title: string | null; updated_at: string }>>([])
@@ -484,7 +491,7 @@ export default function Nav() {
           <Link
             key={href}
             href={href}
-            className={pathname === href ? 'active' : ''}
+            className={isCurrentLink(pathname, href) ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
             title={collapsed ? t(i18n) : undefined}
           >
@@ -650,7 +657,7 @@ export default function Nav() {
             ) : (
             <div key={c.id} className="nav-history-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Link
-                href={`/xdirect?c=${c.id}`}
+                href={`/xfilm/direct?c=${c.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}
                 title={`${c.title || t('nav.xdirect')} · ${new Date(c.updated_at).toLocaleString()}`}
               >
@@ -671,7 +678,7 @@ export default function Nav() {
                       await supabase.from('xdirector_conversations')
                         .update({ deleted_at: new Date().toISOString() }).eq('id', c.id)
                       setRecentConvs(prev => prev.filter(x => x.id !== c.id))
-                      if (typeof window !== 'undefined' && window.location.search.includes(c.id)) router.push('/xdirect')
+                      if (typeof window !== 'undefined' && window.location.search.includes(c.id)) router.push('/xfilm/direct')
                     }}
                     style={{ border: 'none', background: 'none', cursor: 'none', padding: 0, color: 'var(--red)', fontSize: 12, fontWeight: 700, lineHeight: 1, flexShrink: 0 }}
                   >{t('hist.delete')}</button>
@@ -774,7 +781,7 @@ export default function Nav() {
           <Link
             key={href}
             href={href}
-            className={pathname === href ? 'active' : ''}
+            className={isCurrentLink(pathname, href) ? 'active' : ''}
             onClick={(e) => handleProtectedClick(e, href, isProtected)}
           >
             <NavIcon name={icon} /><span className="nav-label">{t(i18n)}</span>

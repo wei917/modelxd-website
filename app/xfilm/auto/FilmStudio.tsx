@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useLang } from '@/lib/i18n'
-import ModeIcon from '../components/ModeIcon'
+import ModeIcon from '@/app/components/ModeIcon'
 import {
   FILM_ASPECTS, FILM_BRIEF_MAX, FILM_BUDGETS, FILM_DEFAULT_BUDGET, FILM_LENGTHS, isFilmActive,
   isFilmAspect, isFilmBudget, isFilmLength, type FilmAspect, type FilmView,
@@ -182,7 +182,7 @@ export default function FilmStudio({ filmId, onFilm, signedIn, onSignIn }: Props
       return <section className="xcs-film">
         <div className="xcs-empty" role={loadError === 'missing' ? 'alert' : undefined}>
           {loadError === 'auth'
-            ? <button className="xcs-primary" onClick={() => onSignIn(`/xcreate?film=${filmId}`)}>{c.signInToView}</button>
+            ? <button className="xcs-primary" onClick={() => onSignIn(`/xfilm/auto?film=${filmId}`)}>{c.signInToView}</button>
             : <><p>{c.loadError}</p><button className="xcs-secondary" onClick={another}>{c.another}</button></>}
         </div>
       </section>
