@@ -16,19 +16,23 @@ import type { UserCredits, CreditTransaction } from '../../lib/credits'
 const money = (cents: number) => `${cents < 0 ? '-' : ''}$${(Math.abs(cents) / 100).toFixed(2)}`
 
 // Which app a ledger row belongs to, from its reference_type (every type in
-// credit_transactions as of Oct 16). Money in (grants, purchases, the plan)
+// credit_transactions as of Oct 22). Money in (grants, purchases, the plan)
 // is its own group; a refund stays with the app it refunds, so a reserve and
 // its refund net out in that app's total.
 const APP_OF: Record<string, string> = {
   api: 'xdev',
   xcreate: 'xcreate', xcreate_reserve: 'xcreate', xcreate_refund: 'xcreate', xcreate_chat: 'xcreate',
-  xcreate_film_reserve: 'xcreate', xcreate_film_refund: 'xcreate', create_job: 'xcreate',
+  create_job: 'xcreate',
+  // XFilm (Oct 22): the director, the cutting room, Auto films and 同款 makes
+  // (風扇變裝 included) under one app; the stored types keep their old names.
+  xdirector: 'xfilm', xcut: 'xfilm', xcreate_film_reserve: 'xfilm', xcreate_film_refund: 'xfilm',
+  xcreate_remake_reserve: 'xfilm', xcreate_remake_refund: 'xfilm', xcreate_fan_reserve: 'xfilm', xcreate_fan_refund: 'xfilm',
   xtalk_werewolf: 'xgame', xgame_gomoku: 'xgame', xgame_draw: 'xgame', xgame_chess: 'xgame',
   xgame_poker: 'xgame', xgame_xiangqi: 'xgame', xgame_bridge: 'xgame',
   xtalk_turn: 'xtalk', xtalk_bid: 'xtalk', xtalk_scene: 'xtalk',
   xcharacter_chat: 'xpersona', xpersona_story: 'xpersona',
   xtell: 'xtell', tripo_task: 'xworld', xworld: 'xworld', xarch: 'xarch',
-  xsports: 'xsports', xduel: 'xduel', xdirector: 'xdirect', xcut: 'xcut',
+  xsports: 'xsports', xduel: 'xduel',
 }
 const MONEY_IN = new Set(['welcome', 'daily', 'admin_grant', 'subscription_bonus', 'subscription_bonus_expiry', 'stripe_checkout_session', 'stripe_invoice'])
 const appOf = (t: CreditTransaction): string => {

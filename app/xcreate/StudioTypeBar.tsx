@@ -1,5 +1,5 @@
 'use client'
-// The studio's types in one row (Text, Image, Video, Audio, Film), pinned on
+// The studio's types in one row (Text, Image, Video, Audio), pinned on
 // top of /xcreate inside www's own shell (left nav, ModelXD logo), as X先知's
 // temples row is on /xtell. It was the xcreate.modelxd.com door's top bar
 // (owner, Sep 28: "do the same as xtell"); the door was never released and
@@ -12,8 +12,8 @@
 // a new tab (`/xcreate?type=`).
 //
 // Icons: the approved ModelXD media set (MediaIcon, Oct 17) for Text, Image,
-// Video, Speech and Music, in full colour; Film has no approved icon yet and
-// keeps its line drawing.
+// Video, Speech and Music, in full colour. Film and 同款 left the row for
+// XFilm on Oct 22.
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'

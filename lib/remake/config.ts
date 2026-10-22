@@ -102,7 +102,7 @@ export type BreakdownResult = {
    *  come back as signed links; an X post's are sent once and never kept. */
   previews?: Record<string, string>
   /** The read's Library item (lib/remake/saved.ts), opened again at
-   *  /xcreate?remake=<id>. Absent if saving failed. */
+   *  /xfilm/remake?remake=<id>. Absent if saving failed. */
   id?: string
   /** The original to play at the top of the page (Oct 17; owner: "add
    *  player"): a link to the viewer's own upload, signed for an hour. YouTube

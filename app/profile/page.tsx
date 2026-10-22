@@ -61,6 +61,11 @@ const REF_LABELS: Record<string, string> = {
   xcreate_reserve: 'XCreate',
   xcreate_refund: 'XCreate',
   xcreate_chat: 'XCreate',
+  // XFilm (Oct 22): the stored types keep their old names.
+  xdirector: 'XFilm', xcut: 'XFilm',
+  xcreate_film_reserve: 'XFilm', xcreate_film_refund: 'XFilm',
+  xcreate_remake_reserve: 'XFilm', xcreate_remake_refund: 'XFilm',
+  xcreate_fan_reserve: 'XFilm', xcreate_fan_refund: 'XFilm',
   stripe_checkout_session: 'Purchase',
   stripe_invoice: 'Monthly plan',
   subscription_bonus: 'Monthly plan',
@@ -362,8 +367,8 @@ export default function ProfilePage() {
     // 同款; a 風扇變裝 run (Oct 18) opens back into its template there.
     openXcreate: row => {
       const r = row as { id?: string; slots?: { options?: { remake?: unknown; fan?: unknown } }[] }
-      if (r?.id && r.slots?.[0]?.options?.remake) { window.location.href = `/xcreate?remake=${r.id}`; return }
-      if (r?.id && r.slots?.[0]?.options?.fan) { window.location.href = `/xcreate?fan=${r.id}`; return }
+      if (r?.id && r.slots?.[0]?.options?.remake) { window.location.href = `/xfilm/remake?remake=${r.id}`; return }
+      if (r?.id && r.slots?.[0]?.options?.fan) { window.location.href = `/xfilm/remake?fan=${r.id}`; return }
       setPreviewItem(row)
     },
     renameReading: (id, title) => renameReading(sb(), id, title),

@@ -1,5 +1,5 @@
 'use client'
-// app/xdirect/client.tsx
+// app/xfilm/direct/client.tsx (XFilm 導演; was /xdirect, Oct 22)
 // XDirect — the film surface: director chat beside the stage. The board id
 // IS the conversation id, so the panes are views of one thing — the chat
 // tells the story, the stage shows the work.
@@ -14,12 +14,13 @@
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { STRINGS, useT } from '../../lib/i18n'
-import { useRequireAuth } from '../../lib/useRequireAuth'
-import { useBoardNodes } from '../../lib/board-nodes'
-import XDirectorChat, { type SceneRunnerHandle } from '../components/XDirectorChat'
-import SceneStrip, { sceneLabels, type Scene } from '../components/SceneStrip'
-import WorkflowCanvas, { type CanvasNode } from '../components/WorkflowCanvas'
+import { STRINGS, useT } from '@/lib/i18n'
+import { useRequireAuth } from '@/lib/useRequireAuth'
+import { useBoardNodes } from '@/lib/board-nodes'
+import XDirectorChat, { type SceneRunnerHandle } from '@/app/components/XDirectorChat'
+import SceneStrip, { sceneLabels, type Scene } from '@/app/components/SceneStrip'
+import WorkflowCanvas, { type CanvasNode } from '@/app/components/WorkflowCanvas'
+import BoardList from './BoardList'
 
 // useSearchParams needs a Suspense boundary (same pattern as XCreate), and
 // the ?c= param KEYS the whole body: a different conversation is a different
@@ -36,7 +37,29 @@ export default function XDirectClient({ initialTemplate }: { initialTemplate?: s
 }
 
 function XDirectKeyed({ initialTemplate }: { initialTemplate: string | null }) {
-  const c = useSearchParams()?.get('c') ?? null
+  const params = useSearchParams()
+  const c = params?.get('c') ?? null
+  // XFilm's 導演 opens on your boards (Oct 22): the bare address is the
+  // list; a board (?c=), a request from the site agent (?q=), New (?new=1)
+  // and a template page are the director's own screens. With no boards the
+  // list hands over to the start screen in the same spot of the tree, so the
+  // ?c= the chat writes on its first send (below) finds the same chat
+  // instead of mounting a fresh one.
+  //
+  // Leaving a board for an address without one (the top bar's 導演, or New)
+  // starts a new epoch: the list comes back, and New is a fresh chat even
+  // when the board before it was minted here (its key was 'new' too).
+  const prevC = useRef(c)
+  const epoch = useRef(0)
+  if (prevC.current && !c) epoch.current += 1
+  prevC.current = c
+  const [emptyEpoch, setEmptyEpoch] = useState<number | null>(null)
+  const listWanted = !initialTemplate && !c && !params?.get('q') && params?.get('new') !== '1'
+  if (listWanted && emptyEpoch !== epoch.current) return <BoardList onEmpty={() => setEmptyEpoch(epoch.current)} />
+  return <XDirectChosen c={c} initialTemplate={initialTemplate} epoch={epoch.current} />
+}
+
+function XDirectChosen({ c, initialTemplate, epoch }: { c: string | null; initialTemplate: string | null; epoch: number }) {
   // The chat MINTS its conversation id mid-send and writes it to the URL
   // with history.replaceState — which Next's router syncs into
   // useSearchParams. If that id changed the key, the first message of every
@@ -46,12 +69,12 @@ function XDirectKeyed({ initialTemplate }: { initialTemplate: string | null }) {
   // shipped without this and new conversations self-destructed on send.)
   const minted = useRef<string | null>(null)
   if (c && minted.current && c !== minted.current) minted.current = null
-  const key = c && c === minted.current ? 'new' : (c ?? 'new')
+  const key = c && c === minted.current ? `new-${epoch}` : (c ?? `new-${epoch}`)
   // A template URL carrying ?c= is a BOARD, not a setup page. Passing the
   // template through anyway gave a conversation the full-page setup treatment
   // crammed into the 250px chat rail beside the canvas (owner, Sep 6: "the
   // layout is broken"). Once a conversation exists the route behaves exactly
-  // like /xdirect?c= — the skill comes from the stored conversation, not the
+  // like /xfilm/direct?c= — the skill comes from the stored conversation, not the
   // path.
   // `template` is only the HEADER's business — the page keeps saying which
   // template you are in even once a board exists, because the URL still does.
@@ -267,8 +290,8 @@ function XDirectBody({ onMinted, initialTemplate, template }: { onMinted?: (id: 
             where you are; the headline is the same construction as the
             gallery's, in this template's terms. `scratch` has no template
             copy and correctly falls back to the XDirect header. */}
-        <Link href="/xdirect" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>
-          {t('xdirector.eyebrow')}{tplName ? ` / ${tplName}` : ''}
+        <Link href="/xfilm/direct?new=1" className="prompt-label eyebrow" style={{ textDecoration: 'none', display: 'inline-block' }}>
+          {t('xfilm.tab.direct')}{tplName ? ` / ${tplName}` : ''}
         </Link>
         <h1 className="page-headline" style={{ marginBottom: 24 }}>{tplHeadline || t('xdirector.title')}</h1>
 
@@ -306,7 +329,7 @@ function XDirectBody({ onMinted, initialTemplate, template }: { onMinted?: (id: 
                 runnerRef.current?.generateScene(id, `${sceneLabels(storyboard)[i] ?? `${t('xd.sb.scene')} ${i + 1}`} · ${storyboard[i]?.title ?? id}`, kind)
               }}
               onStop={() => runnerRef.current?.stopGeneration()}
-              onCut={boardId ? () => { window.location.assign(`/xcut?from=${boardId}`) } : undefined}
+              onCut={boardId ? () => { window.location.assign(`/xfilm/edit?from=${boardId}`) } : undefined}
               onGenerateAll={(kind) => {
                 // Stills run covers the shelf too (assets ARE stills);
                 // the video run never touches assets — they have no clip.

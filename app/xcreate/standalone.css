@@ -207,7 +207,8 @@
   .xcs-page .model-picker-meta:empty { display: none !important; }
 }
 
-/* ── The film, XCreate's fifth type (Sep 29): FilmStudio.tsx. Phone first;
+/* ── The film, XCreate's fifth type (Sep 29), XFilm's 自動成片 since Oct 22
+   (app/xfilm/auto/FilmStudio.tsx, which still wears this look). Phone first;
    the composer's three choices sit side by side from 761px. ── */
 .xcs-film { max-width: 800px; margin: 0 auto; }
 .xcs-film-form { display: grid; gap: 16px; }
@@ -264,7 +265,8 @@
   .xcs-film-head h1 { font-size: 34px; }
 }
 
-/* ── 同款 (Remake), XCreate's sixth type (Oct 10): RemakeStudio.tsx. Drawn
+/* ── 同款 (Remake), XCreate's sixth type (Oct 10), XFilm's 同款 since Oct 22
+   (app/xfilm/remake/RemakeStudio.tsx, which still wears this look). Drawn
    around the original's cut rhythm (Oct 11): the read shows the real cuts
    as a strip with the stretch framed in red, the shots run as a timeline,
    and each person is a card from the original to yours. Once a video is

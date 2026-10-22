@@ -1,4 +1,4 @@
-// app/xcut/page.tsx — XCut, the cutting room. Signed-in only (the client
+// app/xfilm/edit/page.tsx (XFilm 剪輯; was /xcut, Oct 22) — XCut, the cutting room. Signed-in only (the client
 // shows the auth modal to strangers, like XDirect). ?p=<project> opens a
 // cut; ?from=<board> makes the rough cut of an XDirect board and opens it.
 

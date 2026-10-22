@@ -2,7 +2,7 @@
 // uploaded a video to remake tab but there is no uuid link to continue?" →
 // "add link"). One xcreates row per read, the way a film is kept
 // (lib/film/driver.ts): mode 'video', and the first slot names it
-// (`options.remake`), so the row opens back into 同款 at /xcreate?remake=<id>
+// (`options.remake`), so the row opens back into 同款 at /xfilm/remake?remake=<id>
 // and stays out of Video. No migration.
 //
 // The slot holds the read (shot list, materials) and the viewer's choices.

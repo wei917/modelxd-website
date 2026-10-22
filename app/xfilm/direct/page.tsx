@@ -1,4 +1,4 @@
-// app/xdirect/page.tsx
+// app/xfilm/direct/page.tsx (XFilm 導演; was /xdirect, Oct 22)
 // XDirect — the director's stage: chat rail + canvas board, one screen.
 // Open to every account since Aug 18 (beta gate removed). A signed-out
 // visitor gets the page shell + auth modal — the landing agent routes

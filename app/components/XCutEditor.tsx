@@ -342,7 +342,7 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
         <span style={mono}>{fmt(playhead)} / {fmt(total)}</span>
         <span style={{ flex: 1 }} />
         <span style={mono}>{save === 'saved' ? t('xcut.saved') : t('xcut.saving')}</span>
-        {project.source_board_id && <a href={`/xdirect?c=${project.source_board_id}`} style={{ ...btn(), textDecoration: 'none' }}>{t('xcut.onboard')}</a>}
+        {project.source_board_id && <a href={`/xfilm/direct?c=${project.source_board_id}`} style={{ ...btn(), textDecoration: 'none' }}>{t('xcut.onboard')}</a>}
         <button onClick={exportFilm} disabled={rendering || tl.video.length === 0} style={{ ...btn(true), background: ACCENT, opacity: rendering || tl.video.length === 0 ? 0.5 : 1 }}>🎬 {t('xcut.export')}</button>
       </div>
 

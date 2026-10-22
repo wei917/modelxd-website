@@ -278,8 +278,9 @@ more**, and the per-user feature system is gone with it.
 | **XGame** | `/xgame` | required | AI game arena (Werewolf; more coming). Open. |
 | **XPersona** | `/xpersona` | required | X角色: the home for AI characters (`x_characters`, migration 75). Mounts `CharactersRoom` in `manage` mode: cards open the builder, **Talk** opens `/xtalk/c/<id>`. XTalk's roster sends ＋/✏ here. `?c=<id>` edits, `?new=1` creates. The builder's 公開 switch (Oct 15) sets `visibility`; only public characters may be featured in public places (today: 晴晴 in X體育's rooms), and the house picks which. |
 | **XBoard** | `/xboard` | public | The leaderboard. |
-| **XDirect** | `/xdirect` | required | The director + canvas stage. Open. |
-| **XCut** | `/xcut` | required | The cutting room: rough-cut an XDirect board, trim, add music, burn subtitles, export an MP4. Open. |
+| **XFilm** (Oct 22) | `/xfilm` (→ `/xfilm/direct`) | required | X影音 / X映像 / X영상: every film of several shots, under X先知's bar (`app/xfilm/XFilmBar.tsx`) with four tabs, each its own page: 導演 Direct `/xfilm/direct` (XDirect; opens on your boards, `app/xfilm/direct/BoardList.tsx` via `/api/xdirector/boards`; New is `?new=1`, a board `?c=`), 剪輯 Edit `/xfilm/edit` (XCut), 自動成片 Auto `/xfilm/auto` (X創作's 成片), 同款 Remake `/xfilm/remake` (X創作's 同款 and 風扇變裝). The story bible is `/xfilm/bible/<id>`. Old addresses forward (`lib/renamed-apps.js`: paths and X創作's `?type=film` / `?film=` / `?remake=` / `?fan=` / `?agent=1` / `?c=` by query); API routes, tables, stored reference types and the managed agent keep their names. Direct and Edit are desktop-first, Auto and Remake phone-first. Plan: `docs/XFILM-PLAN.md`. |
+| **XDirect** | `/xfilm/direct` | required | XFilm's 導演 since Oct 22 (`/xdirect` forwards). The director + canvas stage. |
+| **XCut** | `/xfilm/edit` | required | XFilm's 剪輯 since Oct 22 (`/xcut` forwards). The cutting room: rough-cut a board, trim, add music, burn subtitles, export an MP4. |
 | **XWorld** | `/xworld` | required | 3D worlds you walk through (World Labs Marble, Spark renderer) + photo → 3D object (Tripo). Rows in `xworlds` (migration 96); billing held at the ceiling, settled to the provider's reported cost (`lib/worldlabs.ts`). |
 | **XArch** | `/xarch` | required | X建築設計: floor plans + interior design. GPT-6 Astra / Claude Fable 5.1 read a blueprint into geometry and return edit OPS that code applies (`lib/xarch.ts`); room photos redesigned with GPT Image 2; design agent chat. Rows in `xarch_projects` (migration 100). Free sample: HABS Breiding House. |
 | **XKit** | `/xkit` | required | API keys + MCP for agents. Open since Aug 24. Called XDev at `/xdev` until Oct 20 (owner: one app per letter); `/xdev` forwards. Chinese X開發者 unchanged; `/api/xdev/*`, `/api/v1/*`, `/api/mcp` stay. |
@@ -539,6 +540,8 @@ no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
 (migration 111, service key only); the film is also an xcreates row
 (`slots[0].options.film`), so it is in the Library and opens back into
 `?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
+**Moved to XFilm's 自動成片 on Oct 22** (`/xfilm/auto?film=<id>`,
+`app/xfilm/auto/`); X創作's top bar is 文字 / 圖片 / 影片 / 音訊 only.
 
 **同款 (Remake), the studio's sixth type, after 成片 in /xcreate's type bar (Oct 10).** 同款 / Remake / リメイク / 리메이크. Paste a video link
 or upload one, read it into a shot list, choose the length and what to swap
@@ -561,7 +564,10 @@ or upload one, read it into a shot list, choose the length and what to swap
   (`lib/remake/previews.ts`, ffmpeg traced into the route) and returns them
   inline, never stored; YouTube cards play the moment in YouTube's player.
   A logo starts as "remove"; the original's music is never reused.
-- **Files.** `app/xcreate/RemakeStudio.tsx`, `lib/remake/`,
+- **Moved to XFilm's 同款 on Oct 22** (`/xfilm/remake`, `?remake=<id>`,
+  `?fan=new|<id>`; `app/xfilm/remake/`: RemakeStudio, FanTemplate and their
+  copy files). An X創作 `?id=` link to a film, 同款 or 風扇變裝 row forwards there.
+- **Files.** `app/xcreate/RemakeStudio.tsx` (now `app/xfilm/remake/`), `lib/remake/`,
   `/api/xcreate/remake/breakdown`. Plan: `docs/REMAKE-PLAN.md`.
 
 **Audio delivery (Sep 29).** Speech rows that take an instruction (Gemini
@@ -623,7 +629,7 @@ node) wired to each model's output, and `fitOnLoad` opens the board zoomed
 to fit every node (35%-100%) until the user pans or zooms; the % chip fits
 again. XDirect does not pass `fitOnLoad`.
 
-### XDirect — `/xdirect` (the director + canvas stage)
+### XDirect — `/xfilm/direct` (the director + canvas stage; `/xdirect` until Oct 22)
 A real page since Aug 5: the director chat (`XDirectorChat`) beside the live
 canvas board (`WorkflowCanvas`), two views of one entity — **the board id IS
 the conversation id**. Describe what you want; the director picks a model
@@ -682,7 +688,7 @@ Entrances: nav item (beta-gated), omnibox row, the site agent
 (`/xdirect?q=…`). Legacy `/xdirector` and `/xcreate?agent=1`/`?c=` all
 forward here with query intact.
 
-### XCut — `/xcut` (the cutting room)
+### XCut — `/xfilm/edit` (the cutting room; `/xcut` until Oct 22)
 Turns a board into a film. `?from=<board>` builds the ROUGH CUT of an XDirect
 board (scenes in strip order, each shot scene trimmed to its card, unshot
 scenes held on their key still, subtitles from the scripts); `?p=<project>`
@@ -789,17 +795,19 @@ app/
 ├── xcreate/page.tsx            # Server shell — resolves feature flags
 ├── xcreate/client.tsx          # The whole studio UI (large)
 ├── xcreate/templates.ts        # XCREATE_TEMPLATES
-├── xcreate/FilmStudio.tsx      # The studio's fifth type: a film by Claude
 ├── xcreate/StudioTypeBar.tsx   # The types row pinned on top of /xcreate
 ├── xtalk/page.tsx              # Room setup (Discussion / Werewolf)
 ├── xtalk/[id]/page.tsx         # Werewolf game permalink
 ├── xboard/page.tsx             # Leaderboard
-├── xdirect/page.tsx            # XDirect server shell (auth/feature gate)
-├── xdirect/client.tsx          # Chat rail + canvas stage (Phase 1)
-├── xcut/page.tsx  xcut/client.tsx   # XCut: project list; ?p= / ?from= open a cut
+├── xfilm/layout.tsx            # XFilm (Oct 22): its top bar over four tabs
+├── xfilm/page.tsx              # → /xfilm/direct (query kept)
+├── xfilm/direct/               # 導演 (XDirect): client.tsx, BoardList.tsx, [template]
+├── xfilm/bible/[id]/           # The story bible (print page)
+├── xfilm/edit/                 # 剪輯 (XCut): project list; ?p= / ?from= open a cut
+├── xfilm/auto/                 # 自動成片: FilmStudio (Claude makes the film)
+├── xfilm/remake/               # 同款: RemakeStudio, FanTemplate (風扇變裝)
 ├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
 ├── xtell/page.tsx  xtell/client.tsx   # X先知 temples (see docs/XTELL-PAGE.md)
-├── xdirector/page.tsx          # Legacy redirect → /xdirect (keeps ?c=)
 ├── profile/page.tsx            # Two views (Oct 15) under X先知's own top bar
 │                               #   style: Profile (picture, name, wallet,
 │                               #   ledger, plan, referral, my voices, X先知 settings,
@@ -891,8 +899,15 @@ supabase/                       # Numbered SQL migrations (01 → 70)
   and xdev with xkit.
 - `/models` → `/xboard`
 - `/duel/<id>` → `/xduel/<id>`
-- `/xdirector` → `/xdirect` (preserves `?c=`/`?q=`)
-- `/xcreate?agent=1` / `/xcreate?c=…` → `/xdirect` (client-side, query intact)
+- **XFilm (Oct 22)**, same list: `/xdirect` and one level under it
+  (templates) → `/xfilm/direct` (`subpaths: 'one'`, because
+  `public/xdirect/skills|styles/*` are pictures SKILL.md files link to),
+  `/xdirect/bible/*` → `/xfilm/bible/*`, `/xdirector` → `/xfilm/direct`,
+  `/xcut/*` → `/xfilm/edit/*`; `MOVED_TABS` forwards by query:
+  `/xcreate?type=film|?film=` → `/xfilm/auto`, `?type=remake|?remake=|?fan=`
+  → `/xfilm/remake`, `?agent=1|?c=` → `/xfilm/direct`. /admin/traffic counts
+  xdirect and xcut with xfilm; the ledger groups xdirector, xcut and
+  xcreate_film/remake/fan_* under XFilm.
 
 ## Providers
 

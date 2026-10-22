@@ -23,16 +23,16 @@ type LandingApp = {
   public?: boolean
 }
 const TEMPLATES: LandingApp[] = [
-  { href: '/xdirect', name: 'Music Video',  nameKey: 'skill.music-video.title', descKey: 'home.app.mv',
+  { href: '/xfilm/direct?new=1', name: 'Music Video',  nameKey: 'skill.music-video.title', descKey: 'home.app.mv',
     video: '/xdirect/skills/music-video-loop.mp4', img: '/xdirect/skills/music-video-cover.webp' },
-  { href: '/xdirect', name: 'Animation',    nameKey: 'skill.ai-animation.title', descKey: 'home.app.anim',
+  { href: '/xfilm/direct?new=1', name: 'Animation',    nameKey: 'skill.ai-animation.title', descKey: 'home.app.anim',
     video: '/xdirect/skills/ai-animation-loop.mp4', img: '/xdirect/skills/ai-animation-cover.webp' },
   // Shipped Aug 22; its loop sat unused in public/ while the shelf skipped it.
-  { href: '/xdirect', name: 'Story to Video', nameKey: 'skill.story-to-video.title', descKey: 'home.app.story',
+  { href: '/xfilm/direct?new=1', name: 'Story to Video', nameKey: 'skill.story-to-video.title', descKey: 'home.app.story',
     video: '/xdirect/skills/story-to-video-loop.mp4', img: '/xdirect/skills/story-to-video-cover.jpg' },
-  { href: '/xdirect', name: 'Product Video', nameKey: 'skill.product-video-pipeline.title', descKey: 'home.app.pv',
+  { href: '/xfilm/direct?new=1', name: 'Product Video', nameKey: 'skill.product-video-pipeline.title', descKey: 'home.app.pv',
     video: '/xdirect/skills/product-video-loop.mp4', img: '/xdirect/skills/product-video-cover.jpg' },
-  { href: '/xdirect', name: 'Social Post',  nameKey: 'skill.social-post.title', descKey: 'home.app.sp',
+  { href: '/xfilm/direct?new=1', name: 'Social Post',  nameKey: 'skill.social-post.title', descKey: 'home.app.sp',
     video: '/xdirect/skills/social-post-loop.mp4', img: '/xdirect/skills/social-post-cover.jpg' },
 ]
 // The surfaces wear generated covers of the same ambition as the template
@@ -379,10 +379,11 @@ export default function HomeClient() {
           <h2 className="hm-title">{t('home.apps.title')}</h2>
 
           <div className="hm-direct">
+            {/* XFilm since Oct 22: the templates are its 導演's (XDirect's). */}
             <div className="hm-direct-head" role="link" tabIndex={0}
-              onClick={() => void handleNav('/xdirect')}
-              onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xdirect') }}>
-              <span className="hm-card-name">XDirect</span>
+              onClick={() => void handleNav('/xfilm/direct?new=1')}
+              onKeyDown={e => { if (e.key === 'Enter') void handleNav('/xfilm/direct?new=1') }}>
+              <span className="hm-card-name">{t('nav.xfilm')}</span>
               <span className="hm-card-desc">{t('home.surf.xdirect')}</span>
             </div>
             <div className="hm-templates">

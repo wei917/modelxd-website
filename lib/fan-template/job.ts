@@ -5,7 +5,7 @@
 // without paying twice, a lease so two passes never work at once, the
 // reserve taken up front, list price for what was used, nothing if no video
 // came out. The run is also a Library item (an xcreates row with the same
-// id, `slots[0].options.fan`) that opens again at /xcreate?fan=<id>.
+// id, `slots[0].options.fan`) that opens again at /xfilm/remake?fan=<id>.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { promises as fs } from 'node:fs'

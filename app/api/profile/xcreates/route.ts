@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
   const page   = Math.max(0, parseInt(url.searchParams.get('page') ?? '0', 10) || 0)
   const filter = url.searchParams.get('filter') ?? 'all'
   const studioOnly = url.searchParams.get('studio') === '1'
+  const excludeXfilm = url.searchParams.get('exclude') === 'xfilm'
   // The profile Library (Oct 15) asks for small previews (size=4), a search
   // over the prompt (q), oldest-first (sort=oldest) and a row offset. Size stays bounded;
   // without these the response is what the studio and the old tab expect.
@@ -88,7 +89,10 @@ export async function GET(req: NextRequest) {
     else if (filter === 'music') q = q.eq('mode', 'audio').eq('slots->0->options->>mode', 'text_to_music')
     else if (filter !== 'all') q = q.eq('mode', filter)
     if (filter === 'audio') q = q.or('slots->0->options->>mode.is.null,slots->0->options->>mode.neq.text_to_music')
-    if (filter === 'video') q = q.is('slots->0->options->>film', null).is('slots->0->options->>remake', null)
+    if (filter === 'video') q = q.is('slots->0->options->>film', null).is('slots->0->options->>remake', null).is('slots->0->options->>fan', null)
+    // XFilm (Oct 22) took the film, 同款 and 風扇變裝 rows: the Library's
+    // XCreate section asks for everything else (exclude=xfilm).
+    if (excludeXfilm) q = q.is('slots->0->options->>film', null).is('slots->0->options->>remake', null).is('slots->0->options->>fan', null)
     // The studio's own grid (Oct 3): runs made in the studio only, not XDirect
     // board nodes, upload "Source:" rows or XCut renders (they carry a node_kind).
     if (studioOnly) q = q.is('node_kind', null)

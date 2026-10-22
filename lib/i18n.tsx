@@ -660,6 +660,19 @@ export const STRINGS: Record<string, Entry> = {
   'gm.newgame':   { en: 'New game', 'zh-Hant': '再來一局', 'zh-Hans': '再来一局', ja: '新しい対局', ko: '새 대국' },
   'xg.soon':          { en: 'Coming soon', 'zh-Hant': '即將推出', 'zh-Hans': '即将推出', ja: '近日公開', ko: '출시 예정' },
   'nav.xdirect':      { en: 'XDirect', 'zh-Hant': 'X導演', 'zh-Hans': 'X导演', ja: 'Xディレクター', ko: 'X디렉터' },
+  // XFilm (Oct 22): XDirect, XCut and X創作's 成片 and 同款 as one app, four
+  // tabs (app/xfilm). The old nav.xdirect / nav.xcut / mode.film keys stay
+  // for the history they still label.
+  'nav.xfilm':        { en: 'XFilm', 'zh-Hant': 'X影音', 'zh-Hans': 'X影音', ja: 'X映像', ko: 'X영상' },
+  'xfilm.tab.direct': { en: 'Direct', 'zh-Hant': '導演', 'zh-Hans': '导演', ja: '監督', ko: '연출' },
+  'xfilm.tab.edit':   { en: 'Edit', 'zh-Hant': '剪輯', 'zh-Hans': '剪辑', ja: '編集', ko: '편집' },
+  'xfilm.tab.auto':   { en: 'Auto', 'zh-Hant': '自動成片', 'zh-Hans': '自动成片', ja: '自動ムービー', ko: '자동 필름' },
+  'xfilm.tab.remake': { en: 'Remake', 'zh-Hant': '同款', 'zh-Hans': '同款', ja: 'リメイク', ko: '리메이크' },
+  'xfilm.boards':     { en: 'Your boards', 'zh-Hant': '我的專案', 'zh-Hans': '我的项目', ja: 'マイプロジェクト', ko: '내 프로젝트' },
+  'xfilm.new':        { en: 'New', 'zh-Hant': '新專案', 'zh-Hans': '新项目', ja: '新規', ko: '새 프로젝트' },
+  'xfilm.untitled':   { en: 'Untitled board', 'zh-Hant': '未命名專案', 'zh-Hans': '未命名项目', ja: '無題のプロジェクト', ko: '제목 없는 프로젝트' },
+  'xfilm.scenes':     { en: '{n} scenes', 'zh-Hant': '{n} 個場景', 'zh-Hans': '{n} 个场景', ja: '{n} シーン', ko: '장면 {n}개' },
+  'xfilm.more':       { en: 'Show more', 'zh-Hant': '顯示更多', 'zh-Hans': '显示更多', ja: 'もっと見る', ko: '더 보기' },
   'xdirect.empty':    { en: 'The board is empty — everything the director makes lands here. Describe what you want on the left.', 'zh-Hant': '畫布還是空的——導演做出的每一步都會出現在這裡。在左邊說說你想做什麼。', 'zh-Hans': '画布还是空的——导演做出的每一步都会出现在这里。在左边说说你想做什么。', ja: 'ボードはまだ空です。ディレクターが作るものはすべてここに並びます。左側で作りたいものを教えてください。', ko: '보드가 아직 비어 있어요. 디렉터가 만드는 모든 것이 여기에 표시됩니다. 왼쪽에서 만들고 싶은 것을 알려주세요.' },
   'xt.shell.title':  { en: 'Chat with AI. Let Agents Speak.', 'zh-Hant': '跟 AI 聊天，讓 Agent 開口。', 'zh-Hans': '跟 AI 聊天，让 Agent 开口。', ja: 'AI と話そう。エージェントに語らせよう。', ko: 'AI와 대화하고, 에이전트가 말하게 하세요.' },
   'xt.shell.choose': { en: 'Choose a format', 'zh-Hant': '選擇玩法', 'zh-Hans': '选择玩法', ja: '形式を選ぶ', ko: '형식 선택' },
@@ -901,7 +914,8 @@ export const STRINGS: Record<string, Entry> = {
   'xd.bible.open':   { en: 'Open as a page · save as PDF', 'zh-Hant': '開成頁面・存成 PDF', 'zh-Hans': '开成页面・存为 PDF', ja: 'ページで開く・PDFで保存', ko: '페이지로 열기 · PDF로 저장' },
   'xd.bible.printhint': { en: 'Opens your browser\'s print dialog — choose "Save as PDF" as the destination.', 'zh-Hant': '會開啟瀏覽器的列印視窗——目的地選「儲存為 PDF」。', 'zh-Hans': '会打开浏览器的打印窗口——目标选择「另存为 PDF」。', ja: 'ブラウザの印刷ダイアログが開きます。送信先で「PDFに保存」を選んでください。', ko: '브라우저 인쇄 창이 열립니다. 대상에서 "PDF로 저장"을 선택하세요.' },
   // XCut — the cutting room (owner, Aug 22)
-  'xcut.title':      { en: 'XCut', 'zh-Hant': 'X剪輯', 'zh-Hans': 'X剪辑', ja: 'Xカット', ko: 'X컷' },
+  // XFilm's 剪輯 tab since Oct 22 (was the app XCut).
+  'xcut.title':      { en: 'Edit', 'zh-Hant': '剪輯', 'zh-Hans': '剪辑', ja: '編集', ko: '편집' },
   'xcut.tagline':    { en: 'The cutting room — every shot knows its model and its price.', 'zh-Hant': '剪輯室——每一個鏡頭都知道自己的模型與價格。', 'zh-Hans': '剪辑室——每一个镜头都知道自己的模型与价格。', ja: '編集室 — すべてのショットがモデルと価格を知っている。', ko: '편집실 — 모든 샷이 자신의 모델과 가격을 알고 있습니다.' },
   'xcut.projects':   { en: 'Your cuts', 'zh-Hant': '你的剪輯', 'zh-Hans': '你的剪辑', ja: '編集プロジェクト', ko: '내 컷' },
   'xcut.new':        { en: 'New cut', 'zh-Hant': '新剪輯', 'zh-Hans': '新剪辑', ja: '新しい編集プロジェクト', ko: '새 컷' },
@@ -3252,7 +3266,6 @@ export const STRINGS: Record<string, Entry> = {
   'xdirector.change':    { en: 'Change something', 'zh-Hant': '調整一下', 'zh-Hans': '调整一下', ja: '変更する', ko: '수정하기' },
   'xdirector.sent':      { en: 'Sent', 'zh-Hant': '已送出', 'zh-Hans': '已发送', ja: '送信済み', ko: '전송됨' },
   'xcreate.surface.studio': { en: 'Studio', 'zh-Hant': '工作室', 'zh-Hans': '工作室', ja: 'スタジオ', ko: '스튜디오' },
-  'xdirector.eyebrow':     { en: 'XDIRECT', 'zh-Hant': 'X導演', 'zh-Hans': 'X导演', ja: 'Xディレクター', ko: 'X디렉터' },
   'xdirector.title':       { en: 'Tell Me the Story. I Direct the Models.', 'zh-Hant': '說出你的故事，我來指揮模型。', 'zh-Hans': '说出你的故事，我来指挥模型。', ja: 'ストーリーを話して。モデルはこちらで指揮します。', ko: '스토리를 말해 주세요. 모델은 제가 지휘합니다.' },
   // Template routes wear their OWN header — a page for Music Video that says
   // "XDIRECT / Tell Me the Story" is the gallery's header, not this page's
