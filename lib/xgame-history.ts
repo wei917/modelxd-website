@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { seatOf } from './xgame-duo'
+import { GAMES } from './xgame-games'
 
 const admin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,18 +45,20 @@ function stateOf(row: any, userId: string): TableState {
   return 'live'
 }
 
-/** The account's newest tables of `game`: its own and those it joined. */
+/** The account's newest tables of `game` ('all': of every XGame game, for
+ *  the landing page): its own and those it joined. */
 export async function tablesFor(userId: string, game: string, limit = 5): Promise<HistoryRow[]> {
   const db = admin()
+  const ofGame = <Q extends { eq: any; in: any }>(q: Q): Q => (game === 'all' ? q.in('game', GAMES) : q.eq('game', game))
   const [own, joined] = await Promise.all([
-    db.from('xtalk_sessions').select(COLS).eq('user_id', userId).eq('game', game)
+    ofGame(db.from('xtalk_sessions').select(COLS).eq('user_id', userId))
       .order('updated_at', { ascending: false }).limit(limit),
     db.from('xgame_members').select('table_id').eq('user_id', userId)
       .order('joined_at', { ascending: false }).limit(50),
   ])
   const ids = (joined.data ?? []).map(m => m.table_id)
   const guest = ids.length
-    ? (await db.from('xtalk_sessions').select(COLS).in('id', ids).eq('game', game).neq('user_id', userId)).data ?? []
+    ? (await ofGame(db.from('xtalk_sessions').select(COLS).in('id', ids)).neq('user_id', userId)).data ?? []
     : []
   return [...(own.data ?? []), ...guest]
     .sort((a: any, b: any) => String(b.updated_at).localeCompare(String(a.updated_at)))
