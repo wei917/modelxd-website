@@ -18,7 +18,6 @@
 // name, seats and blurb (app/xgame/xgame.css). No XGAME eyebrow or slogan in
 // the lobby (owner, Oct 21); a saved table keeps XGAME and its game's name.
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
@@ -127,16 +126,9 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
       <XGameBar current={active} onPick={game => { pick(game); setHeroVersion(v => v + 1) }} />
       <div className="xduel-page">
         <div className="arena xcreate-arena xgame-arena">
-          {/* The lobby opens straight on the chosen game: no XGAME eyebrow
-              and no slogan above it (owner, Oct 21: "please remove ... on all
-              tab pages"). A table's headline is simply the game you are at.
-              (owner, Aug 6) */}
-          {resume && (
-            <header className="xgame-page-heading">
-              <Link href="/xgame">XGAME</Link>
-              <h1>{active ? t(GAME_NAME_KEY[active]) : ' '}</h1>
-            </header>
-          )}
+          {/* No heading row above the games (owner, Oct 21): not the XGAME
+              eyebrow and slogan on the tab pages, and not "XGAME / 西洋棋"
+              above a table either; the bar already says which game it is. */}
 
           {/* Play vs spectate, said outright (TGS audit, Sep 14): every table
               seats you OR runs AI against AI. The Practice (練習) card left

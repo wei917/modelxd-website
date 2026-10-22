@@ -47,13 +47,31 @@ export default function GlobalCursor() {
   }, [pathname])
 
   // Same dot + trailing-ring behaviour as the per-page originals.
+  //
+  // It used to lose the pointer (owner, Oct 21: "the red dot stays at the
+  // border" when moving fast): leaving the window fast leaves the last
+  // position at its edge, and while the browser drags a link or a picture
+  // (the game tabs, a king icon) no mousemove arrives at all. So the pair
+  // hides when the pointer leaves the window or the window loses focus,
+  // follows drags (dragover carries the position), and comes back on the
+  // next move.
   useEffect(() => {
     if (yield_) return
     let mx = -100, my = -100, rx = -100, ry = -100, rafId = 0
+    const show = (on: boolean) => {
+      for (const el of [cursorRef.current, ringRef.current]) if (el) el.style.opacity = on ? '' : '0'
+    }
     const move = (e: MouseEvent) => {
+      // A drag's last dragover can report 0,0 as it ends: not a position.
+      if (e.type === 'dragover' && e.clientX === 0 && e.clientY === 0) return
+      // Back from outside the window: the ring starts where the dot is.
+      if (cursorRef.current?.style.opacity === '0') { rx = e.clientX; ry = e.clientY }
       mx = e.clientX; my = e.clientY
+      show(true)
       if (cursorRef.current) { cursorRef.current.style.left = mx + 'px'; cursorRef.current.style.top = my + 'px' }
     }
+    const leave = (e: MouseEvent) => { if (!e.relatedTarget) show(false) }
+    const blur = () => show(false)
     const tick = () => {
       // 0.35 matches profile/duel-permalink. 0.12 was the original feel and
       // users reported the ring as laggy (owner, Aug 26) — at 60Hz it
@@ -63,8 +81,17 @@ export default function GlobalCursor() {
       rafId = requestAnimationFrame(tick)
     }
     document.addEventListener('mousemove', move)
+    document.addEventListener('dragover', move)
+    document.addEventListener('mouseout', leave)
+    window.addEventListener('blur', blur)
     rafId = requestAnimationFrame(tick)
-    return () => { document.removeEventListener('mousemove', move); cancelAnimationFrame(rafId) }
+    return () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('dragover', move)
+      document.removeEventListener('mouseout', leave)
+      window.removeEventListener('blur', blur)
+      cancelAnimationFrame(rafId)
+    }
   }, [yield_])
 
   if (yield_) return null

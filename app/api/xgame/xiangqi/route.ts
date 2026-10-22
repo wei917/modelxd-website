@@ -201,7 +201,10 @@ export async function POST(req: Request) {
   if (duo && s.status === 'active' && !lobby() && s.pending?.clock && flagged(s.pending.clock, toMove(), Date.now())) {
     const loser = toMove()!
     const end: XqEnd = { reason: 'time', winner: loser === 0 ? 'black' : 'red' }
-    if (!await save({ status: 'over', winner: end.winner, pending: { ...s.pending, end } }, s.day)) await reload()
+    // The loser's clock reads 0:00 from now on, not the time it last had.
+    const left: [number, number] = [...(s.pending.clock as Clock).left] as [number, number]
+    left[loser] = 0
+    if (!await save({ status: 'over', winner: end.winner, pending: { ...s.pending, end, clock: { ...s.pending.clock, left } } }, s.day)) await reload()
   }
 
   const applyMove = async (mv: Omit<Move, 'n' | 'side'>): Promise<boolean> => {
