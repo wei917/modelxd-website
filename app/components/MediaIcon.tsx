@@ -12,10 +12,14 @@
 
 //
 // Speech and music (Oct 22, when 音訊 became 語音 and 音樂 tabs; owner: "so we
-// need one or two new icons"): a microphone with sound waves and a record
-// with music notes, drawn by GPT Image with the approved set as the style
-// reference, cut out and sized to the set (scratchpad icons/cut.cjs). The
-// headphones stay for XBoard's 音訊, which keeps both boards in one tab.
+// need one or two new icons"). The first pair was turned down ("the icons
+// dont match our style"); these are picks from ten candidates each, drawn by
+// GPT Image with the set's own style paragraph (final-prompts.json) and the
+// headphones as the style reference: a microphone whose waves were recoloured
+// ocean blue, and a note on a staff recoloured navy with a golden-orange
+// star (owner: "2 D"). Masters and notes: the approved set's folder,
+// addendum-20261022. The headphones stay for XBoard's 音訊, which keeps both
+// boards in one tab.
 
 export type MediaKind = 'text' | 'image' | 'video' | 'audio' | 'speech' | 'music' | 'game'
 
