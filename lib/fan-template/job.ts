@@ -21,8 +21,8 @@ import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
 import { finishOverlay, joinOpening, personSpan, pressTime, rolledOver, settledAt } from './cut'
 import {
-  BLADE, END_BOX, HUB_GOLD, PRESS_DEFAULT, START_BOX, TIMING, lookOf, remoteShot, roll as rollShot, sheetPrompt,
-  bladePrompt, endPrompt, fanMusicPrompt, fanQuote, guideMarks, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
+  BLADE, HUB_GOLD, PRESS_DEFAULT, START_BOX, TIMING, lookOf, remoteShot, roll as rollShot, sheetPrompt,
+  OWN_CLOTHES, bladePrompt, boxesFor, dressPrompt, endPrompt, fanMusicPrompt, fanQuote, guideMarks, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
 } from './recipe'
 
 const LOG = '[fan:job]'
@@ -249,13 +249,22 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     // The person goes into the empty room inside a red box, on the sofa for the
     // start and in the middle of the rug for the end: one room, one size.
     const room = set ?? await get(sb, look.plate.bucket, look.plate.path)
+    const boxes = boxesFor(req.style)
     const boxed = async (b: typeof START_BOX) => {
       const { width: w = 1152, height: h = 2048 } = await sharp(room).metadata()
-      return sharp(room).composite([{ input: Buffer.from(`<svg width="${w}" height="${h}">${guideMarks(b, w, h)}</svg>`) }]).jpeg({ quality: 93 }).toBuffer()
+      return sharp(room).composite([{ input: Buffer.from(`<svg width="${w}" height="${h}">${guideMarks(b, w, h, boxes.heads, boxes.waist)}</svg>`) }]).jpeg({ quality: 93 }).toBuffer()
     }
-    const placeIn = async (b: typeof START_BOX, prompt: string) => picture(pictureModels, prompt, [await boxed(b), sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
-    const start = await pic('start', () => placeIn(START_BOX, startPrompt(req.outfits[0], req.style)))
-    const endPic = await pic('end', () => placeIn(END_BOX, endPrompt(req.outfits[0], req.style)))
+    const placeIn = async (b: typeof START_BOX, prompt: string, outfitPhoto = outfitPhotos[0]) => picture(pictureModels, prompt, [await boxed(b), sheet, ...(outfitPhoto ? [outfitPhoto] : [])].map(jpeg), '9:16', ctx, 'high')
+    // In two steps when the look asks (recipe.ts twoStep): in the sheet's own
+    // clothes, then only the outfit changed.
+    const place = async (b: typeof START_BOX, prompt: (o: typeof OWN_CLOTHES) => string) => {
+      if (!look.twoStep) return placeIn(b, prompt(req.outfits[0]))
+      const own = await placeIn(b, prompt(OWN_CLOTHES), null)
+      const dressed = await picture(pictureModels, dressPrompt(req.outfits[0], req.style), [own.buffer, sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
+      return { buffer: dressed.buffer, cost: own.cost + dressed.cost }
+    }
+    const start = await pic('start', () => place(boxes.start, o => startPrompt(o, req.style)))
+    const endPic = await pic('end', () => place(boxes.end, o => endPrompt(o, req.style)))
     // 3. the opening: the roll (from the start to the end picture, so she ends
     //    in the middle), then the remote (first + last frame)
     job.status = 'opening'; await saveJob(sb, job)

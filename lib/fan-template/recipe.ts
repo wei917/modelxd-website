@@ -51,11 +51,15 @@ export const PLATE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/pl
 export const START_BOX = { x: -0.06, y: 0.15, w: 0.35, h: 0.66 }
 export const END_BOX = { x: 0.325, y: 0.15, w: 0.35, h: 0.66 }
 /** The red marks for a box on a picture w x h: the box, and the head's circle
- *  (a seventh of the box's height plus a little for the hair). */
-export function guideMarks(b: typeof START_BOX, w: number, h: number): string {
-  const d = Math.round(b.h * h / 7.3)
+ *  (the box's height over the heads tall, plus a little for the hair). */
+export function guideMarks(b: typeof START_BOX, w: number, h: number, heads = 7.3, waist = false): string {
+  const d = Math.round(b.h * h / heads)
+  const cx = Math.round((b.x + b.w / 2) * w), wy = Math.round(b.y * h + d * 2.7)
   return `<rect x="${Math.round(b.x * w)}" y="${Math.round(b.y * h)}" width="${Math.round(b.w * w)}" height="${Math.round(b.h * h)}" fill="none" stroke="red" stroke-width="8"/>` +
-    `<circle cx="${Math.round((b.x + b.w / 2) * w)}" cy="${Math.round(b.y * h + d / 2 + 6)}" r="${Math.round(d / 2)}" fill="none" stroke="red" stroke-width="6"/>`
+    `<circle cx="${cx}" cy="${Math.round(b.y * h + d / 2 + 6)}" r="${Math.round(d / 2)}" fill="none" stroke="red" stroke-width="6"/>` +
+    // The waist's height, 2.7 heads down (a 6.5-head figure), so the torso
+    // keeps its length and the legs cannot grow (Oct 21, the 2D look).
+    (waist ? `<line x1="${cx - Math.round(b.w * w * 0.32)}" y1="${wy}" x2="${cx + Math.round(b.w * w * 0.32)}" y2="${wy}" stroke="red" stroke-width="6"/>` : '')
 }
 /** The blades' default material (walnut, the owner's pick) and the hub's gold. */
 export const DEFAULT_BLADE = { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut.jpg' }
@@ -113,6 +117,14 @@ export type FanLook = {
   /** Added to every outfit edit. */
   keep: string
   cel: boolean
+  /** Where the person lies, top and height (fractions; the boxes keep their
+   *  x and width), and how many heads tall they are drawn (the circle). */
+  frame: { y: number; h: number; heads: number; waist?: boolean }
+  /** Placed in the sheet's own clothes first, then only the outfit changed:
+   *  put straight into a floor-length gown, the 2D placement drew a body 7.6
+   *  to 9.7 heads tall whatever the guide; in two steps 7.1 (Oct 21). It also
+   *  keeps a costume a maker refuses out of the step that sets the place. */
+  twoStep: boolean
 }
 const TWO_D = 'classic 2D hand-drawn animated feature film style: clean ink line art, flat cel shading, painted backgrounds'
 export const LOOKS: Record<FanStyle, FanLook> = {
@@ -126,17 +138,24 @@ export const LOOKS: Record<FanStyle, FanLook> = {
     physics: 'Real weight and momentum, natural anatomy, real fabric.',
     keep: '',
     cel: false,
+    frame: { y: START_BOX.y, h: START_BOX.h, heads: 7.3 },
+    twoStep: false,
   },
   anime2d: {
     plate: { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace4-2d.jpg' },
     blade: { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut-2d.jpg' },
     sheet: '2D手繪動畫電影風格（乾淨的墨線、平塗上色）的四格角色設定圖，維持同一個2D動畫角色的造型，不要畫成照片',
-    body: `Drawn in the ${TWO_D}, exactly as picture 1 and the character in picture 2 are drawn; never photographic. The character's own proportions as in picture 2: with the arms lying along the body the hands reach the middle of the thighs.`,
+    body: `Drawn in the ${TWO_D}, exactly as picture 1 and the character in picture 2 are drawn; never photographic. The red circle is exactly the size of their head: the head fills it from the top of the head to the chin; their natural waist is at the short red line across the box; as large against the body as in the full-body view of picture 2 (about six and a half heads tall), never a smaller head, a longer body or longer legs, even under a long gown; with the arms lying along the body the hands reach the middle of the thighs.`,
     lead: `A ${TWO_D}; it stays a 2D cartoon in every frame, never photographic. `,
     film: `A shot from a ${TWO_D}; it stays a 2D cartoon in every frame, never photographic`,
     physics: 'Believable weight and momentum as in fine 2D animation, the character drawn the same in every frame, the clothes moving as drawn cloth.',
-    keep: '整張圖維持2D手繪動畫電影風格（乾淨的墨線、平塗上色），不要變成照片。',
+    keep: '整張圖維持2D手繪動畫電影風格（乾淨的墨線、平塗上色），不要變成照片。人物維持第二張設定圖的身材比例（約六頭半身），不要拉長身體或腿。',
     cel: true,
+    // Her sheet draws her 6.5 heads tall; in the box made for a real adult the
+    // placement stretched her to 8.2 (owner, Oct 21: "the girl too long ...
+    // is this normal human ratio?"; "yours is 11 heads long", by the face).
+    frame: { y: 0.15, h: 0.66, heads: 6.5, waist: true },
+    twoStep: true,
   },
 }
 export const lookOf = (style?: FanStyle): FanLook => LOOKS[style && LOOKS[style] ? style : 'real']
@@ -266,6 +285,13 @@ export function outfitPrompt(n: number, outfit: FanOutfit, style?: FanStyle): st
   const p = POSES[n - 2]
   return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}胡桃木遙控器放在地毯上原本的位置、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。${lookOf(style).keep}畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
 }
+/** The two-step placement's second step: only the outfit changes (picture 1
+ *  the placed frame, 2 the sheet, 3 the outfit photo if any). */
+export function dressPrompt(outfit: FanOutfit, style?: FanStyle): string {
+  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改一件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}人物的姿勢、頭的大小、身高、身材比例和在畫面中的位置完全不變，不要拉長；長裙蓋住腿，但腳的位置不變。${lookOf(style).keep}胡桃木遙控器放在原本的位置。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
+}
+/** What they wear for the two-step placement's first step: the sheet's own. */
+export const OWN_CLOTHES: FanOutfit = { text: 'the same simple cream loungewear as in picture 2' }
 export const stillClip = (n: number, style?: FanStyle) => ({
   seconds: 4,
   clip: `${lookOf(style).lead}Locked overhead camera, no movement. The person lies still in the same pose for the whole shot, ${POSES[n - 2].clip}, no change of position, so the shot ends on the frame it starts with. No cuts.`,
@@ -318,4 +344,11 @@ export const DEFAULT_OUTFITS: Record<string, string[]> = {
   en: ['Ivory lace long-sleeve gown', 'Champagne-gold sequin long-sleeve gown', 'Burgundy velvet high-neck gown', 'White tweed suit with a pearl necklace', 'Red sequin off-shoulder gown with a high leg slit'],
   ja: ['アイボリーのレースの長袖ロングドレス', 'シャンパンゴールドのスパンコールの長袖ドレス', 'ボルドーのベルベットのハイネックドレス', '白のツイードスーツとパールのネックレス', '赤いスパンコールのオフショルダー、ハイスリットのイブニングドレス'],
   ko: ['아이보리 레이스 롱슬리브 드레스', '샴페인 골드 스팽글 롱슬리브 드레스', '버건디 벨벳 하이넥 드레스', '화이트 트위드 수트와 진주 목걸이', '레드 스팽글 오프숄더 하이 슬릿 이브닝 드레스'],
+}
+
+/** The start and end boxes for a look: the sofa's and the rug's places, at the
+ *  look's height. */
+export function boxesFor(style?: FanStyle) {
+  const f = lookOf(style).frame
+  return { start: { ...START_BOX, y: f.y, h: f.h }, end: { ...END_BOX, y: f.y, h: f.h }, heads: f.heads, waist: !!f.waist }
 }
