@@ -232,3 +232,36 @@ no page makes); I check it live in the owner's Chrome; then I build step 1
 on a branch, test it with scripts and the owner's account, and the last
 check needs a second account: the owner's other Google account in another
 browser or on a phone, opening the invite link. No model calls, no cost.
+
+## Step 1b: the table's two chats (built Oct 21, not pushed)
+
+Owner: "similar to XSports chat room but this is private and human can
+invite AI to be commenter", then (replacing paid public commentators): "we
+enable the chat room by default and have a low cost fast model to be as
+commenter? it will 解說戰局 by default but users can hire private AI to help.
+and opponent can only see you hire someone but don't know what they tell
+you"; "private and public chat room in the same game page"; the house
+commentator "is by system for sure"; GPT-6 Luna.
+
+- **公開** (every two-person chess / 象棋 table, on by default): both
+  players and the house commentator, GPT-6 Luna at its quickest, paid by the
+  house up to `XGAME_HOUSE_DAILY_USD` a Taipei day ($5 unset; about $0.0001
+  a remark, measured). It explains the game after every 4th ply, a check and
+  the end, and answers @Luna / @AI. It never picks a move for either side
+  (advice is the helper's job).
+- **我的 AI 助手**: one helper per player, any model that passes the game's
+  time rule, paid by the hirer at list price per remark (wallet checked
+  first). It answers every message there; 問了才說 / 偶爾提醒 (every 3rd
+  opponent move) / 對手每步後. The opponent sees only 「wei 請了 AI 助手」:
+  never the model or a word of it.
+- Server: `lib/xgame-chat.ts`, `/api/xgame/chat` (list · send · delete ·
+  hire · dismiss · talk), the move routes call `remarkAfterMove` in `after`.
+  One AI speaks at a time per table (the `step_until` lease). Messages are
+  moderated and rate-limited (one per 2 s), stored in `xgame_messages`
+  (migration 148; `private_to`, migration 149), server only; the helpers in
+  `xtalk_sessions.chat_ais` (148), out of `pending` so a move's save can never
+  drop one.
+- Page: `app/xgame/TableChat.tsx` beside the board, two tabs with an unread
+  dot, under the status line on phones.
+- Not yet: a chat for games against models, watchers, muting the house
+  commentator per viewer, the other games.
