@@ -19,7 +19,7 @@ import { ffmpegPath } from '@/lib/xcut-render'
 import { B, STATUS_BUCKET, durationOf, get, mixMusic, put, run, service, signed, userPhoto } from '@/lib/remake/store'
 import { picture, makeClip, lastFrame, type ProduceContext } from '@/lib/remake/engine/produce'
 import { FAN_ASSET, firstCrossing, renderFanOverlay } from './fan'
-import { finishOverlay, joinOpening, personSpan, pressTime, rolledOver, settledAt } from './cut'
+import { fanDrawn, finishOverlay, joinOpening, personSpan, pressTime, rolledOver, settledAt } from './cut'
 import {
   BLADE, HUB_GOLD, PRESS_DEFAULT, START_BOX, TIMING, lookOf, remoteShot, roll as rollShot, sheetPrompt,
   OWN_CLOTHES, bladePrompt, boxesFor, dressPrompt, endPrompt, fanMusicPrompt, fanQuote, guideMarks, outfitPrompt, setPrompt, startPrompt, stillClip, type FanRequest,
@@ -227,6 +227,16 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
   }
   const outfitPhotos = await Promise.all(req.outfits.map(o => o.photo ? userPhoto(sb, o.photo) : Promise.resolve(null)))
   const shot = (n: number, s: { seconds: number; clip: string; sound: string }) => ({ n, clip: s.clip, sound: s.sound, clip_seconds: s.seconds }) as any
+  /** A picture with no ceiling fan drawn in (the fan is ours, drawn later):
+   *  the eyes look, and one with a fan is made once more. The first is on the
+   *  house, like a roll that slid. */
+  const noFan = async (what: string, make: () => Promise<{ buffer: Buffer; cost: number }>) => {
+    const first = await make()
+    const seen = await fanDrawn(model(MODELS.eyes), first.buffer, job.userId)
+    if (!seen.fan) return { buffer: first.buffer, cost: first.cost + seen.cost }
+    console.log(`${LOG} ${job.id} ${what} came with a ceiling fan drawn in ($${(first.cost + seen.cost).toFixed(2)} on the house); made again`)
+    return make()
+  }
 
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `fan-${job.id.slice(0, 8)}-`))
   try {
@@ -240,7 +250,8 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     const set = sc.sofa || sc.carpet || sc.floor
       ? await pic('set', async () => {
         const refs = await Promise.all([sc.sofa?.photo, sc.carpet?.photo, sc.floor?.photo].filter((p): p is string => !!p).map(p => userPhoto(sb, p)))
-        return picture(pictureModels, setPrompt(sc), [await get(sb, look.plate.bucket, look.plate.path), ...refs].map(jpeg), '9:16', ctx, 'high')
+        const plate = await get(sb, look.plate.bucket, look.plate.path)
+        return noFan('the set', () => picture(pictureModels, setPrompt(sc), [plate, ...refs].map(jpeg), '9:16', ctx, 'high'))
       })
       : null
     const blade = sc.blade
@@ -263,8 +274,8 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
       const dressed = await picture(pictureModels, dressPrompt(req.outfits[0], req.style), [own.buffer, sheet, ...(outfitPhotos[0] ? [outfitPhotos[0]] : [])].map(jpeg), '9:16', ctx, 'high')
       return { buffer: dressed.buffer, cost: own.cost + dressed.cost }
     }
-    const start = await pic('start', () => place(boxes.start, o => startPrompt(o, req.style)))
-    const endPic = await pic('end', () => place(boxes.end, o => endPrompt(o, req.style)))
+    const start = await pic('start', () => noFan('the start', () => place(boxes.start, o => startPrompt(o, req.style))))
+    const endPic = await pic('end', () => noFan('the end', () => place(boxes.end, o => endPrompt(o, req.style))))
     // 3. the opening: the roll (from the start to the end picture, so she ends
     //    in the middle), then the remote (first + last frame)
     job.status = 'opening'; await saveJob(sb, job)
@@ -292,7 +303,7 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     job.status = 'outfits'; await saveJob(sb, job)
     const ns = req.outfits.slice(1).map((_, i) => i + 2)
     const keys = new Map<number, Buffer>()
-    const outfitPic = (n: number, base: Buffer) => pic(`key-${n}`, () => picture(pictureModels, outfitPrompt(n, req.outfits[n - 1], req.style), [base, sheet, ...(outfitPhotos[n - 1] ? [outfitPhotos[n - 1]!] : [])].map(jpeg), '9:16', ctx, 'high'))
+    const outfitPic = (n: number, base: Buffer) => pic(`key-${n}`, () => noFan(`outfit ${n}`, () => picture(pictureModels, outfitPrompt(n, req.outfits[n - 1], req.style), [base, sheet, ...(outfitPhotos[n - 1] ? [outfitPhotos[n - 1]!] : [])].map(jpeg), '9:16', ctx, 'high')))
     keys.set(2, await outfitPic(2, landed))
     await Promise.all(ns.slice(1).map(async (n, i) => { await new Promise(r => setTimeout(r, i * 1500)); keys.set(n, await outfitPic(n, keys.get(2)!)) }))
     // 5. still clips: the same picture as first and last frame (the camera cannot move)

@@ -7,6 +7,7 @@
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import sharp from 'sharp'
 import { streamText } from '@/lib/providers'
 import type { ModelInfo } from '@/lib/providers/types'
 import { run } from '@/lib/remake/store'
@@ -61,6 +62,16 @@ export async function rolledOver(model: ModelInfo, ff: string, clip: string, use
   const { json, cost } = await askPictures(model, `These ${frames.length} pictures are frames of one top-down clip, in order, at these seconds: ${times.join(', ')}. A person rolls off a sofa onto the rug. For EACH frame: can you see any part of the person's FACE (eyes, nose, mouth; a side profile counts as visible), or is the face hidden because they are face down and you see only the back of the head and hair? Return JSON only: {"face_visible": [true or false, ...]}`, frames, userId)
   const seen: unknown[] = Array.isArray(json?.face_visible) ? json.face_visible : []
   return { ok: seen.length !== frames.length || seen.some(v => v === false), cost }
+}
+
+/** Whether a maker drew a ceiling fan into a picture. The fan is ours, drawn
+ *  over the video later, so a drawn one shows under it (Oct 21: Qwen put part
+ *  of a fan in a corner of a 2D outfit picture though the words said no fan).
+ *  A check that cannot read the answer passes. */
+export async function fanDrawn(model: ModelInfo, picture: Buffer, userId: string | null): Promise<{ fan: boolean; cost: number }> {
+  const small = await sharp(picture).resize(576, 1024, { fit: 'inside' }).jpeg({ quality: 85 }).toBuffer()
+  const { json, cost } = await askPictures(model, 'This is a top-down picture of a floor: a sofa, a rug or mat, perhaps a person lying down and a small remote control. Is any part of a CEILING FAN drawn anywhere in it, the corners and edges included: a fan blade, a fan hub or motor, a fan mount or rod? The remote control, furniture, carvings, rug patterns and shadows are not a fan. Return JSON only: {"fan": true or false}', [small], userId)
+  return { fan: json?.fan === true, cost }
 }
 
 /** When the fall has settled, in the roll's seconds: the first moment from
