@@ -17,8 +17,7 @@ const ART: Record<GameKey, string> = {
   draw: '/xgame/draw-banner.svg',
   chess: '/xgame/chess-banner.svg',
   poker: '/xgame/poker-banner.svg',
-  // No bridge banner yet: the card table's art stands in.
-  bridge: '/xgame/poker-banner.svg',
+  bridge: '/xgame/bridge-banner.svg',
   xiangqi: '/xgame/xiangqi-banner.svg',
 }
 
