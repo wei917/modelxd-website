@@ -69,6 +69,44 @@
 .xgame-history-when { flex-shrink: 0; font: 11.5px var(--font-mono), monospace; color: var(--muted2); white-space: nowrap; }
 .xgame-history-go { flex-shrink: 0; padding: 5px 14px; border-radius: 999px; border: 1px solid var(--red); color: var(--red); font-size: 12px; font-weight: 700; text-decoration: none; }
 .xgame-history-go:hover { background: var(--red-dim); }
+/* A table's two chats (TableChat.tsx): public with the house commentator,
+   private with the player's hired helper. */
+.xgame-chat { margin-bottom: 12px; border: 1px solid var(--xtell-rule); border-radius: 16px; background: #fff; overflow: hidden; }
+.xgame-chat-tabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); }
+.xgame-chat-tabs button { position: relative; padding: 8px 12px 9px; border: none; border-bottom: 2px solid transparent; background: none; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.xgame-chat-tabs button.is-on { color: var(--white); border-bottom-color: var(--red); }
+.xgame-chat-dot { position: absolute; top: 7px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+.xgame-chat-hired { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: var(--red-dim); color: var(--red); font-size: 12px; font-weight: 600; }
+.xgame-chat-hire { margin: auto 0; text-align: center; }
+.xgame-chat-hire p { margin: 0 0 12px; font-size: 12.5px; line-height: 1.6; color: var(--muted2); }
+.xgame-chat-invite { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--red); background: #fff; color: var(--red); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.xgame-chat-invite:hover { background: var(--red-dim); }
+.xgame-chat-ais { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; }
+.xgame-chat-ai { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 12px; }
+.xgame-chat-ai-name { padding: 0; border: none; background: none; font: inherit; font-weight: 700; color: var(--white); cursor: pointer; }
+.xgame-chat-ai select { padding: 2px 4px; border: 1px solid var(--border2); border-radius: 8px; background: #fff; font-size: 12px; color: var(--muted); }
+.xgame-chat-ai-by { color: var(--muted2); }
+.xgame-chat-ai-x, .xgame-chat-del { width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%; background: none; color: var(--muted2); font-size: 15px; line-height: 1; cursor: pointer; }
+.xgame-chat-ai-x:hover, .xgame-chat-del:hover { background: var(--surface2); color: var(--red); }
+.xgame-chat-list { display: flex; flex-direction: column; gap: 8px; height: 280px; overflow-y: auto; padding: 10px 12px; border-top: 1px solid var(--border); background: var(--surface); }
+.xgame-chat-empty { margin: auto 0; font-size: 12.5px; line-height: 1.6; color: var(--muted2); text-align: center; }
+.xgame-chat-msg { display: flex; align-items: flex-end; gap: 6px; max-width: 92%; }
+.xgame-chat-msg.is-mine { align-self: flex-end; }
+.xgame-chat-bubble { min-width: 0; padding: 6px 10px 7px; border-radius: 12px; background: #fff; border: 1px solid var(--border); }
+.xgame-chat-msg.is-mine .xgame-chat-bubble { background: var(--red-dim); border-color: transparent; }
+.xgame-chat-msg.is-ai .xgame-chat-bubble { border-color: var(--border2); border-left: 3px solid var(--red); }
+.xgame-chat-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.xgame-chat-tag { padding: 0 5px; border-radius: 5px; background: var(--red); color: #fff; font-size: 9.5px; letter-spacing: .04em; }
+.xgame-chat-time, .xgame-chat-cost { font: 400 10.5px var(--font-mono), monospace; color: var(--muted2); }
+.xgame-chat-del { width: 18px; height: 18px; font-size: 13px; margin-left: auto; }
+.xgame-chat-text { margin-top: 2px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.xgame-chat-wait { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--muted2); }
+.xgame-chat-compose { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); }
+.xgame-chat-compose input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--border2); border-radius: 999px; font-size: 16px; background: #fff; color: var(--white); }
+.xgame-chat-compose input:focus { outline: none; border-color: var(--red); }
+.xgame-chat-compose button { padding: 8px 16px; border: none; border-radius: 999px; background: var(--red); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.xgame-chat-compose button:disabled { opacity: .45; cursor: default; }
+.xgame-chat-err { padding: 0 12px 10px; font-size: 12.5px; color: var(--red); }
 @media (max-width: 1000px) {
   .xgame-shell .arena.xgame-arena { padding-bottom: 48px; }
   .xgame-hero-copy { max-width: 580px; padding-left: 60px; padding-right: 60px; }
@@ -106,6 +144,7 @@
   .xgame-history { padding: 12px 14px 4px; border-radius: 16px; }
   .xgame-history li { flex-wrap: wrap; gap: 6px 10px; }
   .xgame-history-name { flex-basis: 100%; }
+  .xgame-chat-list { height: 220px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .xgame-shell *, .xgame-shell *::after { transition: none !important; }

@@ -22,6 +22,7 @@ export const runtime = 'nodejs'
 // Two asks of up to 90 s each, plus the reads and the write.
 export const maxDuration = 200
 
+import { after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { debitCredits, accrueFraction, InsufficientCreditsError } from '@/lib/credits'
 import { xiangqiEngine, type XqEnd, type XiangqiEngine, type XqPosition } from '@/lib/xiangqi-engine'
@@ -31,6 +32,7 @@ import { afterMove, flagged, newClock, startClock, type Clock } from '@/lib/xgam
 import {
   claimSeat, faceOf, isDuo, newToken, pingTable, publicSeats, releaseSeat, seatOf, tokenOk, type Lobby,
 } from '@/lib/xgame-duo'
+import { langOf, remarkAfterMove } from '@/lib/xgame-chat'
 
 const LOG = '[xgame:xiangqi]'
 
@@ -226,6 +228,15 @@ export async function POST(req: Request) {
     }, s.day)
     if (!ok) { await reload(); return false }
     pos = next
+    // Two people: the house commentator explains the game in the public
+    // chat when due, and the opponent's hired helper may speak up in theirs
+    // (lib/xgame-chat.ts), after the response.
+    if (duo) {
+      const ply = moves.length, special = !!end || next.check, lang = langOf(body.lang)
+      // The side to move now did not just move.
+      const moverSeat = next.turn === 'w' ? 1 : 0
+      after(() => remarkAfterMove(s.id, { ply, moverSeat, special, lang }))
+    }
     if (cost > 0) {
       const carried = await accrueFraction(user.id, cost * 1e6)
       const cents = carried ?? Math.round(cost * 100)

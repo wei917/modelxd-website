@@ -69,6 +69,17 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `149_xgame_private_chat.sql` applied 2026-10-21 by the owner:
+  `xgame_messages.private_to` (a player's private chat with the AI helper
+  they hired; null = the table's public chat) and two indexes. Proven on
+  PGlite (13/13). Checked live: 42501 for the publishable key; the earlier
+  message stayed public; a made-up account refused (23503).
+  `148_xgame_messages.sql` applied 2026-10-21 by the owner: XGame table
+  chat (`xgame_messages`, service role only) and `xtalk_sessions.chat_ais`
+  (the hired helpers, out of `pending`). Proven on PGlite (19/19). Checked
+  live: 42501 for the publishable key on read and write and on updating
+  chat_ais (signed in too); an AI row without its model, 1001 characters
+  and a negative cost refused (23514), a made-up table 23503; nothing stored.
   `147_xgame_members.sql` applied 2026-10-21 by the owner: XGame
   multiplayer's foundation, `xgame_members` (who sits where; service role
   only), `xtalk_sessions.step_until` (a lease for model turns), and the
@@ -1369,6 +1380,7 @@ SITE_PASSWORD=                        # unset = site gate disabled
 
 # Ops / tuning
 XSPORTS_AI_DAILY_USD=                 # X體育 AI commentators' daily cap (Taipei day); unset = $50
+XGAME_HOUSE_DAILY_USD=                # XGame's house commentator (GPT-6 Luna in two-person chats), per Taipei day; unset = $5
 TRIPO_API_KEY=                        # Tripo3D proxy (/api/v1/tripo/*) — see docs/TRIPO-API.md;
                                       #   unset = those routes answer 503
 WORLDLABS_API_KEY=                    # World Labs Marble (XWorld worlds); unset = /api/xworld answers 503 for worlds

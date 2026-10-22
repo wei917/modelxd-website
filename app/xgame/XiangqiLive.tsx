@@ -29,6 +29,7 @@ import GridBoard, { type XY, type GridGeometry } from './GridBoard'
 import type { SeatOpts } from '../xtalk/SeatConfig'
 import type { Speaker } from '../xtalk/templates'
 import { ClockText, Face, InvitePanel, JoinPanel, useDuoClock, useJoinToken, useTablePings, type ViewClock } from './DuoParts'
+import TableChat from './TableChat'
 
 type Move = {
   n: number; side: Side; uci: string; wxf: string
@@ -160,7 +161,7 @@ export default function XiangqiLive({ models, resumeId, onExit }: {
     try {
       const res = await fetch('/api/xgame/xiangqi', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(join ? { ...body, join } : body), signal: ctl.signal,
+        body: JSON.stringify(join ? { ...body, lang, join } : { ...body, lang }), signal: ctl.signal,
       })
       const d = await res.json().catch(() => null)
       if (!res.ok) { setErr(d?.error ?? `HTTP ${res.status}`); if (res.status === 402) setBroke(true); return null }
@@ -214,7 +215,11 @@ export default function XiangqiLive({ models, resumeId, onExit }: {
   // Two people: the other person's move arrives as a ping; the clocks run
   // on the server's numbers.
   const duo = !!g && g.players.length === 2 && g.players.every(p => p.isHuman)
-  useTablePings(g?.id, duo && g?.status === 'active', () => { if (g) void post({ action: 'state', id: g.id }) })
+  // The chat (TableChat) reloads on the same pings, so they keep coming
+  // after the game ends while a player still has the table open.
+  const [pingN, setPingN] = useState(0)
+  const chatOn = duo && !!g && g.me != null && !g.lobby
+  useTablePings(g?.id, duo && (g?.status === 'active' || chatOn), () => { setPingN(n => n + 1); if (g) void post({ action: 'state', id: g.id }) })
   const toMoveIdx: 0 | 1 | null = g && g.status === 'active' && g.turn && !g.lobby ? (g.turn === 'w' ? 0 : 1) : null
   const clockLeft = useDuoClock(duo ? g?.clock : null, toMoveIdx, () => { if (g) void post({ action: 'state', id: g.id }) })
 
@@ -444,7 +449,8 @@ export default function XiangqiLive({ models, resumeId, onExit }: {
             ${g.costUsd.toFixed(3)}
           </div>
         )}
-        <div style={{ maxHeight: 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {chatOn && <TableChat tableId={g.id} game="xiangqi" pingN={pingN} />}
+        <div style={{ maxHeight: chatOn ? 200 : 400, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[...g.moves].reverse().map(m => (
             <div key={m.n} style={{ padding: '7px 10px', borderRadius: 9, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 12.5, lineHeight: 1.5 }}>
               <span style={{ fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle' }}>
