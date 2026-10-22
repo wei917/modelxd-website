@@ -204,7 +204,7 @@ export function bladePrompt(blade: FanScenePart): string {
   return `A flat, evenly lit, straight-on close-up photograph of the surface of a ceiling fan blade: ${what}. The material fills the whole picture edge to edge, its grain or pattern running from top to bottom. No blade outline, no edges, no background, no shadows, no room reflections, no objects, no text.`
 }
 
-const OUTFIT_PHOTO = '服裝的版型、剪裁、布料、顏色、圖案與鞋子完全照最後一張圖片，但不要用那張圖片裡的人。'
+const OUTFIT_PHOTO = '服裝的版型、剪裁、布料、顏色、圖案與鞋子完全照最後一張圖片；圖中跟服裝一起的帽子或頭飾要戴在頭上；但不要用那張圖片裡的人。'
 /** The set's woman wears white sneakers, and an edit keeps them unless told
  *  (test run, Oct 18: the same sneakers under every outfit). */
 const SHOES = '鞋子也要換成搭配這套穿搭的鞋。'
@@ -214,8 +214,10 @@ const SHOES = '鞋子也要換成搭配這套穿搭的鞋。'
  *  Picture 1 is the set with the box, picture 2 the sheet, picture 3 the
  *  outfit photo if any. */
 function placed(outfit: FanOutfit, where: string, style?: FanStyle): string {
+  // The user's words too, not only the photo: a hat beside the costume in the
+  // photo stayed off her head (Oct 21, 胡桃's hat; the words said 頭戴…帽).
   const wear = outfit.photo
-    ? 'their outfit\'s cut, fabric, color, pattern and shoes exactly as in picture 3, without the person in that picture'
+    ? `${outfit.text}; its cut, fabric, color, pattern and shoes exactly as in picture 3, and a hat or headpiece shown with it worn on their head, without the person in that picture`
     : `${outfit.text}, with shoes to match`
   return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. ${lookOf(style).body} They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the walnut remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
 }
