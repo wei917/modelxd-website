@@ -541,7 +541,7 @@ no film = full refund. Tables `xcreate_films` + `xcreate_film_calls`
 (`slots[0].options.film`), so it is in the Library and opens back into
 `?film=<id>`. UI: `app/xcreate/FilmStudio.tsx`, words in `film-copy.ts`.
 **Moved to XFilm's 自動成片 on Oct 22** (`/xfilm/auto?film=<id>`,
-`app/xfilm/auto/`); X創作's top bar is 文字 / 圖片 / 影片 / 音訊 only.
+`app/xfilm/auto/`); X創作's top bar is 文字 / 圖片 / 影片 / 語音 / 音樂 only.
 
 **同款 (Remake), the studio's sixth type, after 成片 in /xcreate's type bar (Oct 10).** 同款 / Remake / リメイク / 리메이크. Paste a video link
 or upload one, read it into a shot list, choose the length and what to swap
