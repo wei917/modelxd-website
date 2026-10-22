@@ -83,7 +83,7 @@ pools were deleted from storage.
 Check the letter against the app-letters plan (docs/XFILM-PLAN.md: one app
 per letter); N looks free.
 
-**Where:** `/xnews` inside www's shell, like `/xtell`. Reading needs no
+**Where:** `/xnews` inside www's shell, like `/xoracle`. Reading needs no
 account; voting and commenting do.
 
 **Top bar:** topics, like X先知's rooms: 頭條, 台灣, 國際, 財經, 科技, 運動,

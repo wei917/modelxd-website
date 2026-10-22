@@ -32,7 +32,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
-const UA = 'ModelXD-XTell/1.0 (https://modelxd.com; public-domain corpus fetch)'
+const UA = 'ModelXD-XOracle/1.0 (https://modelxd.com; public-domain corpus fetch)'
 const OUT = path.join(process.cwd(), 'content', 'yijing', 'zhouyi.json')
 const CLASSICS = path.join(process.cwd(), 'content', 'classics')
 

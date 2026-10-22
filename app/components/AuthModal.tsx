@@ -7,10 +7,10 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 import { useT, useLang } from '../../lib/i18n'
 import { useSite } from '../../lib/useSite'
 import { MAIN_ORIGIN, isStreetPath } from '../../lib/site'
-import { XTellMark } from './xtell/XTellNav'
+import { XOracleMark } from './xoracle/XOracleNav'
 import { LINE_CHANNELS, lineChannelHere, rememberLineChannel, markLineTry, type LineChannel } from '../../lib/line-login'
 import { countSigninTap, type SignInVia } from '../../lib/signin-tap'
-import { goToRoom } from '../../lib/xtell-room'
+import { goToRoom } from '../../lib/xoracle-room'
 
 // Same glyphs as Nav's NavIcon (app/components/Nav.tsx) — keep in sync.
 function AuthFeatureIcon({ name }: { name: string }) {
@@ -24,10 +24,10 @@ function AuthFeatureIcon({ name }: { name: string }) {
   }
 }
 
-/** The XTell copy names ModelXD in every language; render that
+/** The XOracle copy names ModelXD in every language; render that
  *  word as the mark + a link to the main site, so a newcomer sees whose
  *  account this is. */
-function brandLinked(copy: string, className = 'xtell-auth-maker') {
+function brandLinked(copy: string, className = 'xoracle-auth-maker') {
   const i = copy.indexOf('ModelXD')
   if (i < 0) return copy
   return <>
@@ -41,10 +41,10 @@ function brandLinked(copy: string, className = 'xtell-auth-maker') {
 
 export default function AuthModal() {
   const site = useSite()
-  const isXTell = site === 'xtell'
-  // The XTell door gets a real dialog: focus trap, Escape, no scrolling
+  const isXOracle = site === 'xoracle'
+  // The XOracle door gets a real dialog: focus trap, Escape, no scrolling
   // underneath. www keeps its own behaviour.
-  const branded = isXTell
+  const branded = isXOracle
   const { open, nextPath, hide, required, release } = useAuthModal()
   const t = useT()
   const { lang } = useLang()
@@ -89,7 +89,7 @@ export default function AuthModal() {
     // links now carry the whole intent — /xcreate?template=tool-upscale,
     // /xcreate?agent=1&q=... — and dropping the search meant signing in
     // threw away the thing the visitor had just asked for and landed them
-    // on a bare studio. (CC, Aug 5) XTell's temple is in the query too
+    // on a bare studio. (CC, Aug 5) XOracle's temple is in the query too
     // (?t=, since Oct 18), so it comes back to that temple.
     const destination = nextPath ?? (window.location.pathname + window.location.search)
     // Cookie values cannot carry ';' or ',' raw, and a redirect target is
@@ -216,14 +216,14 @@ export default function AuthModal() {
         .auth-feature-text strong { color: var(--white); font-weight: 500; }
       `}</style>
 
-      <div className={isXTell ? "auth-overlay xtell-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget && !required) hide() }}>
+      <div className={isXOracle ? "auth-overlay xoracle-auth" : "auth-overlay"} onClick={(e) => { if (e.target === e.currentTarget && !required) hide() }}>
         <div ref={dialogRef} className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-          {/* A required dialog has no ✕ (owner, Sep 25). On the XTell host the
+          {/* A required dialog has no ✕ (owner, Sep 25). On the XOracle host the
               way out is the link back to the explorer below the button. */}
-          {!required && <button className="auth-close" aria-label={t('xtell.site.close')} onClick={hide}>✕</button>}
+          {!required && <button className="auth-close" aria-label={t('xoracle.site.close')} onClick={hide}>✕</button>}
 
           <div className="auth-logo">
-            {isXTell ? <XTellMark /> : <>
+            {isXOracle ? <XOracleMark /> : <>
             <Image src="/logo.png" alt="ModelXD" width={28} height={28} style={{ borderRadius: 6 }} />
             <span className="auth-logo-text">Model<span className="xd">XD</span></span>
             </>}
@@ -231,8 +231,8 @@ export default function AuthModal() {
 
           <div className="auth-divider" />
 
-          <div id="auth-title" className="auth-title">{isXTell ? t('xtell.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
-          {isXTell && <p className="auth-sub">{brandLinked(t('xtell.site.authCopy'))}</p>}
+          <div id="auth-title" className="auth-title">{isXOracle ? t('xoracle.site.authTitle') : <>{t('auth.titleprefix')} Model<span className="accent">XD</span></>}</div>
+          {isXOracle && <p className="auth-sub">{brandLinked(t('xoracle.site.authCopy'))}</p>}
 
           <button className="auth-google-btn" onClick={() => void handleLogin('google')} disabled={!!loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -255,7 +255,7 @@ export default function AuthModal() {
           </button>
 
 
-          {required && isXTell && (
+          {required && isXOracle && (
             <button type="button" onClick={() => {
               release()
               // Inside a temple, leave it in place (what the 探索殿堂 link
@@ -266,12 +266,12 @@ export default function AuthModal() {
               else window.location.href = '/'
             }}
               style={{ display: 'block', margin: '10px auto 0', border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline dotted' }}>
-              ← {t('xtell.site.focus.back')}
+              ← {t('xoracle.site.focus.back')}
             </button>
           )}
 
           <div className="auth-features">
-            {isXTell ? <p className="xtell-auth-credit">{t('xtell.site.authCredit')}</p> : <>
+            {isXOracle ? <p className="xoracle-auth-credit">{t('xoracle.site.authCredit')}</p> : <>
             {[
               { icon: 'duel',   text: <><strong>XDuel</strong> — {t('auth.f.xduel')}</> },
               { icon: 'create', text: <><strong>XCreate</strong> — {t('auth.f.xcreate')}</> },

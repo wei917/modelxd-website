@@ -55,7 +55,7 @@
  * spans both); phone sizes under 560px. */
 .xs-canvas { background: #f2f4f7; min-height: 100dvh; container: xs / inline-size; }
 
-/* The leagues bar (Oct 13 redesign, through Codex: the XTell-style row of
+/* The leagues bar (Oct 13 redesign, through Codex: the XOracle-style row of
  * two small marks in a wide white strip "looks poor"). One compact sticky
  * toolbar on the content's own edges (the scores' 1120px column, the room's
  * 1440px), under the phone's 60px top bar. In a game the way back comes

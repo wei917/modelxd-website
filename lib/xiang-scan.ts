@@ -19,7 +19,7 @@
 //
 // The palm lines are described, not drawn: no model placed them on the
 // creases well enough (owner, Oct 6: "still not accurate, I would rather
-// not showing those lines"; the trials are in docs/XTELL-PAGE.md).
+// not showing those lines"; the trials are in docs/XORACLE-PAGE.md).
 //
 // Server-only. The photos pass through; nothing here stores them.
 
@@ -62,7 +62,7 @@ async function run(r: Runner, system: string, text: string, photos: Photo[], use
     new Promise<void>(resolve => { timer = setTimeout(() => { error = 'timeout'; resolve() }, timeoutMs) }),
   ])
   if (timer) clearTimeout(timer)
-  if (error) { console.warn(`[xtell/xiang] ${r.model} failed: ${error}`); return null }
+  if (error) { console.warn(`[xoracle/xiang] ${r.model} failed: ${error}`); return null }
   return out
 }
 
@@ -91,7 +91,7 @@ export async function readPhotos(photos: Photo[], who: XiangWho, lang: string, u
     const text = await run(r, readerSystem(lang), prompt, all, userId, READ_TIMEOUT_MS, partner ? 10_000 : 6000)
     const chart = text ? cleanChart(parseJson(text), have, r.model, lang, partnerHave) : null
     if (chart) return chart
-    if (text) console.warn(`[xtell/xiang] ${r.model}: unreadable reply ${JSON.stringify(text.slice(0, 200))}`)
+    if (text) console.warn(`[xoracle/xiang] ${r.model}: unreadable reply ${JSON.stringify(text.slice(0, 200))}`)
   }
   return null
 }

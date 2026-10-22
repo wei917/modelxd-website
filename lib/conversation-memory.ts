@@ -1,5 +1,5 @@
 // lib/conversation-memory.ts — what a model keeps of a long conversation,
-// shared by every surface that holds one (XTell first; XTalk next). Owner,
+// shared by every surface that holds one (XOracle first; XTalk next). Owner,
 // Oct 3: "this problem exists for all subdomain not just XTell", "we should
 // modularize now". The idea is compacting a chat, as Claude Code does: the
 // model rereads the whole conversation until it nears its limit, then its

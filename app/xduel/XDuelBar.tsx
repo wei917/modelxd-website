@@ -1,6 +1,6 @@
 'use client'
-// XDuel's top bar on www (owner, Oct 16: "apply the xtell layout and design
-// to XDuel"): X先知's own bar (.xtell-embedded-bar and its temple row, as
+// XDuel's top bar on www (owner, Oct 16: "apply the xoracle layout and design
+// to XDuel"): X先知's own bar (.xoracle-embedded-bar and its temple row, as
 // /profile's), with the duel types as its rooms, icon over a label.
 // The types left the composer's "Task type" row for it. The live page
 // switches in place (onPick); the permalink page links to /xduel?mode=.
@@ -32,10 +32,10 @@ export default function XDuelBar({ current, onPick, busy, base = '/xduel', kinds
 }) {
   const t = useT()
   return (
-    <div className="xtell-embedded-bar xduel-bar">
-      <div className="xtell-embedded-inner">
-        <div className="xtell-temple-wrap">
-          <nav className="xtell-temple-nav" aria-label={t('xduel.tasktype').replace(/[:：]\s*$/, '')}>
+    <div className="xoracle-embedded-bar xduel-bar">
+      <div className="xoracle-embedded-inner">
+        <div className="xoracle-temple-wrap">
+          <nav className="xoracle-temple-nav" aria-label={t('xduel.tasktype').replace(/[:：]\s*$/, '')}>
             {kinds.map(k => {
               const waiting = busy && k !== current
               const speech = k === 'audio' && kinds.includes('music')
@@ -43,7 +43,7 @@ export default function XDuelBar({ current, onPick, busy, base = '/xduel', kinds
                 <a key={k} href={`${base}?mode=${k}`} aria-current={current === k ? 'page' : undefined}
                   aria-disabled={waiting || undefined}
                   onClick={onPick ? e => { e.preventDefault(); if (!waiting) onPick(k) } : undefined}>
-                  <span className="xtell-nav-icon xduel-bar-icon"><MediaIcon kind={speech ? 'speech' : k} /></span>
+                  <span className="xoracle-nav-icon xduel-bar-icon"><MediaIcon kind={speech ? 'speech' : k} /></span>
                   <span>{t(speech ? 'mode.speech' : 'mode.' + k)}</span>
                 </a>
               )

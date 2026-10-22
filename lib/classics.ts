@@ -1,4 +1,4 @@
-// lib/classics.ts — grounding XTell readings in the actual classics.
+// lib/classics.ts — grounding XOracle readings in the actual classics.
 //
 // Idea learned from Sudo-Biao/Chinese-Metaphysics-Platform (MIT), which
 // grounds its readings in an 8,600-line classical knowledge base with BM25
@@ -14,7 +14,7 @@
 
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Temple } from './xtell'
+import type { Temple } from './xoracle'
 import { keyOf, segments } from './yijing-retrieval'
 import { HEXAGRAMS } from './yijing-core'
 
@@ -26,7 +26,7 @@ const SOURCES: Record<Temple, string[]> = {
   bazi:   ['ditiansui.txt'],
   yuelao: ['ditiansui.txt'],
   ziwei:  ['ziweiquanshu-j1.txt'],
-  // 關帝廟: the 籤's own six commentaries ride with the poem (lib/xtell.ts
+  // 關帝廟: the 籤's own six commentaries ride with the poem (lib/xoracle.ts
   // guandiFacts) — 一籤一書 — so nothing here to retrieve.
   guandi:   [],
   mazu:     [],

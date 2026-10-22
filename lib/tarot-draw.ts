@@ -1,6 +1,6 @@
 // lib/tarot-draw.ts — 塔羅's ritual, pure and client-safe (Sep 28).
 //
-// Like the 籤 tube (lib/xtell-ritual.ts): the browser's crypto source
+// Like the 籤 tube (lib/xoracle-ritual.ts): the browser's crypto source
 // shuffles, so nobody, including us, chooses the cards, and only the card
 // ids and their orientation travel. The deck's text and pictures live in
 // content/tarot/cards.json (lib/tarot.ts), read on the server.
@@ -69,7 +69,7 @@ export function cutDeck(deck: TarotPick[], pile: 0 | 1 | 2): TarotPick[] {
 }
 
 /** A card's picture, for the reveal before the spread is laid. */
-export const tarotImage = (id: string) => `/xtell/tarot/${id}.webp`
+export const tarotImage = (id: string) => `/xoracle/tarot/${id}.webp`
 
 /** What a client may send: the right number of distinct real cards. */
 export function validPicks(spread: TarotSpread, picks: unknown): picks is TarotPick[] {

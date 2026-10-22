@@ -6,8 +6,8 @@
 > proxy (`docs/TRIPO-API.md`) and the shared
 > core Werewolf now runs on. `docs/XEVAL-PAGE.md` — everything about the `/xeval`
 > page and the eval pipeline behind it (read before touching XEval).
-> `docs/XTELL-PAGE.md` — the X先知 surface (temples,
-> engines, masters, classics grounding; read before touching XTell).
+> `docs/XORACLE-PAGE.md` — the X先知 surface (temples,
+> engines, masters, classics grounding; read before touching XOracle).
 > `docs/STATE-2026-08-19.md` — a running snapshot of what
 > changed recently and what is still open (incl. the UNPUSHED commit queue
 > and the in-flight headline task). Read that second.
@@ -58,13 +58,19 @@ rating system (XDRating) surfaced on XBoard.
   and was removed on Oct 13: the owner keeps only dev.modelxd.com/xcreate and
   www.modelxd.com/xcreate; see XCreate below.) `lib/site.ts` is the contract
   (`useSite()`, `siteFromHeaders()`, per-door route lists; any other page
-  302s to `/` there). **Since Oct 4 www's `/xtell` shows the XTell door's
+  302s to `/` there). **Since Oct 4 www's `/xoracle` shows the XOracle door's
   homepage and temples inside www's own shell** (left nav, ModelXD logo;
-  dev.modelxd.com/xtell; www.modelxd.com/xtell behind www's password): the
+  dev.modelxd.com/xoracle; www.modelxd.com/xoracle behind www's password): the
   owner decided against subdomains; the subdomain stays until www opens
-  (docs/XTELL-PAGE.md, "On www at /xtell too"). Locally, `?site=xtell|www` switches the shell
+  (docs/XORACLE-PAGE.md, "On www at /xoracle too"). Locally, `?site=xoracle|www` switches the shell
   (cookie), or a worktree server on :3001 is that door. (`?site=xcreate`
-  now just clears the cookie.)
+  now just clears the cookie.) **Since Oct 22 xtell.modelxd.com forwards to
+  dev.modelxd.com/xoracle** (owner; 307, query kept: `/` → `/xoracle`, any
+  other page to the same page there; its `/api/*` still answer for open
+  tabs): `oldDoorRedirect` in proxy.ts. The door's shell is served only
+  locally since then. Share links and previews point at
+  dev.modelxd.com/xoracle (`MAIN_ORIGIN`). Sign-ins and browser storage do not
+  cross hosts, so a visitor from the old door signs in again on dev.
 - **Both environments share ONE Supabase project.** A migration applied for
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
@@ -105,7 +111,7 @@ rating system (XDRating) surfaced on XBoard.
   removed.
   `143_reserve_app_handles.sql` applied 2026-10-20 by the owner: xkit,
   xoracle and xfilm join `handle_is_reserved()` (the new app names; lib/handle.ts
-  has the same). Checked live: xkit, x.oracle_2, xfi1m and xtell reserved,
+  has the same). Checked live: xkit, x.oracle_2, xfi1m and xoracle reserved,
   swift_otter_482 not; the publishable key is refused (401).
   `146_music_rating_pool.sql` applied 2026-10-21 by the owner: `xd_pool`
   sends audio duels with recipe 'text_to_music' to the pool 'music'.
@@ -145,7 +151,7 @@ rating system (XDRating) surfaced on XBoard.
   `138_site_visit_by_product.sql` applied 2026-10-15 by the owner: one new
   function, `site_visit_by_product`, for /admin/traffic's "Browsers by app"
   card (a line per app and a table; the app is where a visit LANDED: the
-  xtell./xcreate. host or the first part of the www path). Checked live:
+  xoracle./xcreate. host or the first part of the www path). Checked live:
   rows for the service key (14 days: X先知 832 browsers, www 13, X創作 4),
   42501 for the publishable key.
   `137_xsports_cheer_jobs.sql` applied 2026-10-16 by the owner: 晴晴's
@@ -210,12 +216,12 @@ rating system (XDRating) surfaced on XBoard.
   gets 42501 on both.
   `127_xtell_add_message.sql` applied 2026-10-04 by the owner:
   `xtell_add_message`, the insert with ON CONFLICT DO NOTHING that stores an
-  XTell message once without a logged error. Checked live: execute false for
+  XOracle message once without a logged error. Checked live: execute false for
   anon and authenticated, true for service_role; re-storing an existing
   question through PostgREST returned null, added no row, logged no error.
-  `126_xtell_memory.sql` applied 2026-10-03 by the owner: XTell masters'
+  `126_xtell_memory.sql` applied 2026-10-03 by the owner: XOracle masters'
   memory (`xtell_messages`, `xtell_memories`, `ai_models.context_window`;
-  docs/XTELL-MEMORY.md). It copied 675 messages from 195 conversations out
+  docs/XORACLE-MEMORY.md). It copied 675 messages from 195 conversations out
   of `xtell_readings.turns`. Checked live: 42501 for the publishable key on
   GET and POST on both tables; `context_window` readable by it. The code
   that uses the tables was not deployed yet when it ran.
@@ -232,14 +238,14 @@ rating system (XDRating) surfaced on XBoard.
   read-only functions for /admin/traffic (what ad visitors did, accounts per
   country); checked live: rows for the service key, 42501 for the
   publishable key. Before it, `122_xtell_votes_shares.sql` (2026-10-01, by
-  the owner; 👍 / 👎 on XTell answers and the share counter; checked live:
+  the owner; 👍 / 👎 on XOracle answers and the share counter; checked live:
   42501 for the publishable key on select and insert on both tables and on
   both window functions).
   Latest applied: `120_signin_taps.sql` (2026-10-01, by the owner; taps on
   the Google and LINE buttons for /admin/traffic; checked live: the service
   key reads the table and calls the function, 42501 for the publishable key
   on select, insert and the function), after `119_xtell_personality.sql` (2026-10-01, by the owner;
-  the visitor's own personality type for XTell; checked live: 42501 for
+  the visitor's own personality type for XOracle; checked live: 42501 for
   the publishable key), after `118_site_visit_summary.sql` (2026-10-01 Taiwan time, by
   the owner; the range's own numbers for the /admin/traffic tiles; one new
   function; checked live: one row for the service key that adds up with the
@@ -285,7 +291,7 @@ more**, and the per-user feature system is gone with it.
 | **XArch** | `/xarch` | required | X建築設計: floor plans + interior design. GPT-6 Astra / Claude Fable 5.1 read a blueprint into geometry and return edit OPS that code applies (`lib/xarch.ts`); room photos redesigned with GPT Image 2; design agent chat. Rows in `xarch_projects` (migration 100). Free sample: HABS Breiding House. |
 | **XKit** | `/xkit` | required | API keys + MCP for agents. Open since Aug 24. Called XDev at `/xdev` until Oct 20 (owner: one app per letter); `/xdev` forwards. Chinese X開發者 unchanged; `/api/xdev/*`, `/api/v1/*`, `/api/mcp` stay. |
 | **API v1** | `/api/v1/chat/completions` | API key | OpenAI-compatible inference for games/agents. **See `docs/API-V1.md`.** |
-| **XOracle** (XTell until Oct 20) | `/xoracle` (`/xtell` forwards) | the free chart is open, sign-in at the first question (xtell.modelxd.com since Oct 1, www's `/xtell` since Oct 4) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XTELL-PAGE.md`.** |
+| **XOracle** (XTell until Oct 20) | `/xoracle` (`/xtell` forwards) | the free chart is open, sign-in at the first question (www's `/xoracle` since Oct 4; xtell.modelxd.com, its door from Oct 1, forwards there since Oct 22) | X先知 (X算命 until Oct 3): temple street (八字/紫微/月老/關帝籤/媽祖籤/四面佛/九曜 Jyotish/占星塔 Western/姓名/測字/易學堂 I Ching/孫子兵法, what to do next). Charts, sticks and 流年 computed by code, read by chosen masters. **See `docs/XORACLE-PAGE.md`.** |
 | **XSports** | `/xsports` | **ADMIN ONLY since Oct 16** (lib/hidden-apps: its feeds are licensed for non-commercial use only; page not found for everyone else) | X體育 (Oct 12-14; on dev and main since Oct 14, one commit each, the history on `claude/xsports`): live MLB and NBA. A game's room: 戰況 (plays, plus the leagues' highlight clips via `/api/xsports/highlights`, `lib/xsports-highlights.ts`) left; chat with fans and two house-paid AI commentators (`lib/xsports-ais.ts`, `lib/xsports-room-ai.ts`; since Oct 15 each game draws two of the top models, Claude Opus 5.5 / GPT-6.1 Sol / Gemini 3.1 Pro / Grok 4.7 / Qwen3.8 Max, one per maker, fixed per game (`gameDraw`, a seeded shuffle) and the same in every language's room, at medium thinking; a remark costs ~$0.02-0.04; every remark's cost goes to the Taipei day's total in `xsports_ai_spend` (migration 135, `lib/xsports-ai-spend.ts`) and at $50 (`XSPORTS_AI_DAILY_USD`) every room falls back to GPT-6 Luna + Qwen 3.8 Flash at their quickest until midnight; fails closed (no table, no read = the cheap pair); the day is a tile on `/admin/traffic`, red with the time once capped; the speaking lock holds 150 s, a fan's @ waits up to 60 s, tick 180 s / room POST 300 s; they take turns; @AI asks whichever is up, @handle that one only, never stood in for; they may @ each other, one answer and never a question back; checks `npx tsx scripts/xsports-room-check.ts`; the room's AI cheerleader 晴晴 (Oct 15; `lib/xsports-cheer.ts`, `CHEERLEADER` in `lib/xsports-ais.ts`): a public character of founder@modelxd.com (`x_characters` 707c0db5…, persona/photo/model edited in XPersona; private = out of the rooms), in MLB 繁中 rooms only; she cheers the first live moment she sees, every run, a rally for the team coming up at each half-inning, and the final out, at most once every 2 min (Oct 16: the stricter first rule left her silent for 15 minutes of a live game), and answers @晴晴 at once; she is a Dodgers fan (`CHEERLEADER.team`, owner Oct 16): in Dodgers games she cheers for LA (`FAN_LINE`) and posts from her Dodger-blue set (no team marks; never MLB footage or logos), elsewhere both sides and the red XD set; chants players by name the CPBL way (name puns, 全壘打 / 安打 calls, 三振 for pitchers; names as Taiwan says them); she shares the commentators' lock but never their turns or state; house-paid within the $50/day (cheap model past it); her messages are kind ai with model_name 晴晴 and her photo; some come with a picture or clip from her REVIEWED set (`lib/xsports-cheer-media.ts`: red 12 photos + 2 clips, Dodger blue 9 photos + 2 clips, HappyHorse clips with the watermark off and the model's own sound (owner Oct 16: "please use models with audio support"; it was stripped until then), in x-characters/<founder>/cheer/; a clip in a room loops silently, its speaker button alone turns the sound on and off, a tap plays it full screen (`ClipView`); nothing automatic is made on the spot: it would reach a public room unseen): a fan's @晴晴 asking for a selfie / dance / photo, her first word in a room, a home run, the final out; at most one per room every 10 min; admins (ADMIN_EMAILS; the room GET says `admin`) get 請晴晴… in her card (Oct 16; owner: "fresh each time"): 自拍 / 跳舞 / 應援影片 / 幫某人加油 (a name, moderated, at most 16 characters) are made NEW each time (`lib/xsports-cheer-fresh.ts`: a real photo with one of her reviewed photos for who she is, a pose picked at random, Dodger blue in Dodgers games; a clip is that photo moved for 3 or 5 s (the card's 影片長度), watermark off, re-encoded by ffmpeg-static keeping its sound, 1-2 min; the 加油 one is a photo with 「<name> 加油！」 in a comic speech bubble, as a photo or a clip). The models are drawn at random from two lists in a JSON file in the public bucket, `x-characters/<founder>/cheer/models.json` (owner Oct 16: "we should always have a list and randomly use one ... so we know which models are better"; "use a different way to fetch the list so we don't have to push changes"): read at most once a minute, defaults in `lib/xsports-cheer-models.ts`; only rows that fit are used (enabled, not blocked for xsports; photo models take a reference; clip models are image to video WITH sound and take the length); the next one tries when one fails (3 at most); a clip's first frame is drawn in the shape its video model takes (Gemini Omni 9:16, Wan/H3 3:4, HappyHorse 2:3). Each ask is a row of `xsports_cheer_jobs` (migration 137: every model tried, the maker, time, cost, the message it became); fans 👍 / 👎 her pictures and clips (`xsports_media_votes`, `/api/xsports/room/vote`), never told the model; `/admin/traffic` has the per-model table (`lib/xsports-cheer-stats.ts`); your card's preview names the model, time and cost, made in `after` (maxDuration 800) into x-characters/<founder>/cheer/fresh/ (a job is files, no table: <id>.jpg / <id>.mp4 / <id>.failed, the id starting with its start time; the page polls `GET /api/xsports/cheer?draft=`), shown to the admin and posted only on 貼出 (換一個 makes another, 不要了 drops it; the job outlives closing the card, sessionStorage), each counted in the day's total; `/api/xsports/cheer` is admins only (403); unposted fresh files stay in the folder; `media_url`/`media_kind` on messages (migration 136; words only until it runs); fans delete their own messages, anyone reports any message incl. the AI's with a reason (in-app dialog; migration 133), 3 reports hide; removals reach open pages as a Realtime broadcast 'gone'), AI 私聊 (up to 4 models the viewer picks: a question goes to each, one after another, each debited and saved before the next, the wallet checked before each; per-model ⚙: talk level while watching (關/少說/一般/多說, each model on its own clock, one unasked remark at a time) and thinking level (its own declared levels); a question can be aimed at one model (chip, 回覆, @ with a list; the public chat's @ lists @AI, @Luna, @Qwen and the fans who spoke); list price per remark; `/api/xsports/talk`, `lib/xsports-turn.ts`; one saved chat per game, 清除對話 deletes the game's chats (migration 130); checks `npx tsx scripts/xsports-turn-check.ts`), box score and odds right; 賠率 opens with a timeline of each source's chance over time (`OddsChart`, `/api/xsports/odds/[pk]`, `lib/xsports-odds-history.ts`: MLB's or ESPN's win model per play, Kalshi candlesticks and Polymarket prices-history, each minute around the game and each hour back to the market's opening; a finished game's Kalshi market is found by its event ticker); Polymarket's current price is its order book's midpoint (the event's own prices trailed by ~30 minutes in a live game). Reporting the AI also offers 不懂球 (`clueless`, migration 134). Hiding (Oct 14): a name tapped in 公開聊天室 opens a card (隱藏這個人 / 隱藏 Luna or Qwen / 隱藏所有 AI 球評 / 檢舉), a flash offers 復原; the top bar's gear opens X體育設定 (你的名字, the account's own display name with 修改名字 to `/profile#face`, which opens the account page's editor; 顯示 AI 球評 switch; 隱藏名單 with 取消隱藏). One list for every chat room, in this browser only, each entry for 30 days (`app/xsports/hidden.ts`, localStorage `xsports.hidden`); hidden messages vanish and leave the @ list. The first message opens a name panel filled with the current name (it may be the sign-in name, owner Oct 14; a rule that it differ made the panel reopen forever); every refusal shows in the panel. A compact league toolbar on top (back to the games in a room, MLB / NBA capsules; NBA is its landscape mark, wordmark drawn 1.45x wide). 數據 says the game has not started until it has. Phones (up to 760px): one scroller, the page (`pageScroll()`; an inner chat box plus a folding header was tried Oct 14 and dropped: "too many layers"). The site bar (`html[data-xs-room] .nav` absolute), the league bar and the score header scroll away; the tabs stick at the top with the score line (`MiniScore`, shown once the header is gone: `.stuck`; a tap scrolls to the top); the composer sticks to the bottom; chats follow the page's bottom (`useStickToBottom`). 公開聊天室 goes back to the game's first message (Oct 15; room GET `?before=<id>` pages of 80, `more`) and draws only a window: the newest 120 while watching, 80 more as the reader nears an edge, at most 360 once they stop, up to 5000 kept as data; rows are memo (`RoomRow`); 回到最新 when reading back. The reader's place is held in page coordinates and never re-chosen mid-change. X體育設定 also picks the public chat's language (聊天室語言, Oct 15: default the site's; `app/xsports/room-lang.ts`, localStorage `xsports.roomLang`; the room and its AIs follow it, the box names the room when it differs). Dates are the viewer's (Oct 15: "it's actually tomorrow"): `useToday()` and `/api/xsports/games?tz=` list the games that start on that day where the viewer is (`lib/xsports-day.ts`). Addresses: `/xsports?league=mlb&game=849813`, `/xsports?league=nba`; no league lists every league, none marked; the first `?l=`/`?g=` links still open and are rewritten. Feeds: MLB's free Stats API and ESPN, prototype only (their terms are not for commercial use). |
 | **XEval** | `/xeval` | public | Our benchmark lab: GDPval + Terminal-Bench 2.1 ladders with measured $/task. **See `docs/XEVAL-PAGE.md`.** |
 
@@ -392,7 +398,7 @@ missing), and the vote feed shows the viewer's language first.
 **X先知's layout since Oct 16** (owner): no search bar (out of Omnibox's
 `SURFACES`); X先知's top bar carries the types Text / Image / Video / Game
 (`app/xduel/XDuelBar.tsx`, `?mode=` in the address; the permalink's bar
-links to a new duel), and both pages wear www's /xtell palette, serif
+links to a new duel), and both pages wear www's /xoracle palette, serif
 headlines and round buttons via `.xduel-xt` in globals.css (scoped: XDirect
 also uses `.xduel-page`). **XVote folded in, Oct 17** (owner: nobody used
 it): the 熱門 starter prompts under the composer are gone, replaced by the
@@ -428,7 +434,7 @@ isn't entitled. All the actual UI is in `client.tsx`.
 for its own door, `xcreate.modelxd.com` (Sep 26), which was never released;
 on Oct 13 the owner dropped it ("I will only keep dev.modelxd.com/xcreate or
 www.modelxd.com/xcreate"; "you can remove anything related to it"). /xcreate
-now shows that studio in www's shell (left nav, ModelXD logo), as /xtell
+now shows that studio in www's shell (left nav, ModelXD logo), as /xoracle
 does: `StudioTypeBar.tsx` (the door's types row: Text, Image, Video, 語音,
 音樂, Film, 同款) is pinned on top (under the phone's 60px header), and `.xcs-page`
 (standalone.css) carries X創作's `--xc-*` colours around the studio and its
@@ -440,7 +446,7 @@ server read) were removed with `isStandalone`. Browsing needs no account
 The model picker keeps the door's look there (`studio` prop: no XD score,
 no internal id; owner, Oct 3: "not ready yet"). No Omnibox bar on /xcreate.
 Your works link to `/xcreate?id=`; the Library is www's /profile XCreate
-tab. Its name follows the language like XTell's X先知: X創作 / X创作 / X作成 /
+tab. Its name follows the language like XOracle's X先知: X創作 / X创作 / X作成 /
 X창작 (`nav.xcreate`; Sep 28), also the page title (`lib/xcreate-meta.ts`). **Redesigned under Generate, Oct 3** (owner, learned from
 Pollo AI's /image page; the composer stays as it was, owner: "the top part
 stays the same", except that its From dropdown sits inside the prompt box,
@@ -807,7 +813,7 @@ app/
 ├── xfilm/auto/                 # 自動成片: FilmStudio (Claude makes the film)
 ├── xfilm/remake/               # 同款: RemakeStudio, FanTemplate (風扇變裝)
 ├── xeval/page.tsx              # Benchmark ladders (see docs/XEVAL-PAGE.md)
-├── xtell/page.tsx  xtell/client.tsx   # X先知 temples (see docs/XTELL-PAGE.md)
+├── xoracle/page.tsx  xoracle/client.tsx   # X先知 temples (see docs/XORACLE-PAGE.md)
 ├── profile/page.tsx            # Two views (Oct 15) under X先知's own top bar
 │                               #   style: Profile (picture, name, wallet,
 │                               #   ledger, plan, referral, my voices, X先知 settings,
@@ -862,7 +868,7 @@ lib/
 ├── werewolf-lang.ts            # Werewolf per-language strings
 ├── house-llm.ts                # House-paid calls: Claude, OpenAI on failure
 ├── inference.ts                # Shared text-inference core (API v1 + Werewolf)
-├── conversation-memory.ts      # Long conversations: model limits, budget, summaries (XTell; XTalk next)
+├── conversation-memory.ts      # Long conversations: model limits, budget, summaries (XOracle; XTalk next)
 ├── json-schema.ts              # Small JSON Schema validator + tolerant extractor
 ├── schema-adapt.ts             # Per-provider JSON Schema dialect adapter
 ├── xdirector-prompt.ts         # Director system prompt
@@ -891,12 +897,19 @@ supabase/                       # Numbered SQL migrations (01 → 70)
 ### Legacy redirects
 - **Renamed apps (Oct 20): `lib/renamed-apps.js`**, one list that
   `next.config.js` turns into redirects (307 while new, query kept):
-  `/xdev` and below → `/xkit`; `/xtell` → `/xoracle` (the page only:
-  `public/xtell/*` pictures keep their paths, so no `/xtell/*` rule). Internal
-  names stay (`xtell_*` tables, `.xtell-*` classes, `lib/xtell-*`,
-  `/api/xtell/*`, page keys `xtell/<room>`, `reference_type 'xtell'`); the
-  door keeps `xtell.modelxd.com`. /admin/traffic counts xoracle with xtell
-  and xdev with xkit.
+  `/xdev` and below → `/xkit`; `/xtell` and below → `/xoracle` (the pictures
+  moved to `public/xoracle/` on Oct 22, so an old picture link forwards too).
+  **The code took the XOracle name on Oct 22** (owner: "change all XTell to
+  XOracle in the code and doc"): files, components, `lib/xoracle-*`,
+  `.xoracle-*` classes, `xoracle.*` string keys, `docs/XORACLE-*.md`,
+  `/api/xoracle/*` (next.config.js rewrites `/api/xtell/*` there for tabs
+  opened before the move). **Saved data keeps `xtell`**: the `xtell_*` tables
+  and functions and their migration files, page keys `xtell` /
+  `xtell/<room>`, `reference_type 'xtell'`, `blocked_features 'xtell'`,
+  /admin/traffic's product key, the Library section key, browser storage keys
+  (`xtell.zhanxing.birth`, `xtell:pins:v1`, …) and the reserved handle.
+  `XORACLE_DAILY_MODEL` (the old `XTELL_DAILY_MODEL` is still read).
+  /admin/traffic counts xoracle with xtell and xdev with xkit.
 - `/models` → `/xboard`
 - `/duel/<id>` → `/xduel/<id>`
 - **XFilm (Oct 22)**, same list: `/xdirect` and one level under it
@@ -1114,7 +1127,7 @@ worse than signing up directly.
   round-trip drops query params. Since Sep 24 it is parked in a cookie on
   `.modelxd.com` (plus localStorage), so a link opened on xtell.modelxd.com
   and a sign-in on www (or the reverse) still pays out. The link itself is
-  built from the request origin, so an XTell account hands out an xtell link.
+  built from the request origin, so an XOracle account hands out an xoracle link.
 - Accepted: one person with one card and two Google accounts collects the pair
   ONCE ($30, not $10). Not repeatable, and stopping it would mean asking every
   referrer for a card.

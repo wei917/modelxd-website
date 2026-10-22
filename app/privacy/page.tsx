@@ -18,7 +18,7 @@ const S = {
 
 export default function PrivacyPage() {
   return (
-    <main id="xtell-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
+    <main id="xoracle-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Privacy</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Privacy Policy</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         XDirect, XCut, XTalk, XGame, XWorld, XArch, XOracle, XBoard and the API.
       </p>
 
-      <LocaleSummary items={['legal.privacy.signin', 'legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xtell', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
+      <LocaleSummary items={['legal.privacy.signin', 'legal.privacy.public', 'legal.privacy.private', 'legal.privacy.xoracle', 'legal.privacy.use', 'legal.privacy.cookies', 'legal.privacy.delete']} />
       <h2 style={S.h2}>1. What We Collect</h2>
       <p style={S.p}>
         <strong>Account data.</strong> When you sign in with Google we receive your

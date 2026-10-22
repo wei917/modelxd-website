@@ -1,5 +1,5 @@
 // lib/partial-json.ts — the fields of a JSON object that is still being
-// written, for showing a model's reply while it streams (XTell's free daily
+// written, for showing a model's reply while it streams (XOracle's free daily
 // reading and the fortune-cookie note, Sep 29).
 //
 // Only string and string-array values are read; the first value of any other

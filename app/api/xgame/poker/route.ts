@@ -10,7 +10,7 @@
 //
 // Every model action is billed at list price as it happens (referenceType
 // xgame_poker), the part under a cent carried to the next charge
-// (supabase/114), like XTell.
+// (supabase/114), like XOracle.
 
 export const runtime = 'nodejs'
 export const maxDuration = 200

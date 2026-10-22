@@ -1,5 +1,5 @@
 'use client'
-// XFilm's top bar (Oct 22): X先知's own bar on www (.xtell-embedded-bar and
+// XFilm's top bar (Oct 22): X先知's own bar on www (.xoracle-embedded-bar and
 // its temple row), as XDuel's, XGame's and /profile's, with XFilm's four
 // places as its rooms, icon over a label: 導演 (XDirect), 剪輯 (XCut),
 // 自動成片 (X創作's 成片) and 同款 (X創作's 同款). Each is its own page, so
@@ -35,13 +35,13 @@ export default function XFilmBar() {
   const t = useT()
   const current = xfilmTabOf(usePathname())
   return (
-    <div className="xtell-embedded-bar xfilm-bar">
-      <div className="xtell-embedded-inner">
-        <div className="xtell-temple-wrap">
-          <nav className="xtell-temple-nav" aria-label={t('nav.xfilm')}>
+    <div className="xoracle-embedded-bar xfilm-bar">
+      <div className="xoracle-embedded-inner">
+        <div className="xoracle-temple-wrap">
+          <nav className="xoracle-temple-nav" aria-label={t('nav.xfilm')}>
             {XFILM_TABS.map(tab => (
               <Link key={tab} href={`/xfilm/${tab}`} aria-current={current === tab ? 'page' : undefined}>
-                <span className="xtell-nav-icon xfilm-bar-icon"><TabIcon tab={tab} /></span>
+                <span className="xoracle-nav-icon xfilm-bar-icon"><TabIcon tab={tab} /></span>
                 <span>{t(`xfilm.tab.${tab}`)}</span>
               </Link>
             ))}

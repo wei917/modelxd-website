@@ -11,7 +11,7 @@ not pushed); see the STATE entry of that day.
 
 XKit and XOracle are done (pushed Oct 20): `lib/renamed-apps.js` is the
 redirect list XFilm's old addresses go into (`subpaths` true or false; see
-its header for the /xtell pictures lesson). Migration 143 already reserves
+its header for the /xoracle pictures lesson). Migration 143 already reserves
 the @ID `xfilm`.
 
 ## What changes
@@ -27,7 +27,7 @@ planned, made and cut together is XFilm. (A canvas is not the line: XCreate's
 own runs continue on one.)
 
 Afterwards C, D and T still need one look: D keeps XDuel only; T still has
-XTalk and XTell (XTalk's new name is open).
+XTalk and XOracle (XTalk's new name is open).
 
 ## The model: updream, not CapCut (owner, Oct 17)
 
@@ -209,4 +209,4 @@ the owner's word.
 5. Phase 1 went ahead: the Film v2 work (`lib/film/engine/`, untouched
    since Oct 7) is outside `app/`, so the two do not collide.
 
-Still open: XTalk's new letter (T is shared with XTell).
+Still open: XTalk's new letter (T is shared with XOracle).

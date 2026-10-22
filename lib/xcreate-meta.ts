@@ -3,7 +3,7 @@ import type { Lang } from './lang'
 
 /** Tab title + description for the studio (/xcreate), in the language the
  *  page renders in (lib/lang.ts `serverLang`): the title is the studio's name
- *  in that language (`nav.xcreate`; owner, Sep 28: X創作, as XTell is X先知)
+ *  in that language (`nav.xcreate`; owner, Sep 28: X創作, as XOracle is X先知)
  *  and the description the studio's own subtitle (`xcreate.subtitle`), both
  *  held equal by scripts/test-lang.ts. */
 const XCREATE_META: Record<Lang, Metadata> = {

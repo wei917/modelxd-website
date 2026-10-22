@@ -14,7 +14,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const OUT = path.join(process.cwd(), 'content', 'qian', 'mazu.json')
-const UA = 'ModelXD-XTell/1.0 (https://modelxd.com; public-domain corpus fetch)'
+const UA = 'ModelXD-XOracle/1.0 (https://modelxd.com; public-domain corpus fetch)'
 const TITLE = '天上聖母六十甲子籤'
 
 type Qian = { n: number; ganZhi: string; luck: string; story: string; poem: string[]; sections: Record<string, string> }

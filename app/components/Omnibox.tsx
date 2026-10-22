@@ -40,9 +40,9 @@ type Row = {
  * adds; this way a new route has to opt in. (CC, Aug 5)
  */
 // /profile left on Oct 15: its top is X先知's bar (Profile · Library), as
-// /xtell's is (owner: "why the top bar in the profile page is still the
+// /xoracle's is (owner: "why the top bar in the profile page is still the
 // search bar?"). /xduel left on Oct 16 for the same bar (owner: "remove the
-// search top nav bar and match what XTell has"). /xgame left on Oct 20 for
+// search top nav bar and match what XOracle has"). /xgame left on Oct 20 for
 // the same bar with its games (owner: "remove the search bar"). /xboard
 // left on Oct 22 with XDuel's bar (owner: "XBoard is from XDuel"). /xdirect
 // and /xcut left the same day as XFilm's 導演 and 剪輯, under XFilm's bar.
@@ -79,7 +79,7 @@ export default function Omnibox() {
   const router = useRouter()
   const pathname = usePathname() ?? ''
   // www only: its rows are ModelXD surfaces and the site agent, which the
-  // XTell host does not serve. Not on /xcreate since Oct 13: the studio there
+  // XOracle host does not serve. Not on /xcreate since Oct 13: the studio there
   // is the one the X創作 door had, with its own type bar pinned on top.
   const onSurface = site === 'modelxd' && SURFACES.some(s => pathname === s || pathname.startsWith(s + '/'))
   const [open, setOpen]   = useState(false)

@@ -1,7 +1,7 @@
 'use client'
 // The type the XCreate studio is making (text, image, video, audio), shared
 // between the studio (app/xcreate/client.tsx) and the door's top bar, which
-// carries the four types as XTell's carries its temples (owner, Sep 28). The
+// carries the four types as XOracle's carries its temples (owner, Sep 28). The
 // studio owns it: it publishes its current type while it is on screen (null
 // when it is not, so the bar marks none), and the bar asks it to switch
 // rather than setting it, because a switch may first need a fresh composer.

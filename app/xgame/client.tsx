@@ -42,7 +42,7 @@ import { GAME_INTRO, GAME_NAME_KEY, gamesFor, isGameKey, type GameKey } from '..
 import XGameHero from './XGameHero'
 import GameHistory from './GameHistory'
 import XGameLanding from './XGameLanding'
-import { XTellFooter } from '../components/xtell/XTellNav'
+import { XOracleFooter } from '../components/xoracle/XOracleNav'
 import './xgame.css'
 
 const createSupabaseBrowser = () => createBrowserClient(
@@ -193,7 +193,7 @@ export default function XGameClient({ resumeId = null, initialGame = null }: {
               temple's visits there, not in the menu (owner, Oct 21). */}
           {!resume && active && <GameHistory game={active} />}
           {/* XOracle's footer, with XGame's own line; a table keeps the page. */}
-          {!resume && <XTellFooter noteKey="xg.footer.note" />}
+          {!resume && <XOracleFooter noteKey="xg.footer.note" />}
         </div>
       </div>
     </div>

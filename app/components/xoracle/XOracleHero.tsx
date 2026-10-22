@@ -1,0 +1,149 @@
+'use client'
+// app/components/xoracle/XOracleHero.tsx — the homepage's scenic entrance (Oct 3,
+// the owner's approved Concept 24). One temple at a time: its world behind,
+// its name, its lead and its line, and a real link into it. It turns by
+// itself every few seconds; the top bar does not follow it (Oct 10, owner:
+// it is not a room you are in).
+//
+// Turning is display only: it never changes the address or the room, never
+// opens a form, sends a reading or spends anything. Entering is the link
+// (href="/?t=<temple>", or "/xoracle?t=<temple>" on www), opened in place as
+// the top bar's are (lib/xoracle-room.ts).
+//
+// It holds still while the pointer or keyboard focus is on it, while the tab
+// is hidden, and from the start when the visitor asks for less motion; any
+// choice of a slide (arrows, dots) pauses it until play is pressed. Every
+// slide has the same height, so turning never moves the page.
+
+import { useEffect, useState, type CSSProperties } from 'react'
+import { useLang } from '../../../lib/i18n'
+import { TempleArtwork, artKind, type TempleKey } from './TempleArtwork'
+import { HERO_ART, HERO_SECONDS, heroTemples, stepSlide, mayRotate } from '../../../lib/xoracle-hero'
+import { useXOracleBase } from './XOracleBase'
+import { doorHome, templeHref } from '../../../lib/site'
+import { goToRoom, opensInPlace } from '../../../lib/xoracle-room'
+
+export default function XOracleHero() {
+  const { lang, t } = useLang()
+  const base = useXOracleBase()
+  const temples = heroTemples(lang)
+  const count = temples.length
+  const [index, setIndex] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [played, setPlayed] = useState(false)      // play pressed: overrides reduced motion
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [hidden, setHidden] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  // Slides shown so far (and the next): only their pictures are fetched.
+  const [seen, setSeen] = useState<Set<number>>(() => new Set([0, 1]))
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!mq) return
+    const set = () => setReducedMotion(mq.matches)
+    set()
+    mq.addEventListener?.('change', set)
+    return () => mq.removeEventListener?.('change', set)
+  }, [])
+  useEffect(() => {
+    const set = () => setHidden(document.hidden)
+    set()
+    document.addEventListener('visibilitychange', set)
+    return () => document.removeEventListener('visibilitychange', set)
+  }, [])
+  useEffect(() => { if (index >= count) setIndex(0) }, [count, index])
+
+  const rotating = mayRotate({ paused, hovered, focused, hidden, reducedMotion: reducedMotion && !played, count })
+  useEffect(() => {
+    if (!rotating) return
+    const id = window.setTimeout(() => setIndex(i => stepSlide(i, 1, count)), HERO_SECONDS * 1000)
+    return () => window.clearTimeout(id)
+  }, [rotating, index, count])
+  useEffect(() => { setSeen(s => s.has(index) && s.has(stepSlide(index, 1, count)) ? s : new Set([...s, index, stepSlide(index, 1, count)])) }, [index, count])
+
+  const current: TempleKey | undefined = temples[index] ?? temples[0]
+
+  if (!current) return null
+  const nameOf = (k: TempleKey) => t('xoracle.site.focus.' + k + '.name')
+  const choose = (i: number) => { setIndex(stepSlide(i, 0, count)); setPaused(true) }
+  // The button shows the visitor's choice, not the moment: hovering or
+  // focusing (the button itself, too) holds the slide but does not flip it.
+  const playMode = !paused && !(reducedMotion && !played)
+  const toggle = () => { if (playMode) setPaused(true); else { setPaused(false); setPlayed(true) } }
+  const name = nameOf(current)
+  // The button names the temple without its gloss: 「夢占い（周公解夢）」 is
+  // the kicker, 「夢占いへ」 the button, so it stays one line on a phone.
+  const short = name.replace(/\s*[（(][^（）()]*[）)]\s*$/, '') || name
+
+  return (
+    <section className="xoracle-hero" aria-roledescription={t('xoracle.home.hero.role')} aria-label={t('xoracle.home.hero.label')}
+      onPointerEnter={e => { if (e.pointerType === 'mouse') setHovered(true) }}
+      onPointerLeave={e => { if (e.pointerType === 'mouse') setHovered(false) }}
+      onFocus={() => setFocused(true)}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
+      onKeyDown={e => {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          const target = e.target as HTMLElement
+          if (target.tagName === 'A') return
+          e.preventDefault(); choose(stepSlide(index, e.key === 'ArrowRight' ? 1 : -1, count))
+        }
+      }}>
+      <h1 className="xoracle-sr-only">{t('xoracle.site.brand')}</h1>
+      <div className="xoracle-hero-stage">
+        {temples.map((k, i) => {
+          const art = HERO_ART[k]!
+          return (
+            <div key={k} className={'xoracle-hero-backdrop' + (i === index ? ' is-on' : '')} aria-hidden="true"
+              style={{ backgroundImage: `linear-gradient(135deg, ${art.wash[0]}, ${art.wash[1]})` }}>
+              {/* A slide not shown yet has only its wash: no picture fetched,
+                  and no fallback art either (it used to overflow the stage). */}
+              {art.src
+                ? seen.has(i) && <picture>
+                    {art.srcPortrait && <source media="(max-width: 480px)" srcSet={art.srcPortrait} />}
+                    {art.srcMobile && <source media="(max-width: 760px)" srcSet={art.srcMobile} />}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={art.src} alt="" decoding="async" fetchPriority={i === 0 ? 'high' : 'low'}
+                      style={{ ...(art.focus ? { objectPosition: art.focus } : {}), ...(art.focusPortrait ? { '--hero-portrait-focus': art.focusPortrait } : {}) } as CSSProperties} />
+                  </picture>
+                : <TempleArtwork temple={k} className={'xoracle-hero-portrait is-' + artKind(k)} />}
+            </div>
+          )
+        })}
+        <div className="xoracle-hero-scrim" aria-hidden="true" />
+        <div className="xoracle-hero-copy" aria-live={rotating ? 'off' : 'polite'} aria-atomic="true">
+          <p className="xoracle-hero-kicker"><span>{name}</span></p>
+          <h2 className="xoracle-hero-title">{t('xoracle.site.focus.' + current + '.lead')}</h2>
+          <p className="xoracle-hero-sub">{t('xoracle.site.focus.' + current + '.eyebrow')}</p>
+          <a className="xoracle-hero-enter" href={templeHref(base, current)} onClick={e => {
+            if (!opensInPlace(e, doorHome(base))) return
+            e.preventDefault(); goToRoom(current); window.scrollTo({ top: 0, behavior: 'instant' })
+          }}>
+            <span>{t('xoracle.site.focus.enter').replace('{temple}', short)}</span><span aria-hidden="true">→</span>
+          </a>
+        </div>
+        {count > 1 && <>
+          <button type="button" className="xoracle-hero-arrow is-prev" onClick={() => choose(stepSlide(index, -1, count))}
+            aria-label={t('xoracle.home.hero.prev')}><span aria-hidden="true">‹</span></button>
+          <button type="button" className="xoracle-hero-arrow is-next" onClick={() => choose(stepSlide(index, 1, count))}
+            aria-label={t('xoracle.home.hero.next')}><span aria-hidden="true">›</span></button>
+          <div className="xoracle-hero-controls">
+            <div className="xoracle-hero-dots" role="group" aria-label={t('xoracle.home.hero.slides')}>
+              {temples.map((k, i) => (
+                <button key={k} type="button" className="xoracle-hero-dot" aria-current={i === index ? 'true' : undefined}
+                  aria-label={t('xoracle.home.hero.slide').replace('{n}', String(i + 1)).replace('{count}', String(count)).replace('{temple}', nameOf(k))}
+                  onClick={() => choose(i)} />
+              ))}
+            </div>
+            <button type="button" className="xoracle-hero-play" onClick={toggle}
+              aria-label={t(playMode ? 'xoracle.home.hero.pause' : 'xoracle.home.hero.play')}>
+              {playMode
+                ? <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden="true"><rect x="0.5" y="0.5" width="3" height="11" rx="1" fill="currentColor" /><rect x="6.5" y="0.5" width="3" height="11" rx="1" fill="currentColor" /></svg>
+                : <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden="true"><path d="M1 0.8v10.4L9.5 6z" fill="currentColor" /></svg>}
+            </button>
+          </div>
+        </>}
+      </div>
+    </section>
+  )
+}

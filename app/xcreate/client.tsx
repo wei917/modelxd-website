@@ -971,7 +971,7 @@ function Gallery({ userId, filterMode, onCounts, onOpen, limit = 40, compact = f
 // the production build's prerender pass — dev mode tolerates its absence,
 // `next build` hard-fails. The wrapper is the whole fix.
 // OptPill / OptGroup / SLOT_COLORS live in app/components/OptControls.tsx
-// (shared with XTell since Sep 24).
+// (shared with XOracle since Sep 24).
 
 export default function CreateClient() {
   return (
@@ -3419,7 +3419,7 @@ function CreateStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchIdParam])
 
-  // The door's top bar carries the four types (owner, Sep 28, as XTell's
+  // The door's top bar carries the four types (owner, Sep 28, as XOracle's
   // carries its temples). The studio publishes the type it is making and
   // takes the bar's requests. With a run or its results on screen, a request
   // opens a fresh composer in that type, as New does: the run goes on

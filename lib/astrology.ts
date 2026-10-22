@@ -288,7 +288,7 @@ export type NatalChart = {
 
 export type BirthPlace = { y: number; m: number; d: number; h: number; mi: number; lat: number; lon: number; tz: string; place: string; hourUnknown?: boolean
   /** The birth instant (ms), when the caller has already resolved the wall
-   *  time against the zone's history (lib/xtell-time: a repeated hour needs
+   *  time against the zone's history (lib/xoracle-time: a repeated hour needs
    *  the visitor's choice). Otherwise the wall time is converted here. */
   utc?: number }
 

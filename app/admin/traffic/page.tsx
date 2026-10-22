@@ -74,7 +74,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
   // The same goes for the range's own numbers (migration 118): without them
   // the tiles show today, under a heading that says so.
   // Taps on the sign-in buttons (migration 120) follow the country too, and
-  // so do XTell's answer votes and share presses (122), and what ad visitors
+  // so do XOracle's answer votes and share presses (122), and what ad visitors
   // did (123). Accounts per country (123) are every country.
   const [byCountry, signins, range, tapped, voted, shared, funnel, accounts, byProduct, pageViews] = upgraded
     ? await Promise.all([

@@ -447,7 +447,7 @@ const NEEDS_123 = 'What ad visitors did, and accounts per country, appear once s
 const AD_SOURCE: Record<string, string> = { google: 'Google Ads', chatgpt: 'ChatGPT ads' }
 /** "43 (70%)": a count and its share of the ad browsers. */
 const ofAll = (n: number, all: number) => (all > 0 ? `${num(n)} (${Math.round((100 * n) / all)}%)` : num(n))
-/** XTell share counter words (lib/xtell-feedback.ts). */
+/** XOracle share counter words (lib/xoracle-feedback.ts). */
 const SHARE_KIND: Record<string, string> = { answer: 'Answer', daily: "Today's fortune", almanac: 'Almanac', cookie: 'Fortune cookie', tarot: 'Tarot', qian: '籤 (stick)' }
 const SHARE_HOW: Record<string, string> = { save: 'Save to Photos (iPhone)', download: 'Download', share: 'Share…', copy: 'Copy link' }
 /** One line per app, each in a colour that stays with the app whatever the
@@ -473,8 +473,8 @@ const productName = (p: string) => PRODUCT_NAMES[p] ?? `/${p}`
  *  the path it is. */
 function pageName(key: string): string {
   if (key === 'xtell' || key === '/xtell' || key === '/xoracle') return 'X先知 street'
-  const room = key.match(/^xtell\/([a-z]+)$/)?.[1]
-  if (room) return `X先知 ${STRINGS[`xtell.site.focus.${room}.name`]?.['zh-Hant'] ?? room}`
+  const room = key.match(/^xtell\/([a-z]+)$/)?.[1]  // page keys stay 'xtell/<room>' (saved)
+  if (room) return `X先知 ${STRINGS[`xoracle.site.focus.${room}.name`]?.['zh-Hant'] ?? room}`
   if (key === '/') return 'www home'
   const app = key.match(/^\/(x[a-z]+)(\/.*)?$/)
   if (app && PRODUCT_NAMES[app[1]]) return `${PRODUCT_NAMES[app[1]]}${app[2] ?? ''}`
@@ -489,7 +489,7 @@ export default function TrafficView({ rows, whole, taps, votes, shares, funnel, 
   rows: DayRow[]
   /** Presses of Google and LINE in the range (migration 120), or null until it has been run. */
   taps: TapTotals | null
-  /** 👍 / 👎 on XTell answers and share presses in the range (migration 122),
+  /** 👍 / 👎 on XOracle answers and share presses in the range (migration 122),
    *  or null until it has been run. */
   votes: VoteLine[] | null
   shares: ShareLine[] | null

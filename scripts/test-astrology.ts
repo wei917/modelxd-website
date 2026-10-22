@@ -19,7 +19,7 @@ import {
   aspectsBetween, houseOf, longitude, SIGNS, PLANETS, type BirthPlace,
 } from '../lib/astrology'
 import { jyotishChart, lahiriAyanamsa, zonedToUtc } from '../lib/jyotish'
-import { zhanxingChart, zhanxingFacts, validBirth } from '../lib/xtell'
+import { zhanxingChart, zhanxingFacts, validBirth } from '../lib/xoracle'
 
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => {
@@ -257,7 +257,7 @@ const knownAt = (y: number, m: number, d: number, h = 12) => { const b: any = { 
 // other websites) ────────────────────────────────────────────────────────────
 {
   const { seasonTransits, currentSkyFacts, SLOW_PLANETS } = require('../lib/astrology')
-  const { MASTERS, TONE } = require('../lib/xtell')
+  const { MASTERS, TONE } = require('../lib/xoracle')
   const at = new Date('2026-10-02T12:00:00Z')
   const owner = { y: 1990, m: 9, d: 17, h: 0, mi: 0, gender: 'male', hourUnknown: false } as any
   const natal = zhanxingChart(owner, 'hsinchu', 'natal')

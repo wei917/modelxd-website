@@ -8,7 +8,7 @@
 // nonsense kana). A Japanese おみくじ prints the 書き下し and a plain
 // translation beside the poem, so each poem gets both, written once and
 // labelled as the AI's on the page; the teacher is given the same text and
-// told to quote it rather than make its own (lib/xtell.ts guandiFacts).
+// told to quote it rather than make its own (lib/xoracle.ts guandiFacts).
 //
 // The sets: 關帝 100, 媽祖 60, 元三大師 観音百籤 100 (the Japanese pages'
 // 觀音 edition). 260 poems.

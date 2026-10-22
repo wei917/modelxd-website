@@ -12,9 +12,9 @@ import { XCREATE_TEMPLATES } from '../xcreate/templates'
 import ContactEmail from './ContactEmail'
 import BugReportLink from './BugReport'
 import { useSite } from '../../lib/useSite'
-import XTellNav from './xtell/XTellNav'
+import XOracleNav from './xoracle/XOracleNav'
 import { useFace } from '../../lib/use-face'
-import { goToRoom } from '../../lib/xtell-room'
+import { goToRoom } from '../../lib/xoracle-room'
 
 // The logo doubles as the home link, so the explicit "Home" item is gone.
 const ALL_NAV_LINKS = [
@@ -31,8 +31,8 @@ const ALL_NAV_LINKS = [
   { href: '/xeval',       i18n: 'nav.xeval',       protected: false, icon: 'board'  },
   // Open like xtell.modelxd.com: the free chart needs no account, sign-in
   // comes at the first question.
-  { href: '/xoracle',     i18n: 'nav.xtell',       protected: false, icon: 'game'   },
-  // Open like /xtell: the scores are free to look at, sign-in comes when the
+  { href: '/xoracle',     i18n: 'nav.xoracle',       protected: false, icon: 'game'   },
+  // Open like /xoracle: the scores are free to look at, sign-in comes when the
   // AI buddy starts talking (it is billed).
   { href: '/xsports',     i18n: 'nav.xsports',     protected: false, icon: 'sports' },
   // XDev — API keys + MCP for external agents. Open since Aug 24.
@@ -104,7 +104,7 @@ function historyTitle(prompt: string): string {
   return words.slice(0, 7).join(' ') + (words.length > 7 ? '…' : '')
 }
 
-// Referral code cookie shared across www and xtell (see claimReferral).
+// Referral code cookie shared across www and xoracle (see claimReferral).
 // On modelxd.com hosts the cookie is set for `.modelxd.com`; anywhere else
 // (localhost, previews) it is host-only. 30 days, Lax, never HttpOnly — the
 // client reads it back.
@@ -410,7 +410,7 @@ export default function Nav() {
   // NOTE: this early return MUST stay below every hook above — React
   // requires the same hooks to run in the same order on every render,
   // or you get "Rendered fewer hooks than expected".
-  if (site === 'xtell') return <XTellNav user={user} />
+  if (site === 'xoracle') return <XOracleNav user={user} />
   if (pathname === '/coming-soon') return null
 
   const handleProtectedClick = (e: React.MouseEvent, href: string, isProtected: boolean) => {
@@ -420,7 +420,7 @@ export default function Nav() {
       return
     }
     // X先知 from inside one of its temples (/xoracle?t=bazi) goes back to the
-    // street in place, as the door's wordmark does (lib/xtell-room.ts).
+    // street in place, as the door's wordmark does (lib/xoracle-room.ts).
     if (href === '/xoracle' && pathname === '/xoracle' && new URLSearchParams(window.location.search).has('t')) {
       e.preventDefault()
       setMenuOpen(false)

@@ -64,7 +64,7 @@ function serviceClient(): SupabaseClient {
 /**
  * Add a charge, in millionths of a dollar, to the user's carry and get back
  * the whole cents now due (then debit them with debitCredits). The wallet is
- * whole cents and an XTell answer costs a fraction of one: rounding each
+ * whole cents and an XOracle answer costs a fraction of one: rounding each
  * charge billed nothing (a test round, Sep 29), and rounding up would
  * overbill. Over time the user pays the sum of the charges rounded down to
  * the cent.

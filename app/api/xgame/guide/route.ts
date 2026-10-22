@@ -1,7 +1,7 @@
 // app/api/xgame/guide/route.ts — XGame's guide box on its landing page
 // (Oct 22; owner: "you should add the guide chat box, same as XOracle").
 //
-// X先知's front-door guide (app/api/xtell/assistant) for games: house-paid,
+// X先知's front-door guide (app/api/xoracle/assistant) for games: house-paid,
 // public, a per-IP floor on requests, one JSON answer per question. It knows
 // XGame from the site agent's own page (content/site-guide.md, the XGame
 // section), so a product change reaches it by editing that markdown. It may

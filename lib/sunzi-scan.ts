@@ -50,7 +50,7 @@ export async function scanWith(s: Scanner, message: string, userId: string | nul
   ])
   if (timer) clearTimeout(timer)
   const picks = error ? null : scanPicks(text)
-  if (!picks) console.warn(`[xtell/sunzi] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
+  if (!picks) console.warn(`[xoracle/sunzi] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
   return picks
 }
 

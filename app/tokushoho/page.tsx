@@ -34,7 +34,7 @@ const S = {
 
 export default function TokushohoPage() {
   return (
-    <main id="xtell-main" tabIndex={-1} lang="ja" style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
+    <main id="xoracle-main" tabIndex={-1} lang="ja" style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Legal</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>特定商取引法に基づく表記</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>最終更新：2026年9月29日</p>

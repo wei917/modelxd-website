@@ -4,7 +4,7 @@
 //
 // The root layout reads the site from the request header on the server and
 // hands it down through SiteProvider, so the very first paint already wears
-// the right shell — no ModelXD sidebar flashing before the XTell one (found
+// the right shell — no ModelXD sidebar flashing before the XOracle one (found
 // by Codex in browser QA, Sep 23). The hostname/cookie detection after mount
 // is only the fallback for a tree rendered without the provider.
 

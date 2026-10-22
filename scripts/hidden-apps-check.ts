@@ -19,7 +19,7 @@ const ok = (cond: boolean, msg: string) => { console.log(`${cond ? 'PASS' : 'FAI
 
 // ── The list ────────────────────────────────────────────────────────────
 ok(hiddenApp('/xsports')?.key === 'xsports' && hiddenApp('/xsports?league=mlb&game=1')?.level === 'admin' && hiddenApp('/api/xsports/room/vote')?.key === 'xsports', 'hiddenApp: XSports is admin only, its pages and APIs')
-ok(hiddenApp('/xsportsfan') === null && hiddenApp('/xtell') === null && hiddenApp('/api/xtell/x') === null && !isHiddenHref('/xboard') && isHiddenHref('/xsports'), 'hiddenApp: nothing else (not even a path that only starts the same)')
+ok(hiddenApp('/xsportsfan') === null && hiddenApp('/xtell') === null && hiddenApp('/api/xoracle/x') === null && !isHiddenHref('/xboard') && isHiddenHref('/xsports'), 'hiddenApp: nothing else (not even a path that only starts the same)')
 const guide = 'intro\n<!-- app:xsports -->\n### XSports\nscores\n<!-- /app:xsports -->\n## Accounts\n'
 ok(withoutHidden(guide) === 'intro\n## Accounts\n', "withoutHidden: the site guide loses the hidden app's part")
 ok(HIDDEN_APPS.every(a => a.level === 'admin' || a.level === 'unlisted'), 'every entry has a level')
@@ -37,7 +37,7 @@ function proxyWith(o: { user?: { email: string } | null; admins?: string; refres
   const mocks: Record<string, unknown> = {
     'next/server': { NextResponse: {
       next: () => new Res('next', 200),
-      redirect: (u: any) => new Res('redirect', 307, String(u.pathname ?? u)),
+      redirect: (u: any, status?: number) => Object.assign(new Res('redirect', status ?? 307, String(u.pathname ?? u)), { href: String(u.href ?? u) }),
       rewrite: (u: URL) => new Res('rewrite', 200, u.pathname),
       json: (body: unknown, init?: { status?: number }) => new Res('json', init?.status ?? 200, undefined, body),
     } },
@@ -48,7 +48,7 @@ function proxyWith(o: { user?: { email: string } | null; admins?: string; refres
     } } }) },
     '@/lib/hidden-apps': real,
     '@/lib/site-token': { verifySiteToken: async (_pw: string, c?: string) => c === 'ok' },
-    '@/lib/site': { siteOfHost: () => o.door ?? 'modelxd', isSiteRoute: () => false, isXTellPath: () => false, SITE_HEADER: 'x-site', SITE_COOKIE: 'site' },
+    '@/lib/site': { siteOfHost: () => o.door ?? 'modelxd', isSiteRoute: () => false, isXOraclePath: () => false, SITE_HEADER: 'x-site', SITE_COOKIE: 'site', XORACLE_HOSTS: ['xtell.modelxd.com'], XORACLE_PATH: '/xoracle', MAIN_ORIGIN: 'https://dev.modelxd.com' },
     '@/lib/lang': { resolveLang: () => 'en', acceptTags: () => [], LANG_COOKIE: 'lang', LANG_HEADER: 'x-lang' },
   }
   vm.runInNewContext(js, {
@@ -91,6 +91,16 @@ const req = (path: string, host = 'dev.modelxd.com', cookie?: string) => {
   ok(pw.kind === 'redirect' && pw.url === '/coming-soon', "www's password page still comes first")
   const pwIn = await proxyWith({ user: { email: 'fan@fixture.test' }, pw: 'secret' })(req('/xsports', 'www.modelxd.com', 'ok'))
   ok(pwIn.kind === 'rewrite', 'past the password, a fan still gets page not found')
+
+  // xtell.modelxd.com, the old door, forwards to the main site (Oct 22).
+  const door = proxyWith({ user: null })
+  const home = await door(req('/?t=guandi&ref=ABC123&utm_source=share', 'xtell.modelxd.com')) as any
+  const prof = await door(req('/profile', 'xtell.modelxd.com')) as any
+  ok(home.kind === 'redirect' && home.status === 307 && home.href === 'https://dev.modelxd.com/xoracle?t=guandi&ref=ABC123&utm_source=share' && prof.href === 'https://dev.modelxd.com/profile',
+    'the old door forwards: / to dev.modelxd.com/xoracle with the query, other pages to the same page there')
+  const oldApi = await door(req('/api/xoracle/chart', 'xtell.modelxd.com'))
+  const devHome = await door(req('/?t=guandi'))
+  ok(oldApi.kind === 'next' && devHome.kind === 'next', "its APIs still answer there (an open tab's calls), and no other host forwards")
 
   // An unlisted app: only out of the menus, its address works for anyone.
   const before = (HIDDEN_APPS as any).length

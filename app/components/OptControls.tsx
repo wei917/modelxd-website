@@ -1,7 +1,7 @@
 'use client'
 // app/components/OptControls.tsx — the per-slot option controls XCreate
 // draws under a model card (⚙): a labelled group of pills in the slot's
-// colour. Lifted out of app/xcreate/client.tsx (Sep 24) so XTell's per-master
+// colour. Lifted out of app/xcreate/client.tsx (Sep 24) so XOracle's per-master
 // settings use the same pieces instead of a look-alike. MODULE scope on
 // purpose: inline definitions remount the panel on every state update.
 

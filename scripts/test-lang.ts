@@ -14,7 +14,7 @@ import {
   cookieLang, serverLang, clientLangInit, langCookie, type Lang,
 } from '../lib/lang'
 import { STRINGS } from '../lib/i18n'
-import { xtellMetadata, XTELL_TEMPLE_NAMES } from '../lib/xtell-meta'
+import { xoracleMetadata, XORACLE_TEMPLE_NAMES } from '../lib/xoracle-meta'
 import { xcreateMetadata } from '../lib/xcreate-meta'
 import { mintSiteToken } from '../lib/site-token'
 import { proxy } from '../proxy'
@@ -30,25 +30,25 @@ check('browser tags: Hant script / TW / HK / MO are Traditional, other zh Simpli
 check('Accept-Language: most preferred first, q=0 dropped, junk ignored',
   same(acceptTags('ja,en-US;q=0.9,en;q=0.8'), ['ja', 'en-US', 'en']) && same(acceptTags('en;q=0.5, ko'), ['ko', 'en']) &&
   same(acceptTags('zh-TW;q=0, ja;q=0.3'), ['ja']) && same(acceptTags(''), []) && same(acceptTags(null), []) && same(acceptTags(' , ;q=1,fr;q=abc'), []))
-const X = (...tags: string[]) => browserLang(tags, 'xtell')
-check('XTell fallback: the browser\'s own language only; bare zh is 繁體, only Hans/CN/SG is 简体, anything else 繁體',
+const X = (...tags: string[]) => browserLang(tags, 'xoracle')
+check('XOracle fallback: the browser\'s own language only; bare zh is 繁體, only Hans/CN/SG is 简体, anything else 繁體',
   X('en-US') === 'zh-Hant' && X('ja-JP', 'en') === 'ja' && X('zh') === 'zh-Hant' && X('zh-CN') === 'zh-Hans' && X('zh-SG') === 'zh-Hans' &&
   X('zh-Hans') === 'zh-Hans' && X('zh-HK') === 'zh-Hant' && X('ko-KR') === 'ko' && X() === 'zh-Hant' && X('fr') === 'zh-Hant')
-check('XTell: an English Chrome with Japanese later in its list gets 繁體 (owner, Sep 27)',
-  browserLang(acceptTags('en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6,pt;q=0.5,es;q=0.4'), 'xtell') === 'zh-Hant' && X('en-US', 'ja') === 'zh-Hant' && X('fr', 'ko') === 'zh-Hant' && X('pt', 'zh-CN') === 'zh-Hant')
+check('XOracle: an English Chrome with Japanese later in its list gets 繁體 (owner, Sep 27)',
+  browserLang(acceptTags('en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6,pt;q=0.5,es;q=0.4'), 'xoracle') === 'zh-Hant' && X('en-US', 'ja') === 'zh-Hant' && X('fr', 'ko') === 'zh-Hant' && X('pt', 'zh-CN') === 'zh-Hant')
 for (const site of ['modelxd'] as const) {
   const W = (...tags: string[]) => browserLang(tags, site)
   check(`${site} fallback: first supported language, English otherwise`, W('en-US', 'ja') === 'en' && W('ja') === 'ja' && W('zh') === 'zh-Hans' && W('zh-TW') === 'zh-Hant' && W('fr') === 'en' && W('fr', 'ko') === 'ko' && W() === 'en')
 }
-check('the reported case: 繁體 saved, Japanese browser, XTell → 繁體', resolveLang({ saved: 'zh-Hant', tags: acceptTags('ja-JP,ja;q=0.9'), site: 'xtell' }) === 'zh-Hant')
-check('every saved choice beats the browser, on every door', (['modelxd', 'xtell'] as const).every(site => LANG_CODES.every(l => resolveLang({ saved: l, tags: ['ja', 'ko', 'zh-CN', 'en'], site }) === l)))
-check('every valid ?lang= beats the saved choice; an invalid one is ignored', LANG_CODES.every(q => resolveLang({ query: q, saved: q === 'ko' ? 'ja' : 'ko', tags: ['en'], site: 'xtell' }) === q) && resolveLang({ query: 'xx', saved: 'ja', tags: [], site: 'xtell' }) === 'ja' && resolveLang({ query: 'zh', saved: null, tags: ['ko'], site: 'modelxd' }) === 'ko')
+check('the reported case: 繁體 saved, Japanese browser, XOracle → 繁體', resolveLang({ saved: 'zh-Hant', tags: acceptTags('ja-JP,ja;q=0.9'), site: 'xoracle' }) === 'zh-Hant')
+check('every saved choice beats the browser, on every door', (['modelxd', 'xoracle'] as const).every(site => LANG_CODES.every(l => resolveLang({ saved: l, tags: ['ja', 'ko', 'zh-CN', 'en'], site }) === l)))
+check('every valid ?lang= beats the saved choice; an invalid one is ignored', LANG_CODES.every(q => resolveLang({ query: q, saved: q === 'ko' ? 'ja' : 'ko', tags: ['en'], site: 'xoracle' }) === q) && resolveLang({ query: 'xx', saved: 'ja', tags: [], site: 'xoracle' }) === 'ja' && resolveLang({ query: 'zh', saved: null, tags: ['ko'], site: 'modelxd' }) === 'ko')
 check('an invalid saved value falls through to the browser', resolveLang({ saved: 'klingon', tags: ['ko'], site: 'modelxd' }) === 'ko' && resolveLang({ saved: 'zh', tags: ['ko'], site: 'modelxd' }) === 'zh-Hant')
 
 // ── Server ─────────────────────────────────────────────────────────────────
 check('cookie parsing', cookieLang('a=1; modelxd_lang=ja; b=2') === 'ja' && cookieLang('modelxd_lang=ko') === 'ko' && cookieLang('xmodelxd_lang=ja') === null && cookieLang('') === null && cookieLang(null) === null)
 check('serverLang: the proxy\'s stamp first', serverLang(hdrs({ 'x-modelxd-lang': 'ko', cookie: 'modelxd_lang=ja', 'accept-language': 'en' }), 'modelxd') === 'ko')
-check('serverLang without a stamp: cookie, then Accept-Language for the door', serverLang(hdrs({ cookie: 'modelxd_lang=ja', 'accept-language': 'ko' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'ja,en-US;q=0.5' }), 'xtell') === 'ja' && serverLang(hdrs({ 'accept-language': 'en-US,ja;q=0.5' }), 'xtell') === 'zh-Hant' && serverLang(hdrs({ 'accept-language': 'en-US' }), 'xtell') === 'zh-Hant' && serverLang(hdrs({}), 'modelxd') === 'en')
+check('serverLang without a stamp: cookie, then Accept-Language for the door', serverLang(hdrs({ cookie: 'modelxd_lang=ja', 'accept-language': 'ko' }), 'xoracle') === 'ja' && serverLang(hdrs({ 'accept-language': 'ja,en-US;q=0.5' }), 'xoracle') === 'ja' && serverLang(hdrs({ 'accept-language': 'en-US,ja;q=0.5' }), 'xoracle') === 'zh-Hant' && serverLang(hdrs({ 'accept-language': 'en-US' }), 'xoracle') === 'zh-Hant' && serverLang(hdrs({}), 'modelxd') === 'en')
 check('serverLang ignores a bad stamp', serverLang(hdrs({ 'x-modelxd-lang': '<script>', cookie: 'modelxd_lang=ja' }), 'modelxd') === 'ja')
 
 // ── Client mount step (LangProvider) ───────────────────────────────────────
@@ -106,10 +106,10 @@ function boot(o: Boot) {
 }
 
 // ── Titles: the server's first paint is the client's title ─────────────────
-check('XTell titles and descriptions exist in all five languages and equal xtell.site.tab', LANG_CODES.every(l => xtellMetadata(l).title === (STRINGS['xtell.site.tab'] as any)[l] && typeof xtellMetadata(l).description === 'string' && (xtellMetadata(l).description as string).length > 20))
+check('XOracle titles and descriptions exist in all five languages and equal xoracle.site.tab', LANG_CODES.every(l => xoracleMetadata(l).title === (STRINGS['xoracle.site.tab'] as any)[l] && typeof xoracleMetadata(l).description === 'string' && (xoracleMetadata(l).description as string).length > 20))
 // Shared links (Sep 28): the preview's temple names are the client's own, and each has its picture.
-check('XTell preview names equal xtell.site.focus.<temple>.name in every language', Object.entries(XTELL_TEMPLE_NAMES).every(([k, names]) => LANG_CODES.every(l => names[l] === (STRINGS[`xtell.site.focus.${k}.name`] as any)?.[l])))
-check('every temple has a preview picture; an unknown ?t= gets the street', Object.keys(XTELL_TEMPLE_NAMES).every(k => fs.existsSync(`public/xtell/og/${k}.jpg`)) && fs.existsSync('public/xtell/og/street.jpg') && JSON.stringify(xtellMetadata('en', 'nope').openGraph).includes('/xtell/og/street.jpg') && xtellMetadata('zh-Hant', 'guandi').title === '關帝廟 | X先知')
+check('XOracle preview names equal xoracle.site.focus.<temple>.name in every language', Object.entries(XORACLE_TEMPLE_NAMES).every(([k, names]) => LANG_CODES.every(l => names[l] === (STRINGS[`xoracle.site.focus.${k}.name`] as any)?.[l])))
+check('every temple has a preview picture; an unknown ?t= gets the street', Object.keys(XORACLE_TEMPLE_NAMES).every(k => fs.existsSync(`public/xoracle/og/${k}.jpg`)) && fs.existsSync('public/xoracle/og/street.jpg') && JSON.stringify(xoracleMetadata('en', 'nope').openGraph).includes('/xoracle/og/street.jpg') && xoracleMetadata('zh-Hant', 'guandi').title === '關帝廟 | X先知')
 check('XCreate: /xcreate is titled with the name www\'s nav gives it, and xcreate.subtitle as the description, in all five', LANG_CODES.every(l => xcreateMetadata(l).title === (STRINGS['nav.xcreate'] as any)[l] && xcreateMetadata(l).description === (STRINGS['xcreate.subtitle'] as any)[l]))
 
 // ── The pieces that must stay wired ────────────────────────────────────────
@@ -119,8 +119,8 @@ check('XCreate: /xcreate is titled with the name www\'s nav gives it, and xcreat
   check('layout: <html lang> and LangProvider start from the server\'s language', /<html lang=\{lang\}/.test(layout) && /<LangProvider initial=\{lang\}>/.test(layout) && /serverLang\(h, site\)/.test(layout))
   check('layout: the migration script is the first child of <head> (the first inline script once rendered)', /<head>\s*\{\/\*[\s\S]*?\*\/\}\s*<script dangerouslySetInnerHTML=\{\{ __html: LANG_BOOT \}\} \/>/.test(layout))
   check('metadata in <head> for every visitor', /htmlLimitedBots:\s*\/\.\*\//.test(read('next.config.js')))
-  check('no timed re-titling left in the door top bar', !/setTimeout\(apply/.test(read('app/components/xtell/XTellNav.tsx')))
-  check('every generateMetadata takes the resolved language', ['app/layout.tsx', 'app/page.tsx', 'app/xoracle/page.tsx', 'app/xcreate/page.tsx'].every(f => !/(xtell|xcreate)Metadata\(h\)/.test(read(f))))
+  check('no timed re-titling left in the door top bar', !/setTimeout\(apply/.test(read('app/components/xoracle/XOracleNav.tsx')))
+  check('every generateMetadata takes the resolved language', ['app/layout.tsx', 'app/page.tsx', 'app/xoracle/page.tsx', 'app/xcreate/page.tsx'].every(f => !/(xoracle|xcreate)Metadata\(h\)/.test(read(f))))
 }
 
 // ── The proxy stamps it ────────────────────────────────────────────────────
@@ -134,8 +134,8 @@ async function proxyChecks() {
   const x = 'http://localhost:3001/'
   check('proxy: ?lang= first', (await stamp(x + '?lang=ja', { cookie: 'modelxd_lang=zh-Hans', 'accept-language': 'ko' })).lang === 'ja')
   check('proxy: then the saved cookie (the reported case)', (await stamp(x, { cookie: 'modelxd_lang=zh-Hant', 'accept-language': 'ja-JP,ja;q=0.9' })).lang === 'zh-Hant')
-  check('proxy: then the browser, XTell-aware', (await stamp(x, { 'accept-language': 'en-US,en;q=0.9' })).lang === 'zh-Hant' && (await stamp(x, { 'accept-language': 'ko-KR' })).lang === 'ko')
-  check('proxy: the door is read from the host', (await stamp(x)).site === 'xtell' && (await stamp('http://localhost:3000/')).site === 'modelxd' && (await stamp('http://localhost:3030/')).site === 'modelxd')
+  check('proxy: then the browser, XOracle-aware', (await stamp(x, { 'accept-language': 'en-US,en;q=0.9' })).lang === 'zh-Hant' && (await stamp(x, { 'accept-language': 'ko-KR' })).lang === 'ko')
+  check('proxy: the door is read from the host', (await stamp(x)).site === 'xoracle' && (await stamp('http://localhost:3000/')).site === 'modelxd' && (await stamp('http://localhost:3030/')).site === 'modelxd')
   check('proxy: www falls back to its own rule (any port but the door\'s)', (await stamp('http://localhost:3000/', { 'accept-language': 'en-US' })).lang === 'en' && (await stamp('http://localhost:3030/', { 'accept-language': 'en-US,ja;q=0.5' })).lang === 'en' && (await stamp('http://localhost:3030/', { 'accept-language': 'fr,ja;q=0.5' })).lang === 'ja')
   check('proxy: a client-sent language header is replaced', (await stamp(x, { 'x-modelxd-lang': 'en', 'accept-language': 'ko' })).lang === 'ko')
   const prevPw = process.env.SITE_PASSWORD

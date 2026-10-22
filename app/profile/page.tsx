@@ -8,17 +8,17 @@ import { useLang, useT, LANGS, type Lang } from '../../lib/i18n'
 import { downloadFile, downloadName } from '../../lib/download'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import { useSite } from '../../lib/useSite'
-import XTellAuthGate from '../components/xtell/XTellAuthGate'
+import XOracleAuthGate from '../components/xoracle/XOracleAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
-import XTellActivity from '../components/xtell/XTellActivity'
-import { DailyProfileSettings } from '../components/xtell/XTellDaily'
-import { PersonalitySettings } from '../components/xtell/XTellPersonality'
-import { XTellFooter } from '../components/xtell/XTellNav'
+import XOracleActivity from '../components/xoracle/XOracleActivity'
+import { DailyProfileSettings } from '../components/xoracle/XOracleDaily'
+import { PersonalitySettings } from '../components/xoracle/XOraclePersonality'
+import { XOracleFooter } from '../components/xoracle/XOracleNav'
 import { yenApprox } from '../../lib/plans'
 import { userName, userPhoto } from '../../lib/user-face'
 import FaceEditor, { type HandleInfo } from '../components/FaceEditor'
 import ProfileLibrary, { makeLoader, ProfileViewTabs, type ProfileView, type LibraryActions } from './Library'
-import { renameReading, eraseReading } from '../../lib/xtell-history'
+import { renameReading, eraseReading } from '../../lib/xoracle-history'
 import AccountPanel from './Account'
 import VoicesSection from './Voices'
 
@@ -124,7 +124,7 @@ function ModelXDProfileAuth() { useRequireAuth(); return null }
 
 export default function ProfilePage() {
   const site = useSite()
-  const isXTell = site === 'xtell'
+  const isXOracle = site === 'xoracle'
   const { show: showAuth } = useAuthModal()
   const { lang, setLang } = useLang()
   const t = useT()
@@ -147,7 +147,7 @@ export default function ProfilePage() {
   // settings, deleting the account) and Library (your work, one section per
   // app). /profile opens on Profile (owner, Oct 16); links to your work say
   // ?view=library. The account links force Profile even then: #language (the
-  // sidebar globe), #face (X體育設定's 修改名字), #xtell-… (X先知's links to
+  // sidebar globe), #face (X體育設定's 修改名字), #xoracle-… (X先知's links to
   // its birth details and personality type, which scroll themselves into
   // view) and the returns from Stripe (?checkout=, ?verify=). ?view= keeps
   // a chosen view across a reload. X先知's own front door is unchanged.
@@ -155,7 +155,7 @@ export default function ProfilePage() {
   const accountLink = () => {
     const h = window.location.hash
     const q = new URLSearchParams(window.location.search)
-    return h === '#language' || h === '#face' || h.startsWith('#xtell') || q.has('checkout') || q.has('verify')
+    return h === '#language' || h === '#face' || h.startsWith('#xoracle') || q.has('checkout') || q.has('verify')
   }
   // Declared before the checkout effect below, which strips ?checkout= from
   // the address: effects run in order, so this one still sees it.
@@ -391,7 +391,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return
     const client = sb()
-    if (showActivity || (!isXTell && view === 'profile')) {
+    if (showActivity || (!isXOracle && view === 'profile')) {
       // Latest 100 ledger entries. RLS restricts to the signed-in user.
       setTxLoaded(false)
       client.from('credit_transactions').select('*').eq('user_id', user.id)
@@ -401,7 +401,7 @@ export default function ProfilePage() {
       client.from('user_credits').select('*').eq('user_id', user.id).maybeSingle()
         .then(({ data: c }) => setCredits((c as UserCredits | null) ?? null))
     }
-  }, [user, showActivity, view, isXTell])
+  }, [user, showActivity, view, isXOracle])
 
   // Kick off a Stripe Checkout Session for the selected tier. The server
   // re-validates the tier id and builds a session keyed to the signed-in
@@ -573,11 +573,11 @@ export default function ProfilePage() {
 
   if (!profile) return (
     <>
-      {isXTell ? <XTellAuthGate /> : <ModelXDProfileAuth />}
-      {isXTell ? <main id="xtell-main" tabIndex={-1} className="xtell-container xtell-account-welcome">
-        <h1 className="xtell-account-title">{t('xtell.site.account')}</h1>
-        <p className="xtell-account-note">{t('xtell.site.authCopy')}</p>
-        {user ? <p role="status">{t('common.loading')}</p> : <button className="xtell-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
+      {isXOracle ? <XOracleAuthGate /> : <ModelXDProfileAuth />}
+      {isXOracle ? <main id="xoracle-main" tabIndex={-1} className="xoracle-container xoracle-account-welcome">
+        <h1 className="xoracle-account-title">{t('xoracle.site.account')}</h1>
+        <p className="xoracle-account-note">{t('xoracle.site.authCopy')}</p>
+        {user ? <p role="status">{t('common.loading')}</p> : <button className="xoracle-button" onClick={() => showAuth('/profile')}>{t('auth.signin')}</button>}
       </main> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>{t('common.loading')}</div>}
     </>
   )
@@ -669,15 +669,15 @@ export default function ProfilePage() {
       <div className="cursor-ring" ref={ringRef} />
 
       {/* www's account page wears X先知's look (owner, Oct 16: "font family,
-          font size... all don't match XTell's style"): its paper, ink and
-          vermilion (.xtell-site.is-in-www, as on www's /xtell), its bar, and
-          the account page's own X先知 layout (.xtell-profile). The door's
+          font size... all don't match XOracle's style"): its paper, ink and
+          vermilion (.xoracle-site.is-in-www, as on www's /xoracle), its bar, and
+          the account page's own X先知 layout (.xoracle-profile). The door's
           page is the same markup on its own host. */}
-      <div className={isXTell ? undefined : 'xtell-site is-in-www xtell-www-page pv-xtell'}>
-      {!isXTell && <ProfileViewTabs view={view} onChange={chooseView} />}
-      <div id={isXTell ? "xtell-main" : undefined} tabIndex={isXTell ? -1 : undefined} className="xduel-page xtell-profile">
-        <div className={isXTell ? 'arena' : 'arena profile-arena'} style={{ maxWidth: isXTell ? 1040 : view === 'library' ? 1240 : 760 }}>
-          {!isXTell && view === 'profile' && (
+      <div className={isXOracle ? undefined : 'xoracle-site is-in-www xoracle-www-page pv-xoracle'}>
+      {!isXOracle && <ProfileViewTabs view={view} onChange={chooseView} />}
+      <div id={isXOracle ? "xoracle-main" : undefined} tabIndex={isXOracle ? -1 : undefined} className="xduel-page xoracle-profile">
+        <div className={isXOracle ? 'arena' : 'arena profile-arena'} style={{ maxWidth: isXOracle ? 1040 : view === 'library' ? 1240 : 760 }}>
+          {!isXOracle && view === 'profile' && (
             <AccountPanel
               name={profile.display_name} photo={profile.avatar_url}
               handle={handleInfo?.handle ?? null} email={user?.email ?? null}
@@ -688,12 +688,12 @@ export default function ProfilePage() {
               plan={plan} planBusy={planBusy} planAction={(a, when) => void planAction(a, when)}
               referral={referral} refBusy={refBusy} refCopied={refCopied} onVerifyCard={verifyCard}
               onCopyRef={() => { if (referral) navigator.clipboard?.writeText(referral.link).then(() => { setRefCopied(true); setTimeout(() => setRefCopied(false), 1800) }).catch(() => {}) }}
-              xtellSettings={<div className="xtell-site is-in-www xtell-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>}
+              xoracleSettings={<div className="xoracle-site is-in-www xoracle-profile-tab"><DailyProfileSettings /><PersonalitySettings /></div>}
               voices={<VoicesSection />}
             />
           )}
-          {isXTell && <>
-          {isXTell && <><p className="xtell-eyebrow">XOracle</p><h1 className="xtell-account-title">{t('xtell.site.account')}</h1><p className="xtell-account-note">{t('xtell.site.accountNote')}</p></>}
+          {isXOracle && <>
+          {isXOracle && <><p className="xoracle-eyebrow">XOracle</p><h1 className="xoracle-account-title">{t('xoracle.site.account')}</h1><p className="xoracle-account-note">{t('xoracle.site.accountNote')}</p></>}
 
           {/* Eyebrow — ties the profile page into the same section-label
               motif used across XDuel / XCreate / landing. Gives the page
@@ -733,7 +733,7 @@ export default function ProfilePage() {
               balance card on the right of the same row. They share one
               flex parent with `flex-wrap` so the layout collapses to a
               vertical stack on narrow viewports. */}
-          <div className="xtell-profile-summary" style={{
+          <div className="xoracle-profile-summary" style={{
             display: 'flex', alignItems: 'flex-start',
             gap: 24, marginBottom: 44, flexWrap: 'wrap',
           }}>
@@ -791,7 +791,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Credit balance card (right of profile) */}
-            <div className="xtell-wallet" style={{
+            <div className="xoracle-wallet" style={{
               position: 'relative',
               display: 'flex', alignItems: 'center', gap: 18,
               background: 'var(--surface)',
@@ -868,7 +868,7 @@ export default function ProfilePage() {
               </button>
               {/* Ledger toggle — credit activity belongs to this card. */}
               <button
-                // The same credit ledger on both hosts. The XTell shell once
+                // The same credit ledger on both hosts. The XOracle shell once
                 // pointed this at its charges list; that list became the saved
                 // readings, and the ledger vanished with it (owner, Sep 25).
                 onClick={() => setShowActivity(true)}
@@ -916,7 +916,7 @@ export default function ProfilePage() {
                     fontSize: 10, color: 'var(--muted2)', textTransform: 'uppercase' as const,
                     letterSpacing: '0.18em', fontFamily: 'var(--font-mono), monospace', marginBottom: 6,
                   }}>
-                    {t(isXTell ? 'xtell.site.pass' : 'profile.plan.title')} · {plan.plan.price}{t('profile.plan.permonth')}
+                    {t(isXOracle ? 'xoracle.site.pass' : 'profile.plan.title')} · {plan.plan.price}{t('profile.plan.permonth')}
                   </div>
                   {live ? (
                     <div style={{ fontSize: 14, fontWeight: 700, color: sub.status === 'past_due' ? 'var(--red)' : 'var(--white)' }}>
@@ -1040,7 +1040,7 @@ export default function ProfilePage() {
                   }}>{t('profile.activity')}</span>
                   <button
                     onClick={() => setShowActivity(false)}
-                    aria-label={t('xtell.site.close')}
+                    aria-label={t('xoracle.site.close')}
                     style={{
                       width: 28, height: 28, background: 'transparent',
                       border: '1px solid var(--border2)', borderRadius: 6,
@@ -1206,14 +1206,14 @@ export default function ProfilePage() {
 
           </>}
 
-          {isXTell ? <><DailyProfileSettings /><PersonalitySettings /><XTellActivity userId={user.id} /></>
+          {isXOracle ? <><DailyProfileSettings /><PersonalitySettings /><XOracleActivity userId={user.id} /></>
             // www: the Profile tab (AccountPanel above) holds X先知's
             // settings; its readings are a Library section.
             : view === 'library' && libraryLoader
               ? <ProfileLibrary loader={libraryLoader} actions={libraryActions} />
               : null}
 
-          {(isXTell || view === 'profile') && <>
+          {(isXOracle || view === 'profile') && <>
           {/* ── Danger zone — delete account (Privacy Policy §5) ── */}
           <div style={{ marginTop: 56, border: '1px solid rgba(232,69,60,0.35)', borderRadius: 10, padding: '18px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
@@ -1277,7 +1277,7 @@ export default function ProfilePage() {
       </div>
       </div>
 
-      {isXTell && <XTellFooter />}
+      {isXOracle && <XOracleFooter />}
 
       {/* ── Delete confirmation modal ──────────────────────────────────── */}
       {deleteModal && (
