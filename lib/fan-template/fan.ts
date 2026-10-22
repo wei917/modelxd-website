@@ -55,6 +55,10 @@ export type FanOptions = {
   /** How much of the moving light the blades keep: 1 for polished metal; a
    *  third by default for a material (its colours stay true). */
   sheen?: number
+  /** Drawn flat for a 2D cartoon (owner, Oct 21: "make the entire video
+   *  cartoon/animation style ... 2D"): no moving light, the hub in three flat
+   *  tones of its colour, and an ink line round the blades and the hub. */
+  cel?: boolean
   warpFrom?: number; warpFull?: number
   /** When the fan starts turning (s), seconds per full turn, spin-up time constant. */
   start: number; period: number; ramp?: number
@@ -201,14 +205,31 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
           R *= m; G *= m; B *= m; A *= m
         }
       }
-      // The hub's metal: the chrome's light and shade in the tint's colour.
+      // The hub's metal: the chrome's light and shade in the tint's colour;
+      // for a cartoon, three flat tones of it.
       if (o.hubTint && A > 0 && r <= hubOut) {
-        const L = 0.299 * R + 0.587 * G + 0.114 * B
+        let L = 0.299 * R + 0.587 * G + 0.114 * B
+        if (o.cel) { const l = L / (255 * A); L = 255 * A * (l < 0.3 ? 0.5 : l < 0.6 ? 0.72 : 0.9) }
         R = L * o.hubTint[0]; G = L * o.hubTint[1]; B = L * o.hubTint[2]
       }
       const p = (r * COLS + c) * 4
       sharpTex[p] = R; sharpTex[p + 1] = G; sharpTex[p + 2] = B; sharpTex[p + 3] = A
     }
+  }
+  // A cartoon's ink line: about 3 px round every edge of the drawn fan and
+  // where the hub meets the blades.
+  if (o.cel) {
+    const INK = [38, 26, 18], px = 3
+    const isIn = (rr: number, cc: number) => rr >= 0 && rr < ROWS && sharpTex[(rr * COLS + ((cc % COLS) + COLS) % COLS) * 4 + 3] >= 0.5
+    const edge = new Uint8Array(ROWS * COLS)
+    for (let r = 1; r < ROWS - 1; r++) {
+      const dc = Math.min(60, Math.max(1, Math.ceil(px / (r * Math.PI / 180 / STEP))))
+      for (let c = 0; c < COLS; c++) {
+        if (!isIn(r, c)) continue
+        if ((hubOut > 0 && Math.abs(r - hubOut) < px / 2) || !isIn(r - px, c) || !isIn(r + px, c) || !isIn(r, c - dc) || !isIn(r, c + dc)) edge[r * COLS + c] = 1
+      }
+    }
+    for (let k = 0; k < ROWS * COLS; k++) if (edge[k]) { const p = k * 4, a = sharpTex[p + 3]; sharpTex[p] = INK[0] * a; sharpTex[p + 1] = INK[1] * a; sharpTex[p + 2] = INK[2] * a }
   }
   const blurCols = Math.max(1, Math.round(omega * shutter / fps * STEP))
   const blurTex = new Float32Array(ROWS * COLS * 4)
@@ -288,7 +309,7 @@ export async function renderFanOverlay(o: FanOptions): Promise<void> {
           if (fA > 0) {
             // A material keeps a third of the chrome's moving light unless
             // told otherwise (its own colours stay true).
-            const m = material && r > hubOut ? 1 + (sheen[i] - 1) * bladeSheen : sheen[i], cap = 255 * fA
+            const m = o.cel ? 1 : material && r > hubOut ? 1 + (sheen[i] - 1) * bladeSheen : sheen[i], cap = 255 * fA
             R = Math.min(cap, fR * m) + (1 - fA) * R; G = Math.min(cap, fG * m) + (1 - fA) * G; B = Math.min(cap, fB * m) + (1 - fA) * B
           }
         }

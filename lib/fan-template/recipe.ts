@@ -86,7 +86,60 @@ export type FanRequest = {
   scene?: FanScene
   music: FanMusic
   language: string
+  /** How the whole video is drawn; unset is 'real'. */
+  style?: FanStyle
 }
+
+/** How the whole video is drawn (owner, Oct 21: "make the entire video
+ *  cartoon/animation style ... 2D"). 'real' is the template as it was; each
+ *  look has its own room and blade (made once from the real ones, so every
+ *  place and size is the same), its words in every picture and clip, and a
+ *  fan drawn to match (`cel`: flat colours and an ink outline, no moving
+ *  light). */
+export type FanStyle = 'real' | 'anime2d'
+export const FAN_STYLES: FanStyle[] = ['real', 'anime2d']
+export type FanLook = {
+  plate: { bucket: string; path: string }
+  blade: { bucket: string; path: string }
+  /** The sheet's kind of picture. */
+  sheet: string
+  /** How the person is drawn into the room (proportions, medium). */
+  body: string
+  /** Every clip starts with it ('' for real: those clips say it themselves). */
+  lead: string
+  /** The fall's first words and its physics line. */
+  film: string
+  physics: string
+  /** Added to every outfit edit. */
+  keep: string
+  cel: boolean
+}
+const TWO_D = 'classic 2D hand-drawn animated feature film style: clean ink line art, flat cel shading, painted backgrounds'
+export const LOOKS: Record<FanStyle, FanLook> = {
+  real: {
+    plate: PLATE,
+    blade: DEFAULT_BLADE,
+    sheet: '寫實四格人物設定圖',
+    body: 'Real proportions of an average adult, as in a real photograph taken from above, not a fashion illustration and not a model with lengthened legs: the head is about one seventh of their whole length, the legs are of normal length, and with the arms lying along the body the hands reach the middle of the thighs.',
+    lead: '',
+    film: 'Realistic fashion video',
+    physics: 'Real weight and momentum, natural anatomy, real fabric.',
+    keep: '',
+    cel: false,
+  },
+  anime2d: {
+    plate: { bucket: 'xcreate-user-images', path: 'house/fan-outfit/plate-palace4-2d.jpg' },
+    blade: { bucket: 'xcreate-user-images', path: 'house/fan-outfit/blade-walnut-2d.jpg' },
+    sheet: '2D手繪動畫電影風格（乾淨的墨線、平塗上色）的四格角色設定圖，維持同一個2D動畫角色的造型，不要畫成照片',
+    body: `Drawn in the ${TWO_D}, exactly as picture 1 and the character in picture 2 are drawn; never photographic. The character's own proportions as in picture 2: with the arms lying along the body the hands reach the middle of the thighs.`,
+    lead: `A ${TWO_D}; it stays a 2D cartoon in every frame, never photographic. `,
+    film: `A shot from a ${TWO_D}; it stays a 2D cartoon in every frame, never photographic`,
+    physics: 'Believable weight and momentum as in fine 2D animation, the character drawn the same in every frame, the clothes moving as drawn cloth.',
+    keep: '整張圖維持2D手繪動畫電影風格（乾淨的墨線、平塗上色），不要變成照片。',
+    cel: true,
+  },
+}
+export const lookOf = (style?: FanStyle): FanLook => LOOKS[style && LOOKS[style] ? style : 'real']
 
 /** What a run of n outfits costs at list price (cents), what it reserves and
  *  about how long it is. Measured on Oct 18's runs ($3.12 for five, with a
@@ -103,6 +156,7 @@ export function fanQuote(outfits: number, scene?: FanScene): { aboutCents: numbe
 
 /** Step 1, 人物四視圖指令 (@quinqueen) for one front photo, without the height
  *  and weight line (the template does not ask for them). */
+export const sheetPrompt = (style?: FanStyle) => SHEET.replace('寫實四格人物設定圖', lookOf(style).sheet)
 export const SHEET = '請以我上傳的正面照片作為唯一人物身分參考，完整保留人物的五官、臉型、膚色、髮型及個人辨識度。\n\n生成一張白色背景的寫實四格人物設定圖：左上為正面臉部近照、左下為側面臉部近照、中間為正面全身照、右邊為側面全身照。\n\n四格均為同一人物，穿著同一套簡約米白色居家服，赤腳自然站立。確保每格的樣貌、身高、體型及身材比例一致，不加入文字、配件或其他人物。'
 
 /** Step 2a (optional): the sofa, the carpet and the floor the user asked
@@ -140,14 +194,14 @@ const SHOES = '鞋子也要換成搭配這套穿搭的鞋。'
  *  red box: on the sofa (the start) and in the middle of the rug (the end).
  *  Picture 1 is the set with the box, picture 2 the sheet, picture 3 the
  *  outfit photo if any. */
-function placed(outfit: FanOutfit, where: string): string {
+function placed(outfit: FanOutfit, where: string, style?: FanStyle): string {
   const wear = outfit.photo
     ? 'their outfit\'s cut, fabric, color, pattern and shoes exactly as in picture 3, without the person in that picture'
     : `${outfit.text}, with shoes to match`
-  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. Real proportions of an average adult, as in a real photograph taken from above, not a fashion illustration and not a model with lengthened legs: the head is about one seventh of their whole length, the legs are of normal length, and with the arms lying along the body the hands reach the middle of the thighs. They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the walnut remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
+  return `Edit picture 1. Put the person from picture 2 (the character sheet: the same face, features, skin, hair, body and gender) ${where} They lie inside the red box: their head, from the top of the head to the chin, fills the red circle at the top of the box, and their feet reach the bottom of the box. ${lookOf(style).body} They wear: ${wear}. Keep everything else exactly as it is: the camera, the framing, the three-seat sofa with its three equal seat cushions and its armrests, the rug and its position, the walnut remote on the rug (it does not move), the floor, the light. Then remove the red marks completely: no red line anywhere. No ceiling fan, no text, no watermark.`
 }
-export const startPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back fully on the sofa seat: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.')
-export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their back on the rug: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting along their sides, eyes looking straight up into the camera. Their left hand (the hand on the right side of the picture) rests on the rug right beside the walnut remote, the fingers touching it. The sofa is empty.')
+export const startPrompt = (outfit: FanOutfit, style?: FanStyle) => placed(outfit, 'lying on their back fully on the sofa seat: lying along the sofa, head toward the top of the picture near the top armrest, feet toward the bottom, arms at their sides, eyes looking up into the camera; as the box does, the left edge of the picture cuts off a little of their body.', style)
+export const endPrompt = (outfit: FanOutfit, style?: FanStyle) => placed(outfit, 'lying on their back on the rug: the middle of their body on the vertical center line of the picture, head toward the top of the picture, feet toward the bottom, arms resting along their sides, eyes looking straight up into the camera. Their left hand (the hand on the right side of the picture) rests on the rug right beside the walnut remote, the fingers touching it. The sofa is empty.', style)
 
 /** Step 3a, the roll, from the start picture to the end picture (Wan first
  *  and last frame, so we know where she ends: "her final position should be
@@ -160,14 +214,15 @@ export const endPrompt = (outfit: FanOutfit) => placed(outfit, 'lying on their b
  *  roll over, the back to the camera for a moment ("why she didn't roll over
  *  her body?": one take slid off on its side; "never lie face down" had
  *  pushed against it), and the job checks the take (cut.ts rolledOver). */
-export function roll(scene?: FanScene) {
+export function roll(scene?: FanScene, style?: FanStyle) {
+  const look = lookOf(style)
   return {
     seconds: 4,
-    clip: `Realistic fashion video, 9:16, 4 seconds, one continuous shot starting from this picture. The camera is locked exactly overhead, looking straight down at the floor; it never moves, zooms, pans, tilts or rotates, and the sofa, the rug, the floor and the remote stay exactly where they are in the frame. No ceiling fan in the picture.
+    clip: `${look.film}, 9:16, 4 seconds, one continuous shot starting from this picture. The camera is locked exactly overhead, looking straight down at the floor; it never moves, zooms, pans, tilts or rotates, and the sofa, the rug, the floor and the remote stay exactly where they are in the frame. No ceiling fan in the picture.
 0.0–0.8 s: the person, lying on their back at the edge of the sofa seat, lightly and lazily turns onto their side toward the right of the frame: an easy, relaxed little roll with almost no effort, as if drifting off the edge half asleep, limbs loose, no pushing and no bracing, until their weight tips over the edge.
 0.8–1.2 s: gravity takes over: they roll OVER as they drop off the sofa, about 45 cm, at full real-time speed, not slow motion: their body keeps turning over their front, so for a moment their back faces the camera, and they land hard on the rug on their shoulder and hip. The impact is visible: the whole body jolts, the hair whips up and falls back, the clothes bounce, the arms and legs flop once.
 1.2–4.0 s: they keep rolling the same way onto their back on the rug, one full roll over in all, head toward the top of the frame and feet toward the bottom, settle and lie still, eyes looking straight up into the camera, arms at their sides.
-Real weight and momentum, natural anatomy, real fabric. One full roll over, not more; they never slide or shift sideways without turning over, never float or glide.
+${look.physics} One full roll over, not more; they never slide or shift sideways without turning over, never float or glide.
 They end exactly as in the last frame: on their back in the middle of the picture, centered left to right.`,
     sound: landingSound(scene),
   }
@@ -189,6 +244,7 @@ function landingSound(scene?: FanScene): string {
  *  the remote in her hand had it slide up to meet her, as every edit moved
  *  the remote to the hand rather than the hand to the remote). The outfits
  *  after it have the remote on the rug beside her hand. */
+export const remoteShot = (style?: FanStyle) => ({ ...REMOTE, clip: lookOf(style).lead + REMOTE.clip })
 export const REMOTE = {
   seconds: 5,
   clip: 'Locked overhead camera, no movement, no zoom, no rotation. The person keeps their head still and their eyes looking straight up into the camera the whole time; they never look at the remote. At 0.5 s their left hand (on the right side of the frame), resting right beside the walnut remote, picks it up without looking at it; at 1.5 s they raise the remote toward the camera and press the button once with their thumb; at 2.5 s they lower that hand, lay the remote back down on the rug exactly where it was, let go of it and rest the hand beside it as at the start; then they lie still. The remote never slides or moves by itself, only in the hand. Their other hand stays still at their side. No cuts.',
@@ -206,13 +262,13 @@ export const POSES: { pose: string; clip: string }[] = [
 
 /** Outfit n (2-5) as an edit: picture 1 the base frame, picture 2 the sheet,
  *  picture 3 the outfit photo if any. */
-export function outfitPrompt(n: number, outfit: FanOutfit): string {
+export function outfitPrompt(n: number, outfit: FanOutfit, style?: FanStyle): string {
   const p = POSES[n - 2]
-  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}胡桃木遙控器放在地毯上原本的位置、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
+  return `編輯第一張圖片。房間、沙發、地毯、地板、攝影機位置與角度、構圖、光線和陰影全部完全不變。人物的臉、五官、膚色、髮型、身材和性別完全照第二張人物設定圖。只改兩件事：人物換上這套服裝：${outfit.text}。${outfit.photo ? OUTFIT_PHOTO : SHOES}${p.pose}胡桃木遙控器放在地毯上原本的位置、人物左手（畫面右側那隻手）旁邊，不在手裡。人物的身高、身材比例和在畫面中的位置完全不變，不要拉長。${lookOf(style).keep}畫面中沒有吊扇、沒有扇葉。無文字、無浮水印。`
 }
-export const stillClip = (n: number) => ({
+export const stillClip = (n: number, style?: FanStyle) => ({
   seconds: 4,
-  clip: `Locked overhead camera, no movement. The person lies still in the same pose for the whole shot, ${POSES[n - 2].clip}, no change of position, so the shot ends on the frame it starts with. No cuts.`,
+  clip: `${lookOf(style).lead}Locked overhead camera, no movement. The person lies still in the same pose for the whole shot, ${POSES[n - 2].clip}, no change of position, so the shot ends on the frame it starts with. No cuts.`,
   sound: 'Quiet room tone and a soft steady whir in the room, faint breathing; no music, no singing.',
 })
 
