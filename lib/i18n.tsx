@@ -1413,10 +1413,6 @@ export const STRINGS: Record<string, Entry> = {
   'nav.profile':      { en: 'Profile', 'zh-Hant': '個人檔案', 'zh-Hans': '个人档案', ja: 'プロフィール', ko: '프로필' },
   'nav.home':         { en: 'Home', 'zh-Hant': '首頁', 'zh-Hans': '首页', ja: 'ホーム', ko: '홈' },
   // ── TGS / Japanese pass (Sep 14) ──
-  'xg.lobby.play':          { en: 'Play:', 'zh-Hant': '對戰：', 'zh-Hans': '对战：', ja: '対戦する：', ko: '대전:' },
-  'xg.lobby.play.desc':     { en: 'take a seat at any table and play against the AI.', 'zh-Hant': '在任一桌坐下，和 AI 對戰。', 'zh-Hans': '在任一桌坐下，和 AI 对战。', ja: '席に座って、AIと対戦します。', ko: '자리에 앉아 AI와 대전합니다.' },
-  'xg.lobby.spectate':      { en: 'Spectate:', 'zh-Hant': '觀戰：', 'zh-Hans': '观战：', ja: '観戦する：', ko: '관전:' },
-  'xg.lobby.spectate.desc': { en: 'leave every seat to the models and watch them play.', 'zh-Hant': '把所有座位留給模型，看它們對戰。', 'zh-Hans': '把所有座位留给模型，看它们对战。', ja: 'すべての席をAIに任せて、AI同士の対戦を見ます。', ko: '모든 자리를 AI에게 맡기고 대전을 지켜봅니다.' },
   'xg.practice.name':       { en: 'Practice', 'zh-Hant': '練習', 'zh-Hans': '练习', ja: '練習', ko: '연습' },
   'xg.practice.tag':        { en: 'no AI · free', 'zh-Hant': '無 AI · 免費', 'zh-Hans': '无 AI · 免费', ja: 'AIなし・無料', ko: 'AI 없음 · 무료' },
   'xg.practice.tagline':    { en: 'One Gomoku puzzle, thirty seconds.', 'zh-Hant': '一題五子棋，三十秒。', 'zh-Hans': '一题五子棋，三十秒。', ja: '五目並べを一問、30秒。', ko: '오목 퍼즐 한 문제, 30초.' },
