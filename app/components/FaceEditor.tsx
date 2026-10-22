@@ -3,7 +3,7 @@
 // picture (Oct 2; owner: "profile image and website name"), and since Oct 13
 // the @ID (lib/handle.ts; once every 30 days, checked as it is typed).
 //
-// Opened from the account page on every door (www, xtell, xcreate). The
+// Opened from the account page on every door (www, xoracle, xcreate). The
 // picture is one of the account's sign-in photos (Google, LINE, X) or an
 // upload, cut to its middle square and shrunk to 512 px here, so a phone
 // photo of several MB travels as ~100 KB. /api/profile/face checks both with
@@ -162,7 +162,7 @@ export default function FaceEditor({ user, current, handleInfo, onClose, onSaved
     }
   }
 
-  // On the body, outside the account page: XTell's page forces 14 px on every
+  // On the body, outside the account page: XOracle's page forces 14 px on every
   // input inside it, and an input under 16 px makes iPhones zoom in.
   return createPortal(
     <>

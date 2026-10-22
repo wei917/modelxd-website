@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../lib/i18n'
 import { GAME_NAME_KEY, type GameKey } from '../../lib/xgame-games'
-import { TitleEditor } from '../components/xtell/TitleEditor'
+import { TitleEditor } from '../components/xoracle/TitleEditor'
 import type { HistoryRow, TableState } from '../../lib/xgame-history'
 
 const STATE_COLOR: Partial<Record<TableState, string>> = { yourturn: 'var(--red)', won: 'var(--green)' }
@@ -77,18 +77,18 @@ export default function GameHistory({ game }: { game: GameKey }) {
                 {t(`xg.state.${r.state}`)}
               </span>
               {confirming === r.id ? (
-                <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteConfirm')}</span>
-                  <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.deleteYes')}</button>
-                  <button type="button" onClick={() => setConfirming(null)} style={link}>{t('xtell.saved.deleteNo')}</button>
+                <span role="group" aria-label={t('xoracle.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xoracle.saved.deleteConfirm')}</span>
+                  <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xoracle.saved.deleteYes')}</button>
+                  <button type="button" onClick={() => setConfirming(null)} style={link}>{t('xoracle.saved.deleteNo')}</button>
                 </span>
               ) : (<>
                 <span className="xgame-history-when">{when(r.updated_at)}</span>
-                <Link href={`/xgame/${r.id}`} className="xgame-history-go">{t('xtell.saved.continue')}</Link>
-                {r.host && <button type="button" onClick={() => { setConfirming(null); setRenaming(r.id) }} style={link}>{t('xtell.saved.rename')}</button>}
-                {r.host && <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={link}>{t('xtell.saved.delete')}</button>}
+                <Link href={`/xgame/${r.id}`} className="xgame-history-go">{t('xoracle.saved.continue')}</Link>
+                {r.host && <button type="button" onClick={() => { setConfirming(null); setRenaming(r.id) }} style={link}>{t('xoracle.saved.rename')}</button>}
+                {r.host && <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={link}>{t('xoracle.saved.delete')}</button>}
               </>)}
-              {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteFailed')}</span>}
+              {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xoracle.saved.deleteFailed')}</span>}
             </li>
           )
         })}

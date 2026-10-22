@@ -15,7 +15,7 @@ const S = {
 
 export default function TermsPage() {
   return (
-    <main id="xtell-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
+    <main id="xoracle-main" tabIndex={-1} style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 80px', outline: 'none' }}>
       <div className="prompt-label eyebrow">Terms</div>
       <h1 className="page-headline" style={{ marginBottom: 16 }}>Terms of Service</h1>
       <p style={{ ...S.p, fontFamily: 'var(--font-mono), monospace', fontSize: 12 }}>
@@ -30,7 +30,7 @@ export default function TermsPage() {
         these Terms.
       </p>
 
-      <LocaleSummary items={['legal.terms.content', 'legal.terms.public', 'legal.terms.credits', 'legal.terms.plan', 'legal.terms.refund', 'legal.terms.referral', 'legal.terms.xtell']} />
+      <LocaleSummary items={['legal.terms.content', 'legal.terms.public', 'legal.terms.credits', 'legal.terms.plan', 'legal.terms.refund', 'legal.terms.referral', 'legal.terms.xoracle']} />
       <h2 style={S.h2}>1. What ModelXD Does</h2>
       <p style={S.p}>
         ModelXD runs apps built on many AI models: a studio for images and video

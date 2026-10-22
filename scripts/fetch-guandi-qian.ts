@@ -24,7 +24,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const OUT = path.join(process.cwd(), 'content', 'qian', 'guandi.json')
-const UA = 'ModelXD-XTell/1.0 (https://modelxd.com; public-domain corpus fetch)'
+const UA = 'ModelXD-XOracle/1.0 (https://modelxd.com; public-domain corpus fetch)'
 const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
 const SECTIONS = ['聖意', '東坡解', '碧仙註', '解曰', '釋義', '占驗'] as const
 const TOPIC = /^(功名|六甲|求財|婚姻|農畜|農牧|失物|生意|丁口|出行|疾病|官司|時運|家宅|移徙|求子|田蠶|六畜|尋人|行人|訟事|求醫|山墳|自身|財運)[：:]/

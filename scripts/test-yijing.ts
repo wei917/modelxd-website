@@ -1,5 +1,5 @@
 // scripts/test-yijing.ts — the 易學堂 engine and corpus.
-//   npx tsx scripts/test-yijing.ts        (also run by npm run test:xtell)
+//   npx tsx scripts/test-yijing.ts        (also run by npm run test:xoracle)
 //
 // Three kinds of expected value, none of them recalled:
 //   1. cases 朱熹 himself cites in 考變占 (the 左傳/國語 casts), with the 之卦

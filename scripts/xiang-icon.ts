@@ -1,5 +1,5 @@
 // scripts/xiang-icon.ts — 相學館's icon drafts, generated against the approved
-// icons as a style reference, like 觀音's and 塔羅's (docs/XTELL-PAGE.md).
+// icons as a style reference, like 觀音's and 塔羅's (docs/XORACLE-PAGE.md).
 // Oct 7 (owner: the first draft "looks really bad and similar to 九曜廟's":
 // a face on a navy circle, like 九曜's figure and 宿曜's moon): four new
 // concepts, none on a navy circle, each matched to the icons nearest its
@@ -68,8 +68,8 @@ for (const [name, subject] of Object.entries(BOTH)) DRAFTS[`both-${name}`] = { p
 
 async function ref(name: string): Promise<{ buffer: Buffer; mediaType: string }> {
   const buffer = name in TILE
-    ? await sharp('public/xtell/approved/icons.avif').extract({ left: (TILE[name] % 5) * 300, top: Math.floor(TILE[name] / 5) * 300, width: 300, height: 300 }).png().toBuffer()
-    : await sharp(`public/xtell/approved/${name}.avif`).png().toBuffer()
+    ? await sharp('public/xoracle/approved/icons.avif').extract({ left: (TILE[name] % 5) * 300, top: Math.floor(TILE[name] / 5) * 300, width: 300, height: 300 }).png().toBuffer()
+    : await sharp(`public/xoracle/approved/${name}.avif`).png().toBuffer()
   return { buffer, mediaType: 'image/png' }
 }
 

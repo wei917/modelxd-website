@@ -41,7 +41,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { hiddenApp } from '@/lib/hidden-apps'
 import { verifySiteToken } from '@/lib/site-token'
-import { siteOfHost, isSiteRoute, isXTellPath, SITE_HEADER, SITE_COOKIE } from '@/lib/site'
+import { siteOfHost, isSiteRoute, isXOraclePath, SITE_HEADER, SITE_COOKIE, XORACLE_HOSTS, XORACLE_PATH, MAIN_ORIGIN } from '@/lib/site'
 import { resolveLang, acceptTags, LANG_COOKIE, LANG_HEADER } from '@/lib/lang'
 
 const COOKIE_NAME = 'modelxd_site_unlocked'
@@ -70,7 +70,7 @@ function isBypassed(pathname: string): boolean {
   return false
 }
 
-// ── The other front door (XTell) ───────────────────────────────────────────
+// ── The other front door (XOracle) ───────────────────────────────────────────
 // xtell.modelxd.com is the temple street as its own site (owner, Sep 23):
 // same deployment, same auth and wallet, different shell. (X創作's door,
 // xcreate.modelxd.com, was never released and is gone since Oct 13; the
@@ -80,7 +80,9 @@ function isBypassed(pathname: string): boolean {
 // own by sending it to `/` (app/page.tsx renders the door's app there).
 // Refusing here means a door's shell never hides a link defensively — the
 // page simply does not exist on that host. The contract (header name,
-// cookie, route lists) lives in lib/site.ts.
+// cookie, route lists) lives in lib/site.ts. Since Oct 22 the host itself
+// forwards to dev.modelxd.com/xoracle (oldDoorRedirect below), so the door's
+// shell is served only locally (:3001, ?site=xoracle).
 /** The host the visitor typed. Behind Vercel that is x-forwarded-host; the
  *  dev server's nextUrl reports its own bind address regardless of the Host
  *  header, so the headers are read first and nextUrl is the fallback. */
@@ -93,14 +95,14 @@ function requestHost(req: NextRequest): string {
 const bareHost = (h: string) => h.replace(/:\d+$/, '')
 
 function siteDoor(req: NextRequest): NextResponse {
-  // WITH the port: locally the port picks the shell (:3001 is XTell).
+  // WITH the port: locally the port picks the shell (:3001 is XOracle).
   const host = requestHost(req)
   let site = siteOfHost(host, req.cookies.get(SITE_COOKIE)?.value ?? null)
-  // /xtell on a host that is no door is www's XTell page: the door's content
+  // /xoracle on a host that is no door is www's XOracle page: the door's content
   // inside www's own shell (owner, Oct 4: no subdomains). The host alone
   // decides, so a leftover ?site= cookie (dev, localhost) cannot turn it
   // into another door's redirect.
-  if (siteOfHost(host, null) === 'modelxd' && isXTellPath(req.nextUrl.pathname)) site = 'modelxd'
+  if (siteOfHost(host, null) === 'modelxd' && isXOraclePath(req.nextUrl.pathname)) site = 'modelxd'
   const headers = new Headers(req.headers)
   headers.set(SITE_HEADER, site)
   // The language this request renders in (lib/lang.ts): `?lang=`, then the
@@ -120,7 +122,7 @@ function siteDoor(req: NextRequest): NextResponse {
     return NextResponse.next({ request: { headers } })
   }
   // `/` is served by app/page.tsx, which renders the door's app for this
-  // host itself — a rewrite to /xtell here made usePathname() disagree
+  // host itself — a rewrite to /xoracle here made usePathname() disagree
   // between server and browser and broke hydration.
   if (isSiteRoute(site, pathname)) return NextResponse.next({ request: { headers } })
   const home = req.nextUrl.clone(); home.pathname = '/'; home.search = ''
@@ -128,24 +130,42 @@ function siteDoor(req: NextRequest): NextResponse {
 }
 
 /**
- * `?site=xtell` / `?site=www` switches the local shell and REMEMBERS it,
+ * xtell.modelxd.com, the old door, forwards to the street on the main site
+ * (owner, Oct 22: "redirect xtell.modelxd.com to dev.modelxd.com/xoracle"):
+ * `/` → /xoracle, any other path to the same path there, the query kept (a
+ * shared link's ?t=<room>, ?ref=, utm_*). Temporary (307), like the renamed
+ * paths (lib/renamed-apps.js). APIs stay: a tab opened before the move still
+ * calls them on this host.
+ */
+function oldDoorRedirect(req: NextRequest): NextResponse | null {
+  if (!XORACLE_HOSTS.includes(bareHost(requestHost(req)))) return null
+  const { pathname, search } = req.nextUrl
+  if (pathname.startsWith('/api/')) return null
+  const to = new URL(pathname === '/' ? XORACLE_PATH : pathname, MAIN_ORIGIN)
+  to.search = search
+  return NextResponse.redirect(to, 307)
+}
+
+/**
+ * `?site=xoracle` / `?site=www` switches the local shell and REMEMBERS it,
  * then redirects to the clean URL. The cookie had no off-switch: it was set
  * by hand in devtools per lib/site.ts, nothing ever cleared it, and a stale
  * one turned every later localhost visit into the temple street (hit Sep
  * 26). `?site=xcreate`, the old switch to the X創作 door, now clears it too,
  * so a bookmark from before Oct 13 lands on www.
  *
- * Ports would be tidier (:3001 = XTell, and siteOfHost honours that) but
+ * Ports would be tidier (:3001 = XOracle, and siteOfHost honours that) but
  * Next 16 refuses a second `next dev` in the same directory, so two ports
  * mean two worktrees. This works with the one server everyone actually runs.
  */
 function siteSwitch(req: NextRequest): NextResponse | null {
   const want = req.nextUrl.searchParams.get('site')
-  if (want !== 'xtell' && want !== 'xcreate' && want !== 'www' && want !== 'modelxd') return null
+  // `?site=xtell` is the switch's name from before Oct 22.
+  if (want !== 'xoracle' && want !== 'xtell' && want !== 'xcreate' && want !== 'www' && want !== 'modelxd') return null
   const url = req.nextUrl.clone()
   url.searchParams.delete('site')
   const res = NextResponse.redirect(url)
-  if (want === 'xtell') res.cookies.set(SITE_COOKIE, want, { path: '/', sameSite: 'lax' })
+  if (want === 'xoracle' || want === 'xtell') res.cookies.set(SITE_COOKIE, 'xoracle', { path: '/', sameSite: 'lax' })
   else res.cookies.set(SITE_COOKIE, '', { path: '/', maxAge: 0 })
   return res
 }
@@ -189,11 +209,13 @@ export async function proxy(req: NextRequest) {
 }
 
 async function siteGate(req: NextRequest): Promise<NextResponse> {
+  const moved = oldDoorRedirect(req)
+  if (moved) return moved
   const switched = siteSwitch(req)
   if (switched) return switched
 
-  // The XTell host is never behind the site password (like dev.), and every
-  // request on every host gets the site header.
+  // The old XOracle host (its APIs) is never behind the site password (like
+  // dev.), and every request on every host gets the site header.
   const door = siteDoor(req)
   const host = bareHost(requestHost(req))
   if (host !== 'modelxd.com' && host !== 'www.modelxd.com') return door

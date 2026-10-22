@@ -31,7 +31,7 @@
 
 /* The types in one row, icon over label, pinned under www's top bar on a
    phone (the shell's fixed 60px) and at the top of the window on desktop,
-   as X先知's temples row is on /xtell. The row scrolls sideways when it does
+   as X先知's temples row is on /xoracle. The row scrolls sideways when it does
    not fit, with arrows at its edges for a pointer; the current type wears
    the accent and an underline. */
 .xcs-typebar { position: sticky; top: 0; z-index: 50; background: var(--xc-paper); border-bottom: 1px solid var(--xc-rule); }

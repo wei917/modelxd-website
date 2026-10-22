@@ -1,7 +1,7 @@
 // scripts/fetch-tarot.mjs — the tarot deck: the 78 cards of the Waite–Smith
 // deck of 1909, with A. E. Waite's own divinatory meanings, as
 // content/tarot/cards.json, and a scan of each ORIGINAL 1909 card as
-// public/xtell/tarot/<id>.webp.
+// public/xoracle/tarot/<id>.webp.
 //
 // Name it "the Waite–Smith 1909 deck". "Rider-Waite" is a registered
 // trademark (U.S. Games Systems) and must not be used as the deck's name.
@@ -82,7 +82,7 @@ const PKT_PAGE = 'The Pictorial Key to the Tarot/Part 3'
 const PKT_REVID = 15274510 // the revision this deck was built from (2025-08-14)
 const CATEGORY = 'Category:Rider-Waite tarot deck (Roses & Lilies)'
 const OUT_JSON = 'content/tarot/cards.json'
-const OUT_IMG = 'public/xtell/tarot'
+const OUT_IMG = 'public/xoracle/tarot'
 const WIDTH = 360
 const QUALITY = 78
 
@@ -257,7 +257,7 @@ MAJORS.forEach(([en, zhHant, zhHans, ja, ko], n) => {
   cards.push({
     id: `major-${pad(n)}`, arcana: 'major', suit: null, rank: n,
     names: { en, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, ko },
-    upright: g.upright, reversed: g.reversed, image: `/xtell/tarot/major-${pad(n)}.webp`,
+    upright: g.upright, reversed: g.reversed, image: `/xoracle/tarot/major-${pad(n)}.webp`,
   })
 })
 const fromAdditional = []
@@ -272,7 +272,7 @@ for (const suit of SUITS) for (let rank = 1; rank <= 14; rank++) {
   }
   cards.push({
     id, arcana: 'minor', suit, rank, names: minorNames(suit, rank),
-    upright: l.upright, reversed, image: `/xtell/tarot/${id}.webp`,
+    upright: l.upright, reversed, image: `/xoracle/tarot/${id}.webp`,
   })
 }
 // Transcription fixes, each checked against the page scan. A fix whose text

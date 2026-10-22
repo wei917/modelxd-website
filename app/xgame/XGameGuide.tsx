@@ -1,14 +1,14 @@
 'use client'
 // app/xgame/XGameGuide.tsx — the guide box on XGame's landing page (Oct 22;
 // owner: "you should add the guide chat box, same as XOracle"). X先知's
-// XTellAssistant for games, in its look (.xtell-as, globals.css): right under
+// XOracleAssistant for games, in its look (.xoracle-as, globals.css): right under
 // the slideshow, the question 「不知道玩什麼？問問嚮導」, the field and the
 // send button; the starter chips and the note once the field is used; the
 // conversation grows in the page's flow. An answer may offer up to two games
 // (by key, from /api/xgame/guide); the buttons are built from
 // lib/xgame-games.ts and open the game's tab, never starting a game.
 //
-// XTellAssistant's patterns, kept: the thread lives per tab in
+// XOracleAssistant's patterns, kept: the thread lives per tab in
 // sessionStorage, rebuilt field by field; a reply is matched to the request
 // that asked for it (start over or a language switch drops a late answer).
 
@@ -115,12 +115,12 @@ export default function XGameGuide({ onOpen }: { onOpen: (game: GameKey) => void
       const d = await res.json().catch(() => null)
       if (mine !== token.current) return
       if (!res.ok || !d || typeof d.answer !== 'string') {
-        say({ role: 'agent', error: true, text: t(res.status === 429 ? 'xtell.as.limited' : d?.error === 'guide_unreadable' ? 'xtell.as.retry' : 'xtell.as.fail') })
+        say({ role: 'agent', error: true, text: t(res.status === 429 ? 'xoracle.as.limited' : d?.error === 'guide_unreadable' ? 'xoracle.as.retry' : 'xoracle.as.fail') })
         return
       }
       say({ role: 'agent', text: d.answer.slice(0, MAX_TEXT), games: gamesOf(d.games), offtopic: d.offtopic === true })
     } catch {
-      say({ role: 'agent', error: true, text: t('xtell.as.fail') })
+      say({ role: 'agent', error: true, text: t('xoracle.as.fail') })
     } finally {
       if (mine === token.current) { setBusy(false); inflight.current = null; pending.current = null }
     }
@@ -138,42 +138,42 @@ export default function XGameGuide({ onOpen }: { onOpen: (game: GameKey) => void
   const showChips = !busy && (!msgs.length || (last?.role === 'agent' && last.offtopic))
 
   return (
-    <section className="xtell-as xgame-guide" aria-labelledby={titleId}>
-      <div className="xtell-as-head">
-        <h2 id={titleId} className="xtell-as-title">{t('xg.guide.ask')}</h2>
-        {msgs.length > 0 && <button type="button" className="xtell-as-restart" onClick={startOver}>↺ {t('xtell.as.restart')}</button>}
+    <section className="xoracle-as xgame-guide" aria-labelledby={titleId}>
+      <div className="xoracle-as-head">
+        <h2 id={titleId} className="xoracle-as-title">{t('xg.guide.ask')}</h2>
+        {msgs.length > 0 && <button type="button" className="xoracle-as-restart" onClick={startOver}>↺ {t('xoracle.as.restart')}</button>}
       </div>
       {msgs.length > 0 && (
-        <div className="xtell-as-panel" aria-live="polite">
+        <div className="xoracle-as-panel" aria-live="polite">
           {msgs.map((m, i) => m.role === 'user'
-            ? <div key={i} className="xtell-as-you">{m.text}</div>
-            : <div key={i} className={'xtell-as-reply' + (m.error ? ' is-error' : '')}>
+            ? <div key={i} className="xoracle-as-you">{m.text}</div>
+            : <div key={i} className={'xoracle-as-reply' + (m.error ? ' is-error' : '')}>
                 <p>{m.text}</p>
                 {(m.games ?? []).length > 0 && (
-                  <div className="xtell-as-actions">
+                  <div className="xoracle-as-actions">
                     {(m.games ?? []).map(g => (
-                      <button key={g} type="button" className="xtell-as-go" onClick={() => { cancel(); onOpen(g) }}>
-                        {t('xtell.as.open').replace('{name}', t(GAME_NAME_KEY[g]))}<span aria-hidden="true">→</span>
+                      <button key={g} type="button" className="xoracle-as-go" onClick={() => { cancel(); onOpen(g) }}>
+                        {t('xoracle.as.open').replace('{name}', t(GAME_NAME_KEY[g]))}<span aria-hidden="true">→</span>
                       </button>
                     ))}
                   </div>
                 )}
               </div>)}
-          {busy && <div className="xtell-as-reply"><span className="xtell-as-typing" role="status" aria-label={t('xtell.as.asking')}><i /><i /><i /></span></div>}
+          {busy && <div className="xoracle-as-reply"><span className="xoracle-as-typing" role="status" aria-label={t('xoracle.as.asking')}><i /><i /><i /></span></div>}
           <div ref={endRef} />
         </div>
       )}
-      <form className="xtell-as-field" onSubmit={e => { e.preventDefault(); void send() }}>
+      <form className="xoracle-as-field" onSubmit={e => { e.preventDefault(); void send() }}>
         <input value={q} maxLength={MAX_Q} onChange={e => setQ(e.target.value)} onFocus={() => setEngaged(true)}
           placeholder={t('xg.guide.ph')} aria-labelledby={titleId} />
-        <button type="submit" disabled={!q.trim() || busy}>{t('xtell.as.send')}</button>
+        <button type="submit" disabled={!q.trim() || busy}>{t('xoracle.as.send')}</button>
       </form>
       {showChips && engaged && (
-        <div className="xtell-as-chips">
-          {CHIPS.map(k => <button key={k} type="button" className="xtell-as-chip" onClick={() => void send(t(k))}>{t(k)}</button>)}
+        <div className="xoracle-as-chips">
+          {CHIPS.map(k => <button key={k} type="button" className="xoracle-as-chip" onClick={() => void send(t(k))}>{t(k)}</button>)}
         </div>
       )}
-      {(engaged || msgs.length > 0) && <p className="xtell-as-note">{t('xg.guide.note')}</p>}
+      {(engaged || msgs.length > 0) && <p className="xoracle-as-note">{t('xg.guide.note')}</p>}
     </section>
   )
 }

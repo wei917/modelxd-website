@@ -1,12 +1,12 @@
-// scripts/test-today.ts — the street's almanac card (lib/xtell-almanac.ts):
+// scripts/test-today.ts — the street's almanac card (lib/xoracle-almanac.ts):
 // the 2026-09-27 page read by hand, and every term the library can print
 // in 繁體.
 //   npx tsx scripts/test-today.ts
 
 import { LunarUtil } from 'lunar-typescript'
-import { almanacFor, toHant } from '../lib/xtell-almanac'
-import { YIJI, PENGZU, JIEQI_KO, ZHIXING_KO } from '../lib/xtell-almanac-terms'
-import { almanacWindow, cachedAlmanac, almanacForZone, validAlmanacDate } from '../lib/xtell-almanac-server'
+import { almanacFor, toHant } from '../lib/xoracle-almanac'
+import { YIJI, PENGZU, JIEQI_KO, ZHIXING_KO } from '../lib/xoracle-almanac-terms'
+import { almanacWindow, cachedAlmanac, almanacForZone, validAlmanacDate } from '../lib/xoracle-almanac-server'
 import { STRINGS } from '../lib/i18n'
 
 let fails = 0
@@ -94,10 +94,10 @@ const LANGS = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko'] as const
   check('dates: real calendar days the library covers', validAlmanacDate('2026-09-28') && !validAlmanacDate('2026-02-30') && !validAlmanacDate('1850-01-01') && !validAlmanacDate('2026-9-28') && !validAlmanacDate(20260928))
 }
 
-// ── /api/xtell/almanac ─────────────────────────────────────────────────────
+// ── /api/xoracle/almanac ─────────────────────────────────────────────────────
 async function route() {
-  const { GET } = await import('../app/api/xtell/almanac/route')
-  const get = async (q: string) => { const r = await GET(new Request(`http://t/api/xtell/almanac?${q}`)); return { status: r.status, cache: r.headers.get('cache-control') ?? '', d: await r.json() as any } }
+  const { GET } = await import('../app/api/xoracle/almanac/route')
+  const get = async (q: string) => { const r = await GET(new Request(`http://t/api/xoracle/almanac?${q}`)); return { status: r.status, cache: r.headers.get('cache-control') ?? '', d: await r.json() as any } }
   const ok = await get('date=2026-09-27&lang=ja')
   check('route: a day in a language, cacheable by the CDN', ok.status === 200 && ok.d.almanac.date === '2026-09-27' && ok.d.almanac.chong.animal === '犬' && /s-maxage=86400/.test(ok.cache))
   check('route: a bad date or language is refused', (await get('date=2026-13-01&lang=en')).status === 400 && (await get('date=2026-09-27&lang=fr')).status === 400 && (await get('lang=en')).status === 400)
@@ -105,7 +105,7 @@ async function route() {
 
 // ── Strings ────────────────────────────────────────────────────────────────
 {
-  const keys = Object.keys(STRINGS).filter(k => k.startsWith('xtell.today.'))
+  const keys = Object.keys(STRINGS).filter(k => k.startsWith('xoracle.today.'))
   check(`${keys.length} card strings, all in five languages`, keys.length >= 14 && keys.every(k => LANGS.every(l => typeof (STRINGS as any)[k][l] === 'string' && (STRINGS as any)[k][l].trim())), keys.filter(k => !LANGS.every(l => (STRINGS as any)[k][l])).join())
 }
 

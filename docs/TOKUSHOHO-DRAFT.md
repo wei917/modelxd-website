@@ -28,7 +28,7 @@ number must then actually be sent. That reading is what needs confirming.
 | 返品・キャンセル | デジタルサービスのため、購入後の返品はできません。クレジットは法律で求められる場合を除き返金できません。月額プランはいつでも「更新を停止」から解約でき、支払い済みの月の終わりまで有効です（日割りの返金はありません）。 |
 | 動作環境 | 最新版の主要ブラウザ（Chrome、Safari、Edge、Firefox）。 |
 
-To publish: a `/tokushoho` page on www, xtell and xcreate (add it to each
+To publish: a `/tokushoho` page on www, xoracle and xcreate (add it to each
 door's route list in `lib/site.ts`), linked from the footers beside
 Privacy and Terms. Requests for the withheld details go to
 support@modelxd.com and need an answer without delay.

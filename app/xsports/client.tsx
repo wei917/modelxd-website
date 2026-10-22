@@ -247,7 +247,7 @@ function GameCardView({ g, league, c, lang, wide, href, seasonAbove, onOpen }: {
 
 const LEAGUES: { key: League; name: string }[] = [{ key: 'mlb', name: 'MLB' }, { key: 'nba', name: 'NBA' }]
 
-/** The leagues bar (Oct 13 redesign, through Codex: the XTell-style row of
+/** The leagues bar (Oct 13 redesign, through Codex: the XOracle-style row of
  *  two small marks in a wide white strip "looks poor"). One compact sticky
  *  toolbar on the content's own edges: in a game, the way back to the games
  *  first; then the leagues as a capsule control, MLB's mark beside its name

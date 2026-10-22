@@ -12,7 +12,7 @@ import { PageTitleProvider } from '../lib/PageTitleContext'
 import { headers } from 'next/headers'
 import { siteFromHeaders } from '../lib/site'
 import { needsConsent } from '../lib/consent'
-import { xtellMetadata } from '../lib/xtell-meta'
+import { xoracleMetadata } from '../lib/xoracle-meta'
 import { SiteProvider } from '../lib/useSite'
 import { serverLang, LANG_BOOT } from '../lib/lang'
 import './globals.css'
@@ -72,11 +72,11 @@ const notoJP = Noto_Sans_JP({
 
 // Default title per front door: pages without their own metadata (the
 // client-rendered profile, terms, privacy) otherwise say "ModelXD" in the
-// tab on the XTell host. In the language the page renders in.
+// tab on the XOracle host. In the language the page renders in.
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const site = siteFromHeaders(h)
-  if (site === 'xtell') return xtellMetadata(serverLang(h, site))
+  if (site === 'xoracle') return xoracleMetadata(serverLang(h, site))
   return {
     title: 'ModelXD',
     description: 'XDuel to Find Your Best Models. Blind-test AI models, vote on quality, then see the price.',

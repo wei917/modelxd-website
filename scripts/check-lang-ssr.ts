@@ -2,21 +2,21 @@
 // For each case: <html lang>, the <title> (and that it is in <head>, not
 // streamed into <body>), a visible string from the page, and that the
 // language boot script is the first inline script in <head>. Read-only GETs.
-//   npx tsx scripts/check-lang-ssr.ts http://localhost:3001 [xtell|xcreate|www]
+//   npx tsx scripts/check-lang-ssr.ts http://localhost:3001 [xoracle|xcreate|www]
 // (xcreate = www's /xcreate page since Oct 13; its door is gone)
 
 import { STRINGS } from '../lib/i18n'
 import { LANG_CODES, type Lang } from '../lib/lang'
 
 const base = process.argv[2] ?? 'http://localhost:3001'
-const door = (process.argv[3] ?? 'xtell') as 'xtell' | 'xcreate' | 'www'
+const door = (process.argv[3] ?? 'xoracle') as 'xoracle' | 'xcreate' | 'www'
 let fails = 0
 const check = (name: string, cond: boolean, extra = '') => { if (!cond) { fails++; console.log('FAIL', name, extra) } else console.log('ok  ', name) }
 const s = (k: string, l: Lang) => ((STRINGS[k] as any)[l] ?? STRINGS[k].en) as string
 
 // A string the door's first screen renders on the server, per language.
-const visible = (l: Lang) => door === 'xtell' ? s('xtell.site.focus.bazi.name', l) : door === 'xcreate' ? s('xcreate.subtitle', l) : s('nav.xduel', l)
-const title = (l: Lang) => door === 'xtell' ? s('xtell.site.tab', l) : door === 'xcreate' ? s('nav.xcreate', l) : 'ModelXD'
+const visible = (l: Lang) => door === 'xoracle' ? s('xoracle.site.focus.bazi.name', l) : door === 'xcreate' ? s('xcreate.subtitle', l) : s('nav.xduel', l)
+const title = (l: Lang) => door === 'xoracle' ? s('xoracle.site.tab', l) : door === 'xcreate' ? s('nav.xcreate', l) : 'ModelXD'
 /** The page under test: the door's home, or the studio at /xcreate. */
 const home = door === 'xcreate' ? '/xcreate' : '/'
 
@@ -50,7 +50,7 @@ const expect = async (name: string, path: string, headers: Record<string, string
   // The reported case, and every saved choice against a Japanese browser.
   for (const l of LANG_CODES) await expect(`saved ${l}, Japanese browser`, home, { ...ja, cookie: `modelxd_lang=${l}` }, l)
   // First visitors: the door's browser fallback.
-  if (door === 'xtell') {
+  if (door === 'xoracle') {
     await expect('first visit, Japanese browser', home, ja, 'ja')
     await expect('first visit, English browser → 繁體', home, { 'accept-language': 'en-US,en;q=0.9' }, 'zh-Hant')
     await expect('first visit, English Chrome with Japanese third (owner, Sep 27)', home, { 'accept-language': 'en-US,en;q=0.9,ja;q=0.8,zh-CN;q=0.7,zh-TW;q=0.6' }, 'zh-Hant')

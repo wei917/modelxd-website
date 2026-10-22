@@ -11,7 +11,7 @@
 //
 // Palm lines are words only. No model placed them on the creases well enough
 // to draw (owner, Oct 6: "still not accurate, I would rather not showing
-// those lines"; what was measured is in docs/XTELL-PAGE.md).
+// those lines"; what was measured is in docs/XORACLE-PAGE.md).
 //
 // 看我們兩個 (owner, Oct 6, "similar to 月老"): the other person's photos
 // too (a spouse, partner, someone it is ambiguous with, a crush), only with
@@ -81,7 +81,7 @@ export function checkSystem(lang: string): string {
 
 /** How a palm reaches the models (Oct 9, owner: "process the palm with filters
  *  to only show clear lines… and we use those to feed into AI models"):
- *  app/components/xtell/Xiang.tsx runs lib/palm-lines.ts on it first. */
+ *  app/components/xoracle/Xiang.tsx runs lib/palm-lines.ts on it first. */
 export const PALM_AS_LINES = '手掌的圖已經處理過：只留下手的輪廓和掌紋，白底，紋路越深顏色越深，沒有膚色與背景。'
 
 export function checkPrompt(key: XiangPhotoKey, lang: string): string {
@@ -226,7 +226,7 @@ export const NOTE_MAX = 400
 export type Photo = { key: XiangPhotoKey; buffer: Buffer; mediaType: string; who: 'me' | 'partner' }
 
 /** The browser sends each photo as a data URL, already shrunk to 1280 px
- *  (app/components/xtell/Xiang.tsx). Anything else is refused whole. */
+ *  (app/components/xoracle/Xiang.tsx). Anything else is refused whole. */
 export const PHOTO_MAX_BYTES = 2_500_000
 export function photosOf(v: unknown, who: 'me' | 'partner' = 'me'): Photo[] | 'invalid' {
   if (!v || typeof v !== 'object') return []

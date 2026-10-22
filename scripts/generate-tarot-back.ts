@@ -1,4 +1,4 @@
-// scripts/generate-tarot-back.ts — the back of XTell's tarot cards (owner,
+// scripts/generate-tarot-back.ts — the back of XOracle's tarot cards (owner,
 // Oct 1: "can your cards have ModelXD logo at the back", "not just put logo
 // there. need to merge fuse with tarot style").
 //
@@ -7,7 +7,7 @@
 // gpt-image-2 edits, with public/logo.png as the reference, quality high,
 // 1024x1536: ~$0.25 a draft. Drafts land in <out-dir> for the owner to pick;
 // the chosen one is cropped to the card and saved as
-// public/xtell/tarot-back.webp by hand.
+// public/xoracle/tarot-back.webp by hand.
 //
 // A tarot back must read the same upside down, or the back would tell which
 // cards are reversed: every prompt asks for 180-degree symmetry.

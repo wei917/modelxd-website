@@ -20,7 +20,7 @@
 // (supabase/120) under the same rules: no crawlers, nothing that needs
 // consent, the same rate limit and the same visitor cookie.
 //
-// Or a press in an XTell share dialog (lib/xtell-feedback.ts, Oct 1):
+// Or a press in an XOracle share dialog (lib/xoracle-feedback.ts, Oct 1):
 // { share: { kind, temple, modelId, method, outcome }, path }, one row in
 // xtell_shares (supabase/122), under the same rules again.
 //
@@ -42,7 +42,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { needsConsent } from '@/lib/consent'
 import { TAP_PROVIDERS } from '@/lib/signin-tap'
-import { asShareReport } from '@/lib/xtell-feedback'
+import { asShareReport } from '@/lib/xoracle-feedback'
 import { visitEnv } from '@/lib/visit-env'
 
 const LOG = '[api/visit]'

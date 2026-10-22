@@ -83,7 +83,7 @@ export type AccountProps = {
   refCopied: boolean
   onVerifyCard: () => void
   onCopyRef: () => void
-  xtellSettings: ReactNode
+  xoracleSettings: ReactNode
   /** 我的聲音: your cloned voices from X創作's 語音 (Voices.tsx). */
   voices: ReactNode
 }
@@ -179,9 +179,9 @@ export default function AccountPanel(p: AccountProps) {
 
       {/* X先知: the birth details and the personality type (its readings
           are a Library section). */}
-      <section className="acct-section acct-xtell">
-        <h2 className="acct-h">{t('nav.xtell')}</h2>
-        {p.xtellSettings}
+      <section className="acct-section acct-xoracle">
+        <h2 className="acct-h">{t('nav.xoracle')}</h2>
+        {p.xoracleSettings}
       </section>
 
     </div>

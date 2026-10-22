@@ -8,42 +8,46 @@
 // door of its own (xcreate.modelxd.com, Sep 26) that was never released; it
 // was removed on Oct 13 (owner: "I never release xcreate.modelxd.com, so you
 // can remove anything related to it"), and the studio lives at /xcreate.
+// Since Oct 22 xtell.modelxd.com forwards to MAIN_ORIGIN + XORACLE_PATH
+// (proxy.ts, oldDoorRedirect; owner: "redirect xtell.modelxd.com to
+// dev.modelxd.com/xoracle"): the door's shell below is served only locally
+// (:3001, ?site=xoracle).
 //
 // Contract (frontend reads these, backend sets them):
 //   - proxy.ts stamps every request with the header `x-modelxd-site`
-//     ('modelxd' | 'xtell'); app/page.tsx renders the door's own app at `/`
+//     ('modelxd' | 'xoracle'); app/page.tsx renders the door's own app at `/`
 //     — the street (no rewrite — see app/page.tsx).
 //   - Server components: `siteFromHeaders(await headers())`.
 //   - Client components: `useSite()` from lib/useSite.tsx, fed by the root
 //     layout's SiteProvider (server value, no first-paint flash). CSS can
 //     key on `<html data-site="…">`.
-//   - LOCAL DEV: `?site=xtell` or `?site=www` on any page switches the shell
+//   - LOCAL DEV: `?site=xoracle` or `?site=www` on any page switches the shell
 //     and remembers it in the `modelxd_site` cookie (proxy.ts). A second
-//     server run from a worktree can use its PORT instead: :3001 is XTell.
+//     server run from a worktree can use its PORT instead: :3001 is XOracle.
 //     Both exist because a cookie set by hand in devtools had no off-switch:
 //     it turned every later visit to localhost into the temple street (Sep
 //     26). The cookie is also the only switch on Vercel preview URLs, where
 //     you cannot choose a port.
-//   - Routes ALLOWED on the door are listed in XTELL_ROUTES; anything else is
+//   - Routes ALLOWED on the door are listed in XORACLE_ROUTES; anything else is
 //     redirected to `/` by proxy.ts, so a shell never has to hide a link
 //     defensively — the backend refuses the page.
 //
 // Pure: no Node imports, no React — the proxy (Edge) imports this file, so
 // the client hook lives next door in lib/useSite.ts.
 
-export type Site = 'modelxd' | 'xtell'
+export type Site = 'modelxd' | 'xoracle'
 
-export const XTELL_HOSTS = ['xtell.modelxd.com']
+export const XORACLE_HOSTS = ['xtell.modelxd.com']
 export const SITE_HEADER = 'x-modelxd-site'
 export const SITE_COOKIE = 'modelxd_site'
 
-/** Pages the XTell host serves. Everything else 302s to `/` (which is the street). */
-export const XTELL_ROUTES = ['/xoracle', '/xtell', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
+/** Pages the XOracle host serves. Everything else 302s to `/` (which is the street). */
+export const XORACLE_ROUTES = ['/xoracle', '/xtell', '/profile', '/terms', '/privacy', '/tokushoho', '/login', '/auth', '/coming-soon']
 
-const ROUTES: Record<Exclude<Site, 'modelxd'>, string[]> = { xtell: XTELL_ROUTES }
+const ROUTES: Record<Exclude<Site, 'modelxd'>, string[]> = { xoracle: XORACLE_ROUTES }
 
 /** The dev port that serves the door's shell. www is whatever else you run. */
-export const XTELL_LOCAL_PORT = '3001'
+export const XORACLE_LOCAL_PORT = '3001'
 
 export const WWW_ORIGIN = 'https://www.modelxd.com'
 
@@ -52,42 +56,44 @@ export const WWW_ORIGIN = 'https://www.modelxd.com'
  *  dev version first"). Point it back at WWW_ORIGIN when www opens. */
 export const MAIN_ORIGIN = 'https://dev.modelxd.com'
 
-/** The XTell door's content is also www's page, inside www's own shell
+/** The XOracle door's content is also www's page, inside www's own shell
  *  (owner, Oct 4: no subdomains; dev.modelxd.com first, www stays behind its
  *  password). The page is /xoracle since Oct 20 (owner: XTell → XOracle; /xtell
- *  forwards, lib/renamed-apps.js); the door keeps its host, xtell.modelxd.com.
- *  Links to the street and temples use a base: '' on the subdomain,
- *  '/xoracle' on www (app/components/xtell/XTellBase.tsx). Internal names
- *  (xtell_* tables, .xtell-* classes, /api/xtell/*) stay as they are. */
-export const XTELL_PATH = '/xoracle'
-export type XTellBase = '' | '/xoracle'
-/** The street's page on the door ('/') or on www (XTELL_PATH). */
-export const isStreetPath = (p: string): boolean => p === '/' || p === XTELL_PATH
+ *  forwards, lib/renamed-apps.js). Links to the street and temples use a
+ *  base: '' on the door, '/xoracle' on www
+ *  (app/components/xoracle/XOracleBase.tsx). The code took the name on Oct 22;
+ *  saved data keeps 'xtell' (xtell_* tables, page keys, reference_type,
+ *  browser storage keys). */
+export const XORACLE_PATH = '/xoracle'
+export type XOracleBase = '' | '/xoracle'
+/** The street's page on the door ('/') or on www (XORACLE_PATH). */
+export const isStreetPath = (p: string): boolean => p === '/' || p === XORACLE_PATH
 
-/** www's XTell page and anything under it. Files (pictures, cards; they stay
- *  under /xtell/ in public/) are not pages. */
-export function isXTellPath(pathname: string): boolean {
+/** www's XOracle page and anything under it. Files (pictures, cards; they stay
+ *  under /xoracle/ in public/) are not pages. */
+export function isXOraclePath(pathname: string): boolean {
   if (/\.[a-z0-9]+$/i.test(pathname)) return false
-  return pathname === XTELL_PATH || pathname.startsWith(XTELL_PATH + '/')
+  return pathname === XORACLE_PATH || pathname.startsWith(XORACLE_PATH + '/')
 }
 
 /** The street and a temple on it, for this base. */
 export const doorHome = (base: string): string => base || '/'
-/** A room's link: ?t=<room> on the street's page (lib/xtell-room.ts). */
+/** A room's link: ?t=<room> on the street's page (lib/xoracle-room.ts). */
 export const templeHref = (base: string, key: string): string => `${base || '/'}?t=${key}`
 
-function isDoor(v: string | null | undefined): v is 'xtell' {
-  return v === 'xtell'
+/** The local switch's cookie: 'xtell' is its value from before Oct 22. */
+function isDoor(v: string | null | undefined): boolean {
+  return v === 'xoracle' || v === 'xtell'
 }
 
 /** `hostname` may carry a port ('localhost:3001'); a bare host is fine too. */
 export function siteOfHost(hostname: string, cookie?: string | null): Site {
   const [host, port] = hostname.split(':')
-  if (XTELL_HOSTS.includes(host)) return 'xtell'
+  if (XORACLE_HOSTS.includes(host)) return 'xoracle'
   const local = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.vercel.app') || host.startsWith('dev.')
   if (!local) return 'modelxd'
-  if (port === XTELL_LOCAL_PORT) return 'xtell'
-  return isDoor(cookie) ? cookie : 'modelxd'
+  if (port === XORACLE_LOCAL_PORT) return 'xoracle'
+  return isDoor(cookie) ? 'xoracle' : 'modelxd'
 }
 
 /** Does this door serve the page? www serves everything; `/` is every door's own app. */
@@ -98,7 +104,6 @@ export function isSiteRoute(site: Site, pathname: string): boolean {
 
 /** Server components / route handlers: pass `await headers()`. */
 export function siteFromHeaders(h: { get(name: string): string | null }): Site {
-  const v = h.get(SITE_HEADER)
-  return isDoor(v) ? v : 'modelxd'
+  return isDoor(h.get(SITE_HEADER)) ? 'xoracle' : 'modelxd'
 }
 

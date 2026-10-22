@@ -13,7 +13,7 @@
     },
     "upright": "Folly, mania, extravagance, intoxication, delirium, frenzy, bewrayment.",
     "reversed": "Negligence, absence, distribution, carelessness, apathy, nullity, vanity.",
-    "image": "/xtell/tarot/major-00.webp"
+    "image": "/xoracle/tarot/major-00.webp"
   },
   {
     "id": "major-01",
@@ -29,7 +29,7 @@
     },
     "upright": "Skill, diplomacy, address, subtlety; sickness, pain, loss, disaster, snares of enemies; self-confidence, will; the Querent, if male.",
     "reversed": "Physician, Magus, mental disease, disgrace, disquiet.",
-    "image": "/xtell/tarot/major-01.webp"
+    "image": "/xoracle/tarot/major-01.webp"
   },
   {
     "id": "major-02",
@@ -45,7 +45,7 @@
     },
     "upright": "Secrets, mystery, the future as yet unrevealed; the woman who interests the Querent, if male; the Querent herself, if female; silence, tenacity; mystery, wisdom, science.",
     "reversed": "Passion, moral or physical ardour, conceit, surface knowledge.",
-    "image": "/xtell/tarot/major-02.webp"
+    "image": "/xoracle/tarot/major-02.webp"
   },
   {
     "id": "major-03",
@@ -61,7 +61,7 @@
     },
     "upright": "Fruitfulness, action, initiative, length of days; the unknown, clandestine; also difficulty, doubt, ignorance.",
     "reversed": "Light, truth, the unravelling of involved matters, public rejoicings; according to another reading, vacillation.",
-    "image": "/xtell/tarot/major-03.webp"
+    "image": "/xoracle/tarot/major-03.webp"
   },
   {
     "id": "major-04",
@@ -77,7 +77,7 @@
     },
     "upright": "Stability, power, protection, realization; a great person; aid, reason, conviction; also authority and will.",
     "reversed": "Benevolence, compassion, credit; also confusion to enemies, obstruction, immaturity.",
-    "image": "/xtell/tarot/major-04.webp"
+    "image": "/xoracle/tarot/major-04.webp"
   },
   {
     "id": "major-05",
@@ -93,7 +93,7 @@
     },
     "upright": "Marriage, alliance, captivity, servitude; by another account, mercy and goodness; inspiration; the man to whom the Querent has recourse.",
     "reversed": "Society, good understanding, concord, over-kindness, weakness.",
-    "image": "/xtell/tarot/major-05.webp"
+    "image": "/xoracle/tarot/major-05.webp"
   },
   {
     "id": "major-06",
@@ -109,7 +109,7 @@
     },
     "upright": "Attraction, love, beauty, trials overcome.",
     "reversed": "Failure, foolish designs. Another account speaks of marriage frustrated and contrarieties of all kinds.",
-    "image": "/xtell/tarot/major-06.webp"
+    "image": "/xoracle/tarot/major-06.webp"
   },
   {
     "id": "major-07",
@@ -125,7 +125,7 @@
     },
     "upright": "Succour, providence; also war, triumph, presumption, vengeance, trouble.",
     "reversed": "Riot, quarrel, dispute, litigation, defeat.",
-    "image": "/xtell/tarot/major-07.webp"
+    "image": "/xoracle/tarot/major-07.webp"
   },
   {
     "id": "major-08",
@@ -141,7 +141,7 @@
     },
     "upright": "Power, energy, action, courage, magnanimity; also complete success and honours.",
     "reversed": "Despotism, abuse of power, weakness, discord, sometimes even disgrace.",
-    "image": "/xtell/tarot/major-08.webp"
+    "image": "/xoracle/tarot/major-08.webp"
   },
   {
     "id": "major-09",
@@ -157,7 +157,7 @@
     },
     "upright": "Prudence, circumspection; also and especially treason, dissimulation, roguery, corruption.",
     "reversed": "Concealment, disguise, policy, fear, unreasoned caution.",
-    "image": "/xtell/tarot/major-09.webp"
+    "image": "/xoracle/tarot/major-09.webp"
   },
   {
     "id": "major-10",
@@ -173,7 +173,7 @@
     },
     "upright": "Destiny, fortune, success, elevation, luck, felicity.",
     "reversed": "Increase, abundance, superfluity.",
-    "image": "/xtell/tarot/major-10.webp"
+    "image": "/xoracle/tarot/major-10.webp"
   },
   {
     "id": "major-11",
@@ -189,7 +189,7 @@
     },
     "upright": "Equity, rightness, probity, executive; triumph of the deserving side in law.",
     "reversed": "Law in all its departments, legal complications, bigotry, bias, excessive severity.",
-    "image": "/xtell/tarot/major-11.webp"
+    "image": "/xoracle/tarot/major-11.webp"
   },
   {
     "id": "major-12",
@@ -205,7 +205,7 @@
     },
     "upright": "Wisdom, circumspection, discernment, trials, sacrifice, intuition, divination, prophecy.",
     "reversed": "Selfishness, the crowd, body politic.",
-    "image": "/xtell/tarot/major-12.webp"
+    "image": "/xoracle/tarot/major-12.webp"
   },
   {
     "id": "major-13",
@@ -221,7 +221,7 @@
     },
     "upright": "End, mortality, destruction, corruption; also, for a man, the loss of a benefactor; for a woman, many contrarieties; for a maid, failure of marriage projects.",
     "reversed": "Inertia, sleep, lethargy, petrifaction, somnambulism; hope destroyed.",
-    "image": "/xtell/tarot/major-13.webp"
+    "image": "/xoracle/tarot/major-13.webp"
   },
   {
     "id": "major-14",
@@ -237,7 +237,7 @@
     },
     "upright": "Economy, moderation, frugality, management, accommodation.",
     "reversed": "Things connected with churches, religions, sects, the priesthood, sometimes even the priest who will marry the Querent; also disunion, unfortunate combinations, competing interests.",
-    "image": "/xtell/tarot/major-14.webp"
+    "image": "/xoracle/tarot/major-14.webp"
   },
   {
     "id": "major-15",
@@ -253,7 +253,7 @@
     },
     "upright": "Ravage, violence, vehemence, extraordinary efforts, force, fatality; that which is predestined but is not for this reason evil.",
     "reversed": "Evil fatality, weakness, pettiness, blindness.",
-    "image": "/xtell/tarot/major-15.webp"
+    "image": "/xoracle/tarot/major-15.webp"
   },
   {
     "id": "major-16",
@@ -269,7 +269,7 @@
     },
     "upright": "Misery, distress, indigence, adversity, calamity, disgrace, deception, ruin. It is a card in particular of unforeseen catastrophe.",
     "reversed": "According to one account, the same in a lesser degree; also oppression, imprisonment, tyranny.",
-    "image": "/xtell/tarot/major-16.webp"
+    "image": "/xoracle/tarot/major-16.webp"
   },
   {
     "id": "major-17",
@@ -285,7 +285,7 @@
     },
     "upright": "Loss, theft, privation, abandonment; another reading says—hope and bright prospects,",
     "reversed": "Arrogance, haughtiness, impotence.",
-    "image": "/xtell/tarot/major-17.webp"
+    "image": "/xoracle/tarot/major-17.webp"
   },
   {
     "id": "major-18",
@@ -301,7 +301,7 @@
     },
     "upright": "Hidden enemies, danger, calumny, darkness, terror, deception, occult forces, error.",
     "reversed": "Instability, inconstancy, silence, lesser degrees of deception and error.",
-    "image": "/xtell/tarot/major-18.webp"
+    "image": "/xoracle/tarot/major-18.webp"
   },
   {
     "id": "major-19",
@@ -317,7 +317,7 @@
     },
     "upright": "Material happiness, fortunate marriage, contentment.",
     "reversed": "The same in a lesser sense.",
-    "image": "/xtell/tarot/major-19.webp"
+    "image": "/xoracle/tarot/major-19.webp"
   },
   {
     "id": "major-20",
@@ -333,7 +333,7 @@
     },
     "upright": "Change of position, renewal, outcome. Another account specifies total loss though lawsuit.",
     "reversed": "Weakness, pusillanimity, simplicity; also deliberation, decision, sentence.",
-    "image": "/xtell/tarot/major-20.webp"
+    "image": "/xoracle/tarot/major-20.webp"
   },
   {
     "id": "major-21",
@@ -349,7 +349,7 @@
     },
     "upright": "Assured success, recompense, voyage, route, emigration, flight, change of place.",
     "reversed": "Inertia, fixity, stagnation, permanence.",
-    "image": "/xtell/tarot/major-21.webp"
+    "image": "/xoracle/tarot/major-21.webp"
   },
   {
     "id": "wands-01",
@@ -365,7 +365,7 @@
     },
     "upright": "Creation, invention, enterprise, the powers which result in these; principle, beginning, source; birth, family, origin, and in a sense the virility which is behind them; the starting point of enterprises; according to another account, money, fortune, inheritance.",
     "reversed": "Fall, decadence, ruin, perdition, to perish; also a certain clouded joy.",
-    "image": "/xtell/tarot/wands-01.webp"
+    "image": "/xoracle/tarot/wands-01.webp"
   },
   {
     "id": "wands-02",
@@ -381,7 +381,7 @@
     },
     "upright": "Between the alternative readings there is no marriage possible; on the one hand, riches, fortune, magnificence; on the other, physical suffering, disease, chagrin, sadness, mortification. The design gives one suggestion; here is a lord overlooking his dominion and alternately contemplating a globe; it looks like the malady, the mortification, the sadness of Alexander amidst the grandeur of this world's wealth.",
     "reversed": "Surprise, wonder, enchantment, emotion, trouble, fear.",
-    "image": "/xtell/tarot/wands-02.webp"
+    "image": "/xoracle/tarot/wands-02.webp"
   },
   {
     "id": "wands-03",
@@ -397,7 +397,7 @@
     },
     "upright": "He symbolizes established strength, enterprise, effort, trade, commerce, discovery; those are his ships, bearing his merchandise, which are sailing over the sea. The card also signifies able co-operation in business, as if the successful merchant prince were looking from his side towards yours with a view to help you.",
     "reversed": "The end of troubles, suspension or cessation of adversity, toil and disappointment.",
-    "image": "/xtell/tarot/wands-03.webp"
+    "image": "/xoracle/tarot/wands-03.webp"
   },
   {
     "id": "wands-04",
@@ -413,7 +413,7 @@
     },
     "upright": "They are for once almost on the surface—country life, haven of refuge, a species of domestic harvest-home, repose, concord, harmony, prosperity, peace, and the perfected work of these.",
     "reversed": "The meaning remains unaltered; it is prosperity, increase, felicity, beauty, embellishment.",
-    "image": "/xtell/tarot/wands-04.webp"
+    "image": "/xoracle/tarot/wands-04.webp"
   },
   {
     "id": "wands-05",
@@ -429,7 +429,7 @@
     },
     "upright": "Imitation, as, for example, sham fight, but also the strenuous competition and struggle of the search after riches and fortune. In this sense it connects with the battle of life. Hence some attributions say that it is a card of gold, gain, opulence.",
     "reversed": "Litigation, disputes, trickery, contradiction.",
-    "image": "/xtell/tarot/wands-05.webp"
+    "image": "/xoracle/tarot/wands-05.webp"
   },
   {
     "id": "wands-06",
@@ -445,7 +445,7 @@
     },
     "upright": "The card has been so designed that it can cover several significations; on the surface, it is a victor triumphing, but it is also great news, such as might be carried in state by the King's courier; it is expectation crowned with its own desire, the crown of hope, and so forth.",
     "reversed": "Apprehension, fear, as of a victorious enemy at the gate; treachery, disloyalty, as of gates being opened to the enemy; also indefinite delay.",
-    "image": "/xtell/tarot/wands-06.webp"
+    "image": "/xoracle/tarot/wands-06.webp"
   },
   {
     "id": "wands-07",
@@ -461,7 +461,7 @@
     },
     "upright": "It is a card of valour, for, on the surface, six are attacking one, who has, however, the vantage position. On the intellectual plane, it signifies discussion, wordy strife; in business—negotiations, war of trade, barter, competition. It is further a card of success, for the combatant is on the top and his enemies may be unable to reach him.",
     "reversed": "Perplexity, embarrassments, anxiety. It is also a caution against indecision.",
-    "image": "/xtell/tarot/wands-07.webp"
+    "image": "/xoracle/tarot/wands-07.webp"
   },
   {
     "id": "wands-08",
@@ -477,7 +477,7 @@
     },
     "upright": "Activity in undertakings, the path of such activity, swiftness, as that of an express messenger; great haste, great hope, speed towards an end which promises assured felicity; generally, that which is on the move; also the arrows of love.",
     "reversed": "Arrows of jealousy, internal dispute, stingings of conscience, quarrels; and domestic disputes for persons who are married.",
-    "image": "/xtell/tarot/wands-08.webp"
+    "image": "/xoracle/tarot/wands-08.webp"
   },
   {
     "id": "wands-09",
@@ -493,7 +493,7 @@
     },
     "upright": "The card signifies strength in opposition. If attacked, the person will meet an onslaught boldly; and his build shews that he may prove a formidable antagonist. With this main significance there are all its possible adjuncts—delay, suspension, adjournment.",
     "reversed": "Obstacles, adversity, calamity.",
-    "image": "/xtell/tarot/wands-09.webp"
+    "image": "/xoracle/tarot/wands-09.webp"
   },
   {
     "id": "wands-10",
@@ -509,7 +509,7 @@
     },
     "upright": "A card of many significances, and some of the readings cannot be harmonized. I set aside that which connects it with honour and good faith. The chief meaning is oppression simply, but it is also fortune, gain, any kind of success, and then it is the oppression of these things. It is also a card of false-seeming, disguise, perfidy. The place which the figure is approaching may suffer from the rods that he carries. Success is stultified if the Nine of Swords follows, and if it is a question of a lawsuit, there will be certain loss.",
     "reversed": "Contrarieties, difficulties, intrigues, and their analogies.",
-    "image": "/xtell/tarot/wands-10.webp"
+    "image": "/xoracle/tarot/wands-10.webp"
   },
   {
     "id": "wands-11",
@@ -525,7 +525,7 @@
     },
     "upright": "Dark young man, faithful, a lover, an envoy, a postman. Beside a man, he will bear favourable testimony concerning him. A dangerous rival, if followed by the Page of Cups. Has the chief qualities of his suit. He may signify family intelligence.",
     "reversed": "Anecdotes, announcements, evil news. Also indecision and the instability which accompanies it.",
-    "image": "/xtell/tarot/wands-11.webp"
+    "image": "/xoracle/tarot/wands-11.webp"
   },
   {
     "id": "wands-12",
@@ -541,7 +541,7 @@
     },
     "upright": "Departure, absence, flight, emigration. A dark young man, friendly. Change of residence.",
     "reversed": "Rupture, division, interruption, discord.",
-    "image": "/xtell/tarot/wands-12.webp"
+    "image": "/xoracle/tarot/wands-12.webp"
   },
   {
     "id": "wands-13",
@@ -557,7 +557,7 @@
     },
     "upright": "A dark woman, countrywoman, friendly, chaste, loving, honourable. If the card beside her signifies a man, she is well disposed towards him; if a woman, she is interested in the Querent. Also, love of money, or a certain success in business.",
     "reversed": "Good, economical, obliging, serviceable. Signifies also—but in certain positions and in the neighbourhood of other cards tending in such directions—opposition, jealousy, even deceit and infidelity.",
-    "image": "/xtell/tarot/wands-13.webp"
+    "image": "/xoracle/tarot/wands-13.webp"
   },
   {
     "id": "wands-14",
@@ -573,7 +573,7 @@
     },
     "upright": "Dark man, friendly, countryman, generally married, honest and conscientious. The card always signifies honesty, and may mean news concerning an unexpected heritage to fall in before very long.",
     "reversed": "Good, but severe; austere, yet tolerant.",
-    "image": "/xtell/tarot/wands-14.webp"
+    "image": "/xoracle/tarot/wands-14.webp"
   },
   {
     "id": "cups-01",
@@ -589,7 +589,7 @@
     },
     "upright": "House of the true heart, joy, content, abode, nourishment, abundance, fertility; Holy Table, felicity hereof.",
     "reversed": "House of the false heart, mutation, instability, revolution.",
-    "image": "/xtell/tarot/cups-01.webp"
+    "image": "/xoracle/tarot/cups-01.webp"
   },
   {
     "id": "cups-02",
@@ -605,7 +605,7 @@
     },
     "upright": "Love, passion, friendship, affinity, union, concord, sympathy, the interrelation of the sexes, and—as a suggestion apart from all offices of divination—that desire which is not in Nature, but by which Nature is sanctified.",
     "reversed": "Passion.",
-    "image": "/xtell/tarot/cups-02.webp"
+    "image": "/xoracle/tarot/cups-02.webp"
   },
   {
     "id": "cups-03",
@@ -621,7 +621,7 @@
     },
     "upright": "The conclusion of any matter in plenty, perfection and merriment; happy issue, victory, fulfilment, solace, healing.",
     "reversed": "Expedition, dispatch, achievement, end. It signifies also the side of excess in physical enjoyment, and the pleasures of the senses.",
-    "image": "/xtell/tarot/cups-03.webp"
+    "image": "/xoracle/tarot/cups-03.webp"
   },
   {
     "id": "cups-04",
@@ -637,7 +637,7 @@
     },
     "upright": "Weariness, disgust, aversion, imaginary vexations, as if the wine of this world had caused satiety only; another wine, as if a fairy gift, is now offered the wastrel, but he sees no consolation therein. This is also a card of blended pleasure.",
     "reversed": "Novelty, presage, new instruction, new relations.",
-    "image": "/xtell/tarot/cups-04.webp"
+    "image": "/xoracle/tarot/cups-04.webp"
   },
   {
     "id": "cups-05",
@@ -653,7 +653,7 @@
     },
     "upright": "It is a card of loss, but something remains over; three have been taken, but two are left; it is a card of inheritance, patrimony, transmission, but not corresponding to expectations; with some interpreters it is a card of marriage, but not without bitterness or frustration.",
     "reversed": "News, alliances, affinity, consanguinity, ancestry, return, false projects.",
-    "image": "/xtell/tarot/cups-05.webp"
+    "image": "/xoracle/tarot/cups-05.webp"
   },
   {
     "id": "cups-06",
@@ -669,7 +669,7 @@
     },
     "upright": "A card of the past and of memories, looking back, as—for example—on childhood; happiness, enjoyment, but coming rather from the past; things that have vanished. Another reading reverses this, giving new relations, new knowledge, new environment, and then the children are disporting in an unfamiliar precinct.",
     "reversed": "The future, renewal, that which will come to pass presently.",
-    "image": "/xtell/tarot/cups-06.webp"
+    "image": "/xoracle/tarot/cups-06.webp"
   },
   {
     "id": "cups-07",
@@ -685,7 +685,7 @@
     },
     "upright": "Fairy favours, images of reflection, sentiment, imagination, things seen in the glass of contemplation; some attainment in these degrees, but nothing permanent or substantial is suggested.",
     "reversed": "Desire, will, determination, project.",
-    "image": "/xtell/tarot/cups-07.webp"
+    "image": "/xoracle/tarot/cups-07.webp"
   },
   {
     "id": "cups-08",
@@ -701,7 +701,7 @@
     },
     "upright": "The card speaks for itself on the surface, but other readings are entirely antithetical—giving joy, mildness, timidity, honour, modesty. In practice, it is usually found that the card shews the decline of a matter, or that a matter which has been thought to be important is really of slight consequence—either for good or evil.",
     "reversed": "Great joy, happiness, feasting.",
-    "image": "/xtell/tarot/cups-08.webp"
+    "image": "/xoracle/tarot/cups-08.webp"
   },
   {
     "id": "cups-09",
@@ -717,7 +717,7 @@
     },
     "upright": "Concord, contentment, physical bien-être; also victory, success, advantage; satisfaction for the Querent or person for whom the consultation is made.",
     "reversed": "Truth, loyalty, liberty; but the readings vary and include mistakes, imperfections, etc.",
-    "image": "/xtell/tarot/cups-09.webp"
+    "image": "/xoracle/tarot/cups-09.webp"
   },
   {
     "id": "cups-10",
@@ -733,7 +733,7 @@
     },
     "upright": "Contentment, repose of the entire heart; the perfection of that state; also perfection of human love and friendship; if with several picture-cards, a person who is taking charge of the Querent's interests; also the town, village or country inhabited by the Querent.",
     "reversed": "Repose of the false heart, indignation, violence.",
-    "image": "/xtell/tarot/cups-10.webp"
+    "image": "/xoracle/tarot/cups-10.webp"
   },
   {
     "id": "cups-11",
@@ -749,7 +749,7 @@
     },
     "upright": "Fair young man, one impelled to render service and with whom the Querent will be connected; a studious youth; news, message; application, reflection, meditation; also these things directed to business.",
     "reversed": "Taste, inclination, attachment, seduction, deception, artifice.",
-    "image": "/xtell/tarot/cups-11.webp"
+    "image": "/xoracle/tarot/cups-11.webp"
   },
   {
     "id": "cups-12",
@@ -765,7 +765,7 @@
     },
     "upright": "Arrival, approach—sometimes that of a messenger; advances, proposition, demeanour, invitation, incitement.",
     "reversed": "Trickery, artifice, subtlety, swindling, duplicity, fraud.",
-    "image": "/xtell/tarot/cups-12.webp"
+    "image": "/xoracle/tarot/cups-12.webp"
   },
   {
     "id": "cups-13",
@@ -781,7 +781,7 @@
     },
     "upright": "Good, fair woman; honest, devoted woman, who will do service to the Querent; loving intelligence, and hence the gift of vision; success, happiness, pleasure; also wisdom, virtue; a perfect spouse and a good mother.",
     "reversed": "The accounts vary; good woman; otherwise, distinguished woman but one not to be trusted; perverse woman; vice, dishonour, depravity.",
-    "image": "/xtell/tarot/cups-13.webp"
+    "image": "/xoracle/tarot/cups-13.webp"
   },
   {
     "id": "cups-14",
@@ -797,7 +797,7 @@
     },
     "upright": "Fair man, man of business, law, or divinity; responsible, disposed to oblige the Querent; also equity, art and science, including those who profess science, law and art; creative intelligence.",
     "reversed": "Dishonest, double-dealing man; roguery, exaction, injustice, vice, scandal, pillage, considerable loss.",
-    "image": "/xtell/tarot/cups-14.webp"
+    "image": "/xoracle/tarot/cups-14.webp"
   },
   {
     "id": "swords-01",
@@ -813,7 +813,7 @@
     },
     "upright": "Triumph, the excessive degree in everything, conquest, triumph of force. It is a card of great force, in love as well as in hatred. The crown may carry a much higher significance than comes usually within the sphere of fortune-telling.",
     "reversed": "The same, but the results are disastrous; another account says—conception, childbirth, augmentation, multiplicity.",
-    "image": "/xtell/tarot/swords-01.webp"
+    "image": "/xoracle/tarot/swords-01.webp"
   },
   {
     "id": "swords-02",
@@ -829,7 +829,7 @@
     },
     "upright": "Conformity and the equipoise which it suggests, courage, friendship, concord in a state of arms; another reading gives tenderness, affection, intimacy. The suggestion of harmony and other favourable readings must be considered in a qualified manner, as Swords generally are not symbolical of beneficent forces in human affairs.",
     "reversed": "Imposture, falsehood, duplicity, disloyalty.",
-    "image": "/xtell/tarot/swords-02.webp"
+    "image": "/xoracle/tarot/swords-02.webp"
   },
   {
     "id": "swords-03",
@@ -845,7 +845,7 @@
     },
     "upright": "Removal, absence, delay, division, rupture, dispersion, and all that the design signifies naturally, being too simple and obvious to call for specific enumeration.",
     "reversed": "Mental alienation, error, loss, distraction, disorder, confusion.",
-    "image": "/xtell/tarot/swords-03.webp"
+    "image": "/xoracle/tarot/swords-03.webp"
   },
   {
     "id": "swords-04",
@@ -861,7 +861,7 @@
     },
     "upright": "Vigilance, retreat, solitude, hermit's repose, exile, tomb and coffin. It is these last that have suggested the design.",
     "reversed": "Wise administration, circumspection, economy, avarice, precaution, testament.",
-    "image": "/xtell/tarot/swords-04.webp"
+    "image": "/xoracle/tarot/swords-04.webp"
   },
   {
     "id": "swords-05",
@@ -877,7 +877,7 @@
     },
     "upright": "Degradation, destruction, revocation, infamy, dishonour, loss, with the variants and analogues of these.",
     "reversed": "The same; burial and obsequies.",
-    "image": "/xtell/tarot/swords-05.webp"
+    "image": "/xoracle/tarot/swords-05.webp"
   },
   {
     "id": "swords-06",
@@ -893,7 +893,7 @@
     },
     "upright": "Journey by water, route, way, envoy, commissionary, expedient.",
     "reversed": "Declaration, confession, publicity; one account says that it is a proposal of love.",
-    "image": "/xtell/tarot/swords-06.webp"
+    "image": "/xoracle/tarot/swords-06.webp"
   },
   {
     "id": "swords-07",
@@ -909,7 +909,7 @@
     },
     "upright": "Design, attempt, wish, hope, confidence; also quarrelling, a plan that may fail, annoyance. The design is uncertain in its import, because the significations are widely at variance with each other.",
     "reversed": "Good advice, counsel, instruction, slander, babbling.",
-    "image": "/xtell/tarot/swords-07.webp"
+    "image": "/xoracle/tarot/swords-07.webp"
   },
   {
     "id": "swords-08",
@@ -925,7 +925,7 @@
     },
     "upright": "Bad news, violent chagrin, crisis, censure, power in trammels, conflict, calumny; also sickness.",
     "reversed": "Disquiet, difficulty, opposition, accident, treachery; what is unforeseen; fatality.",
-    "image": "/xtell/tarot/swords-08.webp"
+    "image": "/xoracle/tarot/swords-08.webp"
   },
   {
     "id": "swords-09",
@@ -941,7 +941,7 @@
     },
     "upright": "Death, failure, miscarriage, delay, deception, disappointment, despair.",
     "reversed": "Imprisonment, suspicion, doubt, reasonable fear, shame.",
-    "image": "/xtell/tarot/swords-09.webp"
+    "image": "/xoracle/tarot/swords-09.webp"
   },
   {
     "id": "swords-10",
@@ -957,7 +957,7 @@
     },
     "upright": "Whatsoever is intimated by the design; also pain, affliction, tears, sadness, desolation. It is not especially a card of violent death.",
     "reversed": "Advantage, profit, success, favour, but none of these are permanent; also power and authority.",
-    "image": "/xtell/tarot/swords-10.webp"
+    "image": "/xoracle/tarot/swords-10.webp"
   },
   {
     "id": "swords-11",
@@ -973,7 +973,7 @@
     },
     "upright": "Authority, overseeing, secret service, vigilance, spying, examination, and the qualities thereto belonging.",
     "reversed": "More evil side of these qualities; what is unforeseen, unprepared state; sickness is also intimated.",
-    "image": "/xtell/tarot/swords-11.webp"
+    "image": "/xoracle/tarot/swords-11.webp"
   },
   {
     "id": "swords-12",
@@ -989,7 +989,7 @@
     },
     "upright": "Skill, bravery, capacity, defence, address, enmity, wrath, war, destruction, opposition, resistance, ruin. There is therefore a sense in which the card signifies death, but it carries this meaning only in its proximity to other cards of fatality.",
     "reversed": "Imprudence, incapacity, extravagance.",
-    "image": "/xtell/tarot/swords-12.webp"
+    "image": "/xoracle/tarot/swords-12.webp"
   },
   {
     "id": "swords-13",
@@ -1005,7 +1005,7 @@
     },
     "upright": "Widowhood, female sadness and embarrassment, absence, sterility, mourning, privation, separation.",
     "reversed": "Malice, bigotry, artifice, prudery, bale, deceit.",
-    "image": "/xtell/tarot/swords-13.webp"
+    "image": "/xoracle/tarot/swords-13.webp"
   },
   {
     "id": "swords-14",
@@ -1021,7 +1021,7 @@
     },
     "upright": "Whatsoever arises out of the idea of judgment and all its connexions—power, command, authority, militant intelligence, law, offices of the crown, and so forth.",
     "reversed": "Cruelty, perversity, barbarity, perfidy, evil intention.",
-    "image": "/xtell/tarot/swords-14.webp"
+    "image": "/xoracle/tarot/swords-14.webp"
   },
   {
     "id": "pentacles-01",
@@ -1037,7 +1037,7 @@
     },
     "upright": "Perfect contentment, felicity, ecstasy; also speedy intelligence; gold.",
     "reversed": "The evil side of wealth, bad intelligence; also great riches. In any case it shews prosperity, comfortable material conditions, but whether these are of advantage to the possessor will depend on whether the card is reversed or not.",
-    "image": "/xtell/tarot/pentacles-01.webp"
+    "image": "/xoracle/tarot/pentacles-01.webp"
   },
   {
     "id": "pentacles-02",
@@ -1053,7 +1053,7 @@
     },
     "upright": "On the one hand it is represented as a card of gaiety, recreation and its connexions, which is the subject of the design; but it is read also as news and messages in writing, as obstacles, agitation, trouble, embroilment.",
     "reversed": "Enforced gaiety, simulated enjoyment, literal sense, handwriting, composition, letters of exchange.",
-    "image": "/xtell/tarot/pentacles-02.webp"
+    "image": "/xoracle/tarot/pentacles-02.webp"
   },
   {
     "id": "pentacles-03",
@@ -1069,7 +1069,7 @@
     },
     "upright": "Métier, trade, skilled labour; usually, however, regarded as a card of nobility, aristocracy, renown, glory.",
     "reversed": "Mediocrity, in work and otherwise, puerility, pettiness, weakness.",
-    "image": "/xtell/tarot/pentacles-03.webp"
+    "image": "/xoracle/tarot/pentacles-03.webp"
   },
   {
     "id": "pentacles-04",
@@ -1085,7 +1085,7 @@
     },
     "upright": "The surety of possessions, cleaving to that which one has, gift, legacy, inheritance.",
     "reversed": "Suspense, delay, opposition.",
-    "image": "/xtell/tarot/pentacles-04.webp"
+    "image": "/xoracle/tarot/pentacles-04.webp"
   },
   {
     "id": "pentacles-05",
@@ -1101,7 +1101,7 @@
     },
     "upright": "The card foretells material trouble above all, whether in the form illustrated—that is, destitution—or otherwise. For some cartomancists, it is a card of love and lovers—wife, husband, friend, mistress; also concordance, affinities. These alternatives cannot be harmonized.",
     "reversed": "Disorder, chaos, ruin, discord, profligacy.",
-    "image": "/xtell/tarot/pentacles-05.webp"
+    "image": "/xoracle/tarot/pentacles-05.webp"
   },
   {
     "id": "pentacles-06",
@@ -1117,7 +1117,7 @@
     },
     "upright": "Presents, gifts, gratification; another account says attention, vigilance; now is the accepted time, present prosperity, etc.",
     "reversed": "Desire, cupidity, envy, jealousy, illusion.",
-    "image": "/xtell/tarot/pentacles-06.webp"
+    "image": "/xoracle/tarot/pentacles-06.webp"
   },
   {
     "id": "pentacles-07",
@@ -1133,7 +1133,7 @@
     },
     "upright": "These are exceedingly contradictory; in the main, it is a card of money, business, barter; but one reading gives altercation, quarrel—and another innocence, ingenuity, purgation.",
     "reversed": "Cause for anxiety regarding money which it may be proposed to lend.",
-    "image": "/xtell/tarot/pentacles-07.webp"
+    "image": "/xoracle/tarot/pentacles-07.webp"
   },
   {
     "id": "pentacles-08",
@@ -1149,7 +1149,7 @@
     },
     "upright": "Work, employment, commission, craftsmanship, skill in craft and business, perhaps in the preparatory stage.",
     "reversed": "Voided ambition, vanity, cupidity, exaction, usury. It may also signify the possession of skill, in the sense of the ingenious mind turned to cunning and intrigue.",
-    "image": "/xtell/tarot/pentacles-08.webp"
+    "image": "/xoracle/tarot/pentacles-08.webp"
   },
   {
     "id": "pentacles-09",
@@ -1165,7 +1165,7 @@
     },
     "upright": "Prudence, safety, success, accomplishment, certitude, discernment.",
     "reversed": "Roguery, deception, voided project, bad faith.",
-    "image": "/xtell/tarot/pentacles-09.webp"
+    "image": "/xoracle/tarot/pentacles-09.webp"
   },
   {
     "id": "pentacles-10",
@@ -1181,7 +1181,7 @@
     },
     "upright": "Gain, riches; family matters, archives, extraction, the abode of a family.",
     "reversed": "Chance, fatality, loss, robbery, games of hazard; sometimes gift, dowry, pension.",
-    "image": "/xtell/tarot/pentacles-10.webp"
+    "image": "/xoracle/tarot/pentacles-10.webp"
   },
   {
     "id": "pentacles-11",
@@ -1197,7 +1197,7 @@
     },
     "upright": "Application, study, scholarship, reflection; another reading says news, messages and the bringer thereof; also rule, management.",
     "reversed": "Prodigality, dissipation, liberality. luxury; unfavourable news.",
-    "image": "/xtell/tarot/pentacles-11.webp"
+    "image": "/xoracle/tarot/pentacles-11.webp"
   },
   {
     "id": "pentacles-12",
@@ -1213,7 +1213,7 @@
     },
     "upright": "Utility, serviceableness, interest, responsibility, rectitude—all on the normal and external plane.",
     "reversed": "inertia, idleness, repose of that kind, stagnation; also placidity, discouragement, carelessness.",
-    "image": "/xtell/tarot/pentacles-12.webp"
+    "image": "/xoracle/tarot/pentacles-12.webp"
   },
   {
     "id": "pentacles-13",
@@ -1229,7 +1229,7 @@
     },
     "upright": "Opulence, generosity, magnificence, security, liberty.",
     "reversed": "Evil, suspicion, suspense, fear, mistrust.",
-    "image": "/xtell/tarot/pentacles-13.webp"
+    "image": "/xoracle/tarot/pentacles-13.webp"
   },
   {
     "id": "pentacles-14",
@@ -1245,6 +1245,6 @@
     },
     "upright": "Valour, realizing intelligence, business and normal intellectual aptitude, sometimes mathematical gifts and attainments of this kind; success in these paths.",
     "reversed": "Vice, weakness, ugliness, perversity, corruption, peril.",
-    "image": "/xtell/tarot/pentacles-14.webp"
+    "image": "/xoracle/tarot/pentacles-14.webp"
   }
 ]

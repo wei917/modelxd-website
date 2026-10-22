@@ -23,7 +23,7 @@ const en = {
   models: 'models',
   reference: 'Reference',
   newCreation: 'New project',
-  // The studio's own history list (Oct 1), like XTell's per-temple list.
+  // The studio's own history list (Oct 1), like XOracle's per-temple list.
   history: 'Your recent work',
   seeAll: 'See all',
   rename: 'Rename',

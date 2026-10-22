@@ -15,7 +15,7 @@ import { getModelByProviderName } from '../lib/models'
 
 const [out, mode, ...rest] = process.argv.slice(2)
 
-// The site's own palette (app/globals.css, the XTell tokens): no green.
+// The site's own palette (app/globals.css, the XOracle tokens): no green.
 const LOOK = 'Visual style: warm ivory paper background (#faf9f6) with a faint paper grain, soft ink-black text (#292b29), warm grey secondary text (#656761), hairline warm-grey borders (#dedfd8), and ONE accent colour, a deep vermilion red (#a6382e), used only for the primary button, selected states and small highlights; a pale blush tint (#f1e8e2) for selected backgrounds. Absolutely no green and no blue. Refined serif headings in the Songti style, clean sans-serif body text, generous whitespace, soft rounded corners, very light shadows. Calm, premium and trustworthy, like a top product designer\'s app screen for an elegant Chinese fortune-telling site.'
 const PAGE = 'The page, top to bottom: (1) a header: the attached temple icon (a framed card with a young woman\'s face and an open palm) on the left at a modest size, the title 相學館 in a large serif and one short line under it; (2) a slim three-step progress line: 放上照片 · 核對相盤 · 大師解讀, the first step active; (3) a two-option choice: 看自己 and 看我們兩個; (4) the photo section titled 照片 with the note 至少一張: upload places for 正臉, 左手掌 and 右手掌, each with a soft, beautiful painted illustration placeholder (a face, a left palm, a right palm), a camera action 拍照 and an upload action 選照片; (5) two small segmented selectors, 性別 (男 / 女) and 慣用手 (左手 / 右手); (6) a collapsed tips row 怎麼看面相、手相; (7) at the bottom a privacy line with a small lock icon and a wide vermilion primary button 開始觀相.'
 const MOCKUPS: Record<string, string> = {

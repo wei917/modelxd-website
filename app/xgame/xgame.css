@@ -1,7 +1,7 @@
 /* XGame's tab pages (Oct 21; Codex's XOracle-style design, approved by the
    owner): XOracle's warm paper, the scenic feature, serif headings and white
    panels. Everything is scoped to XGame; shared rooms keep their own look. */
-/* XOracle's own column (.xtell-explorer-container): up to 1280 px with 32 px
+/* XOracle's own column (.xoracle-explorer-container): up to 1280 px with 32 px
    sides, the feature 10 px under the bar; on a phone 16 px sides and the
    feature right under the bar (owner, Oct 21: "the page width does not match
    XOracle"). */
@@ -13,7 +13,7 @@
 .xgame-hero-copy { padding: 46px 70px 80px; max-width: 660px; }
 .xgame-hero-kicker { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 13px; letter-spacing: .1em; }
 .xgame-hero-kicker::before { content: ''; width: 26px; height: 1px; background: currentColor; opacity: .55; }
-.xgame-hero-copy h2 { margin: 0; font: 400 clamp(30px, 3.8vw, 46px)/1.12 var(--xtell-serif); letter-spacing: -.025em; white-space: pre-line; text-wrap: balance; }
+.xgame-hero-copy h2 { margin: 0; font: 400 clamp(30px, 3.8vw, 46px)/1.12 var(--xoracle-serif); letter-spacing: -.025em; white-space: pre-line; text-wrap: balance; }
 .xgame-hero-description { max-width: 330px; margin: 16px 0 23px; font-size: 14px; line-height: 1.6; }
 .xgame-hero-enter { display: inline-flex; align-items: center; justify-content: center; gap: 18px; min-height: 44px; padding: 11px 22px; border-radius: 999px; background: var(--red); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; box-shadow: 0 5px 18px rgba(100,30,20,.18); transition: background .2s, transform .2s; }
 .xgame-hero-enter:hover { background: #bb2f28; transform: translateY(-2px); color: #fff; }
@@ -36,13 +36,13 @@
 .xgame-hero[data-game="werewolf"] { background: #12222b; color: #fff9ef; }
 .xgame-hero[data-game="werewolf"] .xgame-hero-shade { background: linear-gradient(90deg, rgba(9,22,30,.9), rgba(9,22,30,.67) 35%, rgba(9,22,30,.12) 72%); }
 .xgame-hero[data-game="werewolf"] .xgame-hero-description, .xgame-hero[data-game="werewolf"] .xgame-hero-kicker { color: #e1e2df; }
-.xgame-table { margin-top: 16px; scroll-margin-top: 100px; padding: 28px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
-.xgame-table-heading { display: flex; align-items: start; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--xtell-rule); }
+.xgame-table { margin-top: 16px; scroll-margin-top: 100px; padding: 28px; border: 1px solid var(--xoracle-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
+.xgame-table-heading { display: flex; align-items: start; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--xoracle-rule); }
 .xgame-table-heading > .xgame-bar-icon { width: 48px; height: 48px; flex-shrink: 0; }
-.xgame-table-heading h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 6px; font: 400 27px/1.25 var(--xtell-serif); }
+.xgame-table-heading h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 6px; font: 400 27px/1.25 var(--xoracle-serif); }
 .xgame-table-heading h2 span { padding: 4px 9px; border-radius: 99px; background: #f4eee5; color: var(--muted); font: 400 12px/1.4 var(--font-body), sans-serif; white-space: nowrap; }
 .xgame-table-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.xgame-table .prompt-label { color: var(--xtell-ink); font: 600 14px/1.5 var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; }
+.xgame-table .prompt-label { color: var(--xoracle-ink); font: 600 14px/1.5 var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; }
 .xgame-shell .xgame-role-summary { display: flex; align-items: center; gap: 10px !important; flex-wrap: wrap; margin: 0 0 24px; padding: 14px 16px !important; background: #faf7f2; border: 1px solid #ede5da; border-radius: 12px; }
 .xgame-shell .xgame-role-summary > span:first-child { margin-right: 10px; font: 500 12px/1.4 var(--font-body), sans-serif; letter-spacing: 0; text-transform: none; }
 .xgame-shell .xgame-role-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 11px; border: 1px solid #e8dfd4; border-radius: 99px; background: #fff; }
@@ -50,13 +50,13 @@
 .xgame-shell .xgame-human-seats { grid-template-columns: minmax(0, 260px) !important; }
 .xgame-shell .xgame-human-seats > button, .xgame-shell .xgame-model-seats > button { min-height: 62px; font-size: 13px !important; background: #fdfbf8 !important; border-color: #d9ccbb !important; cursor: pointer !important; transition: border-color .15s, background .15s; }
 .xgame-shell .xgame-human-seats > button:hover, .xgame-shell .xgame-model-seats > button:hover { border-color: var(--red) !important; background: #fff5f1 !important; color: var(--red) !important; }
-.xgame-shell .xgame-setup-action { padding-top: 20px; margin-top: 8px; border-top: 1px solid var(--xtell-rule); }
+.xgame-shell .xgame-setup-action { padding-top: 20px; margin-top: 8px; border-top: 1px solid var(--xoracle-rule); }
 .xgame-shell .xgame-setup-action .btn-next { min-height: 44px; padding: 11px 24px; border-radius: 99px; font-size: 14px; }
 .xgame-shell .xgame-setup-action .btn-next:disabled { background: #eee5da; color: #8a7b6b; opacity: 1; cursor: not-allowed; }
 .xgame-shell :is(a, button, input):focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .xgame-table:focus { outline: none; }
 /* Your games of this game, under its setup (XOracle's temple history card). */
-.xgame-history { margin-top: 16px; padding: 14px 18px 6px; border: 1px solid var(--xtell-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
+.xgame-history { margin-top: 16px; padding: 14px 18px 6px; border: 1px solid var(--xoracle-rule); border-radius: 18px; background: #fff; box-shadow: 0 6px 24px rgba(60,40,20,.035); }
 .xgame-history h2 { margin: 0 0 4px; font: 600 11px/1.5 var(--font-mono), monospace; letter-spacing: .08em; color: var(--muted2); }
 .xgame-history ul { list-style: none; margin: 0; padding: 0; }
 .xgame-history li { display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 13.5px; }
@@ -70,11 +70,11 @@
 /* The guide sits right under the slideshow, as on /xoracle. */
 .xgame-shell .xgame-guide { margin: 16px 0 0; padding: 14px 18px; }
 .xgame-shell .xgame-how { margin: 28px 0 0; padding: 20px 22px; }
-.xgame-shell .xgame-how .xtell-how-title { font-size: 18px; }
-.xgame-shell .xtell-footer { max-width: none; margin: 40px 0 0; }
+.xgame-shell .xgame-how .xoracle-how-title { font-size: 18px; }
+.xgame-shell .xoracle-footer { max-width: none; margin: 40px 0 0; }
 /* A table's two chats (TableChat.tsx): public with the house commentator,
    private with the player's hired helper. */
-.xgame-chat { margin-bottom: 12px; border: 1px solid var(--xtell-rule); border-radius: 16px; background: #fff; overflow: hidden; }
+.xgame-chat { margin-bottom: 12px; border: 1px solid var(--xoracle-rule); border-radius: 16px; background: #fff; overflow: hidden; }
 .xgame-chat-tabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); }
 .xgame-chat-tabs button { position: relative; padding: 8px 12px 9px; border: none; border-bottom: 2px solid transparent; background: none; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .xgame-chat-tabs button.is-on { color: var(--white); border-bottom-color: var(--red); }
@@ -142,7 +142,7 @@
   .xgame-history-name { flex-basis: 100%; }
   .xgame-shell .xgame-guide { margin-top: 12px; padding: 12px 14px; }
   .xgame-shell .xgame-how { margin-top: 24px; padding: 16px; }
-  .xgame-shell .xtell-footer { margin: 32px 0 0; }
+  .xgame-shell .xoracle-footer { margin: 32px 0 0; }
   .xgame-chat-list { height: 220px; }
 }
 @media (prefers-reduced-motion: reduce) {

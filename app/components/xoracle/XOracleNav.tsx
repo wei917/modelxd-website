@@ -1,0 +1,183 @@
+'use client'
+
+import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
+import { useAuthModal } from '../../../lib/AuthModalContext'
+import { useLang } from '../../../lib/i18n'
+import { TempleArtwork, DISPLAY_TEMPLES, displayTemples, type TempleKey } from './TempleArtwork'
+import { SUPPORT_EMAIL } from '../ContactEmail'
+import BugReportLink from '../BugReport'
+import { useFace } from '../../../lib/use-face'
+import { pinnedFirst } from '../../../lib/xoracle-pins'
+import { usePins } from './usePins'
+import { useXOracleBase } from './XOracleBase'
+import { doorHome, templeHref, MAIN_ORIGIN, isStreetPath } from '../../../lib/site'
+import { goToRoom, opensInPlace } from '../../../lib/xoracle-room'
+
+/** The wordmark per language (owner, Sep 24): XOracle in English, X先知 in
+ *  Chinese, X占い / X운세 in Japanese / Korean. The leading X keeps its accent. */
+export function XOracleMark() {
+  const { t } = useLang()
+  const brand = t('xoracle.site.brand')
+  // The ModelXD logo beside the name, as XCreate's mark does it (owner,
+  // Sep 26). The logo file has a white plate, so it sits only on white
+  // surfaces: the top bar and the sign-in card are white for that reason.
+  return <span className="xoracle-brand xoracle-focus-brand">
+    {/* 64 px (3 KB): the site-wide logo.png is 520 px and 219 KB, and a
+        phone on 4G fetched it before the street painted (Sep 28). */}
+    <img className="xoracle-logo" src="/xoracle/logo-64.png" alt="" width={32} height={32} />
+    <span><span className="xoracle-accent xoracle-x">{brand.slice(0, 1)}</span>{brand.slice(1)}</span>
+  </span>
+}
+
+/** `embedded`: the temples row alone, on top of www's /xoracle page, inside
+ *  www's own shell (owner, Oct 4), whose left nav carries the logo and the
+ *  account. The container is not .xoracle-nav, which switches the page into
+ *  the door's layout. */
+export default function XOracleNav({ user, embedded = false }: { user: User | null; embedded?: boolean }) {
+  const { lang, t } = useLang()
+  // '' on the door; '/xoracle' inside www (XOracleBase).
+  const base = useXOracleBase()
+  const { show } = useAuthModal()
+  const face = useFace(user)
+  const pathname = usePathname()
+  // The room you are in is ?t= on the street's page (lib/xoracle-room.ts), so
+  // the server marks it too.
+  const roomParam = useSearchParams()?.get('t') ?? null
+  const activeTemple: TempleKey | null = isStreetPath(pathname ?? '') && DISPLAY_TEMPLES.includes(roomParam as TempleKey) ? roomParam as TempleKey : null
+  // When the row is wider than the bar (a narrow window, a phone), an arrow
+  // on the side that has more temples scrolls it, over a soft fade: without
+  // one, a mouse user cannot tell the rest exist (owner, Sep 27). Swiping
+  // and keyboard focus still scroll it too. The arrows are a pointer aid
+  // only; every temple link stays in the tab order and in the landmark.
+  const row = useRef<HTMLElement>(null)
+  const [more, setMore] = useState({ left: false, right: false })
+  useEffect(() => {
+    const el = row.current
+    if (!el) return
+    const check = () => setMore(m => {
+      const left = el.scrollLeft > 2, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2
+      return m.left === left && m.right === right ? m : { left, right }
+    })
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', check); ro.disconnect() }
+  }, [lang])
+  // The temple you are in is never hidden past the edge.
+  useEffect(() => {
+    if (!activeTemple) return
+    row.current?.querySelector(`a[href="${templeHref(base, activeTemple)}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeTemple])
+  // The bar marks only the room you are in. The homepage hero's turning
+  // temple used to get a soft mark and the row followed it (Oct 3); taken
+  // out Oct 10 (owner: "should we highlight on the top nav bar? we didn't
+  // go into that temple yet").
+  // Pinned temples come first, the newest at the very left (owner, Oct 3;
+  // pinned from a room's header), with a thin rule after them.
+  const { pins } = usePins()
+  const order = pinnedFirst(displayTemples(lang), pins ?? [])
+  const pinnedCount = (pins ?? []).filter(k => order.includes(k)).length
+  const wrap = useRef<HTMLDivElement>(null)
+  const scrollRow = (dir: 1 | -1) => {
+    row.current?.scrollBy({ left: dir * row.current.clientWidth * 0.8, behavior: 'smooth' })
+  }
+  // The tab title follows the language and the place: the explorer, a
+  // temple (?t=), the account page, the legal pages. The server's
+  // metadata is already this language's explorer title (lib/xoracle-meta.ts)
+  // and sits in <head> before first paint (next.config htmlLimitedBots), so
+  // nothing overwrites a title set here; no timed re-sets are needed.
+  useEffect(() => {
+    // Inside www the page keeps www's own title (app/xoracle/page.tsx).
+    if (embedded) return
+    const brand = t('xoracle.site.brand')
+    const compute = () => {
+      if (isStreetPath(pathname ?? '')) {
+        return activeTemple ? `${t('xoracle.site.focus.' + activeTemple + '.name')} | ${brand}` : t('xoracle.site.tab')
+      }
+      if (pathname === '/profile') return `${t('xoracle.site.account')} | ${brand}`
+      if (pathname === '/terms') return `${t('xoracle.site.title.terms')} | ${brand}`
+      if (pathname === '/privacy') return `${t('xoracle.site.title.privacy')} | ${brand}`
+      if (pathname === '/tokushoho') return `${t('nav.tokushoho')} | ${brand}`
+      return null
+    }
+    const title = compute()
+    if (title) document.title = title
+  }, [lang, t, pathname, embedded, activeTemple])
+  const strip = (
+    <div ref={wrap} className="xoracle-temple-wrap">
+      <nav ref={row} className="xoracle-temple-nav" aria-label={t('xoracle.site.navigation')}>
+        {order.map((key, i) => <a key={key} href={templeHref(base, key)}
+          onClick={e => {
+            if (!opensInPlace(e, doorHome(base))) return
+            e.preventDefault()
+            goToRoom(key)
+            window.scrollTo({ top: 0, behavior: 'instant' })
+          }}
+          aria-label={t('xoracle.site.focus.' + key + '.name')}
+          aria-current={activeTemple === key ? 'page' : undefined}
+          data-pinned={i < pinnedCount ? (i === pinnedCount - 1 ? 'last' : 'true') : undefined}>
+          <TempleArtwork temple={key} kind="icon" clear className="xoracle-nav-icon" />
+          <span>{t('xoracle.site.focus.' + key + '.short')}</span>
+        </a>)}
+      </nav>
+      {more.left && <button type="button" className="xoracle-temple-arrow is-left" tabIndex={-1} aria-hidden="true"
+        title={t('xoracle.site.templesPrev')} onClick={() => scrollRow(-1)}>‹</button>}
+      {more.right && <button type="button" className="xoracle-temple-arrow is-right" tabIndex={-1} aria-hidden="true"
+        title={t('xoracle.site.templesMore')} onClick={() => scrollRow(1)}>›</button>}
+    </div>
+  )
+  if (embedded) return <div className="xoracle-embedded-bar"><div className="xoracle-embedded-inner">{strip}</div></div>
+  return (
+    <header className="xoracle-nav">
+      <a href="#xoracle-main" className="xoracle-skip" onClick={event => {
+        event.preventDefault()
+        // The explorer and the account page carry #xoracle-main; shared pages
+        // (terms, privacy) are reached through their <main> landmark.
+        const main = document.getElementById('xoracle-main') ?? document.querySelector<HTMLElement>('main') ?? document.querySelector<HTMLElement>('.app-main')
+        if (!main) return
+        if (!main.hasAttribute('tabindex')) main.setAttribute('tabindex', '-1')
+        main.focus()
+        main.scrollIntoView({ block: 'start' })
+      }}>{t('xoracle.site.skip')}</a>
+      <div className="xoracle-nav-inner">
+        {/* The wordmark is the way back to the street. Inside a temple it
+            leaves the room in place instead of reloading the page. */}
+        <a href={doorHome(base)} aria-label="XOracle" onClick={e => {
+          if (!activeTemple || !opensInPlace(e, doorHome(base))) return
+          e.preventDefault(); goToRoom(null); window.scrollTo({ top: 0 })
+        }}><XOracleMark /></a>
+        {/* Every temple, one compact row after the wordmark (owner, Sep 27).
+            The avatar on the right IS the account link (owner, Sep 24). */}
+        {strip}
+        <div className="xoracle-nav-actions">
+          {/* The saved picture (Oct 2: chosen on the account page, or the
+              first sign-in's), as XCreate's and www's navs show it; the
+              initial only without one (owner, Sep 26). no-referrer: Google's
+              avatar host can refuse hotlinks that carry a referrer. */}
+          {user ? <Link href="/profile" className="xoracle-account-link" aria-label={t('xoracle.site.account')}>
+            {face.photo
+              ? <img src={face.photo} alt="" referrerPolicy="no-referrer" />
+              : <span aria-hidden="true">{(face.name || 'X').slice(0, 1).toUpperCase()}</span>}
+          </Link> : <button className="xoracle-button" onClick={() => show()}>{t('auth.signin')}</button>}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+/** `noteKey`: another page's own line in X先知's footer (XGame, Oct 22). */
+export function XOracleFooter({ noteKey = 'xoracle.site.footerNote' }: { noteKey?: string } = {}) {
+  const { t } = useLang()
+  return <footer className="xoracle-footer">
+    {/* The name and the disclaimer as one plain line (owner, Sep 28). */}
+    <p className="xoracle-footer-note">{t(noteKey)}</p>
+    {/* A way to reach us (owner, Sep 27: the street had none): 聯絡我們 as
+        a mail link (owner, Oct 4), the address in its hover text, and the
+        bug report form, which works signed out too. */}
+    <nav aria-label={t('xoracle.site.legal')}><a href={`mailto:${SUPPORT_EMAIL}`} title={SUPPORT_EMAIL}>{t('nav.contact')}</a><BugReportLink /><Link href="/terms">{t('nav.terms')}</Link><Link href="/privacy">{t('nav.privacy')}</Link><Link href="/tokushoho">{t('nav.tokushoho')}</Link><span className="xoracle-footer-maker">by <a href={MAIN_ORIGIN} target="_blank" rel="noopener">ModelXD</a></span></nav>
+  </footer>
+}

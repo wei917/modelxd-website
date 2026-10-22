@@ -22,7 +22,7 @@ const nextConfig = {
   serverExternalPackages: ['ffmpeg-static', 'ffish'],
   // Metadata in <head>, before first paint, for every visitor. By default
   // Next 16 streams the <title> into <body> after the shell has hydrated,
-  // which overwrote the tab title the XTell/XCreate top bars had just set
+  // which overwrote the tab title the XOracle/XCreate top bars had just set
   // (they re-set it at 800 and 2500 ms to win). Every generateMetadata here
   // only reads request headers (the door and lib/lang.ts's language), so
   // waiting for it costs nothing.
@@ -50,6 +50,11 @@ const nextConfig = {
   // (lib/renamed-apps.js: /xdev → /xkit, /xdirect → /xfilm/direct, …).
   async redirects() {
     return renamedRedirects()
+  },
+  // XOracle's own API was /api/xtell/* until Oct 22 (lib/renamed-apps.js):
+  // a tab opened before the move still calls it there.
+  async rewrites() {
+    return [{ source: '/api/xtell/:path*', destination: '/api/xoracle/:path*' }]
   },
   webpack: (config) => {
     config.watchOptions = {

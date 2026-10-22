@@ -83,7 +83,7 @@ export interface ModelPricing {
    * providers publish it, and an absolute rate cannot silently drift when a
    * base price changes. Any key it omits falls back to the base rate, so a
    * row may carry the threshold alone: that is useful on its own, because
-   * XTell sizes a request to stay under the jump (lib/conversation-memory.ts).
+   * XOracle sizes a request to stay under the jump (lib/conversation-memory.ts).
    */
   long_context?: {
     threshold_input_tokens: number

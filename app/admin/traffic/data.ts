@@ -337,7 +337,7 @@ export function askedCountry(v: string | undefined): string | null {
   return isCode(c) ? c : null
 }
 
-/** A row of xtell_vote_window() (migration 122): 👍 and 👎 on XTell answers
+/** A row of xtell_vote_window() (migration 122): 👍 and 👎 on XOracle answers
  *  per temple and teacher, as the votes stand, by the day last set. */
 export type VoteRow = { temple: string; model_id: string; up: number; down: number; people: number }
 export type VoteLine = { temple: string; model: string; up: number; down: number; people: number }
@@ -350,7 +350,7 @@ export function voteLines(rows: VoteRow[], names: Record<string, string>): VoteL
     .sort((a, b) => (b.up + b.down) - (a.up + a.down) || a.temple.localeCompare(b.temple) || a.model.localeCompare(b.model))
 }
 
-/** A row of xtell_share_window() (migration 122): presses in XTell's share
+/** A row of xtell_share_window() (migration 122): presses in XOracle's share
  *  dialogs by what, from where, how and how it ended. */
 export type ShareRow = { kind: string; temple: string | null; method: string; outcome: string; shares: number; browsers: number }
 export type ShareLine = { kind: string; temple: string; method: string; done: number; cancelled: number; failed: number }

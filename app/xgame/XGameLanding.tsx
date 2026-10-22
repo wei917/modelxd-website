@@ -4,7 +4,7 @@
 // XOracle's homepage on XGame's paper: the page (client.tsx) draws the top
 // bar with nothing marked and the slideshow; this is the rest, as on
 // /xoracle: the guide box right under the slideshow (XGameGuide) and four
-// steps in XOracle's how-to style (.xtell-how, globals.css). The footer is
+// steps in XOracle's how-to style (.xoracle-how, globals.css). The footer is
 // XOracle's with XGame's own line. No recent games and no card per game
 // (owner, Oct 22: XOracle has no recent visits there, "we already have top
 // nav bar so no need to list all games"), and no today's card.
@@ -31,14 +31,14 @@ export default function XGameLanding({ onOpen }: { onOpen: (game: GameKey) => vo
   return (
     <>
       <XGameGuide onOpen={onOpen} />
-      <section className="xtell-how xgame-how" aria-labelledby={howId}>
-        <h2 id={howId} className="xtell-how-title">{t('xg.how.title')}</h2>
-        <ol className="xtell-how-steps">
+      <section className="xoracle-how xgame-how" aria-labelledby={howId}>
+        <h2 id={howId} className="xoracle-how-title">{t('xg.how.title')}</h2>
+        <ol className="xoracle-how-steps">
           {STEP_ICONS.map((icon, i) => (
             <li key={i}>
-              <span className="xtell-how-icon">{icon}</span>
-              <span className="xtell-how-text">
-                <strong><span className="xtell-how-n">{i + 1}</span>{t(`xg.how.${i + 1}.title`)}</strong>
+              <span className="xoracle-how-icon">{icon}</span>
+              <span className="xoracle-how-text">
+                <strong><span className="xoracle-how-n">{i + 1}</span>{t(`xg.how.${i + 1}.title`)}</strong>
                 <span>{t(`xg.how.${i + 1}.desc`)}</span>
               </span>
             </li>

@@ -13,7 +13,7 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
 ## What a row means
 
 - **One visit = one tab's stay.** Reloads and in-app navigation continue it;
-  30 minutes without input ends it. Moving between front doors (www → xtell)
+  30 minutes without input ends it. Moving between front doors (www → xoracle)
   is a new visit, because each host has its own tab storage. Same visitor.
 - **`active_seconds`** = time with the tab in front, pausing a minute after
   the last real input: a tap or click, a key, a finger or wheel scroll (events
@@ -43,7 +43,7 @@ views, `profiles.last_seen_at` moves once a day, `activity_logs` holds logins.
   when the tab arrived from outside: a reload of an ad URL is not a new click.
 - **`env`** (since Oct 16 decided by HOST, `lib/visit-env.ts`):
   `production` = the real site: dev.modelxd.com (the main website, owner
-  Oct 16), www and the old xtell./xcreate. addresses; `preview` = a branch's
+  Oct 16), www and the old xoracle./xcreate. addresses; `preview` = a branch's
   own vercel.app address; `development` = localhost. Migration 140 relabelled
   dev.modelxd.com's past 'preview' rows. Before Oct 16 the label was
   Vercel's, which called dev 'preview' and left its real users out.
@@ -127,7 +127,7 @@ top tenth is now 27 m 26 s for that day, and it is never below the average.
 we can tell which temple they enter". Every visit report carries the page
 view it is on: `{ page: { id, key, active } }` → `site_page_views` through
 `log_page_view()`. The key is never a URL: X先知 names its room
-(`setPageKey('xtell/<room>')` in app/xtell/client.tsx; the street is
+(`setPageKey('xtell/<room>')` in app/xoracle/client.tsx; the street is
 `xtell`), anything else is its path with ids masked (`lib/page-key.ts`:
 `/xtalk/:id`, `/xsports/mlb`). A new page view starts on a route change or a
 room change; its time is counted like the visit's (tab in front, pausing
@@ -141,8 +141,8 @@ column; visits from before page views count where they landed). Every report cov
 site (every host and page), so the owner asked for a breakdown: "a line
 chart as well, each line is one xapp". `site_visit_by_product(p_days, p_tz,
 p_country)` gives browsers, visits and time per day per app, and per app for
-the range (day null). The app is where the visit landed: the `xtell.` and
-`xcreate.` hosts, or the first part of the www path (`/xtell`, `/xcreate`,
+the range (day null). The app is where the visit landed: the `xoracle.` and
+`xcreate.` hosts, or the first part of the www path (`/xoracle`, `/xcreate`,
 `/xsports`, `/xpersona`, ...; `/` and `/coming-soon` are www's home). A
 visit that moves on keeps the app it landed on. The chart draws X先知, X創作,
 X體育 and www home in fixed colours and folds the rest into Other pages; the
@@ -186,21 +186,21 @@ limit. /admin/traffic shows "Taps on sign-in" in the filtered part (it
 follows the range and the country): taps and browsers per method, and,
 for every country, the accounts that finished.
 
-## XTell share presses (Oct 1)
+## XOracle share presses (Oct 1)
 
-Owner: "can we also log what type of share?" Every press in an XTell share
+Owner: "can we also log what type of share?" Every press in an XOracle share
 dialog sends `{ share: { kind, temple, modelId, method, outcome }, path }`
-to `/api/visit` (`lib/xtell-feedback.ts`, a beacon), and the route writes one
+to `/api/visit` (`lib/xoracle-feedback.ts`, a beacon), and the route writes one
 row to `xtell_shares` (`supabase/122_xtell_votes_shares.sql`): what was
 shared (`answer`, `daily`, `almanac`, `cookie`, `tarot`, `qian`), the temple,
 the teacher when it is an answer, how (`save` = 存到相簿 on an iPhone,
 `download`, `share` = 分享…, `copy` = 複製連結) and the ending (`done`,
 `cancelled` = the share sheet was closed, `failed`), plus the visitor
 cookie, host, path, country and env. Same rules as visits. The share sheet
-never tells the page which app was picked. /admin/traffic shows "XTell
-shares" in the filtered part, beside "XTell teacher votes" (👍 / 👎 per
+never tells the page which app was picked. /admin/traffic shows "XOracle
+shares" in the filtered part, beside "XOracle teacher votes" (👍 / 👎 per
 teacher and temple from `xtell_answer_votes`, same migration, written by
-`/api/xtell/vote` rather than here because a vote belongs to an account).
+`/api/xoracle/vote` rather than here because a vote belongs to an account).
 
 ## From ads, and accounts per country (Oct 2)
 

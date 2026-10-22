@@ -64,7 +64,7 @@ export async function scanWith(s: Scanner, dream: string, userId: string, lang =
   ])
   if (timer) clearTimeout(timer)
   const picks = error ? null : scanPicks(text)
-  if (!picks) console.warn(`[xtell/jiemeng] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
+  if (!picks) console.warn(`[xoracle/jiemeng] scan by ${s.model} failed: ${error ?? `unreadable reply ${JSON.stringify(text.slice(0, 200))}`}`)
   return picks
 }
 

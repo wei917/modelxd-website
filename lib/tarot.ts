@@ -2,7 +2,7 @@
 // Waite–Smith cards (Pamela Colman Smith's art) with A. E. Waite's own
 // divinatory meanings from The Pictorial Key to the Tarot (1911), both public
 // domain, built by scripts/fetch-tarot.mjs into content/tarot/cards.json and
-// public/xtell/tarot/. The draw arrives as ids (lib/tarot-draw.ts); every
+// public/xoracle/tarot/. The draw arrives as ids (lib/tarot-draw.ts); every
 // name, picture and meaning is read here, so a teacher only ever sees
 // Waite's real text.
 //

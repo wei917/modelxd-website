@@ -1,6 +1,6 @@
 'use client'
 // app/profile/Library.tsx — the Library view of /profile (Oct 15; the
-// approved design library-designs-20261014/03-*-xtell-layout): your work,
+// approved design library-designs-20261014/03-*-xoracle-layout): your work,
 // one section per app, each drawn the way that app's work looks (A/B
 // duels, an image grid, conversation rows, 3D and plan thumbnails), never
 // one mixed feed.
@@ -20,9 +20,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useLang } from '../../lib/i18n'
 import { GAME_NAME_KEY, isGameKey, type GameKey } from '../../lib/xgame-games'
-import { describeVisit, notAskedKey, firstAsk, cleanTitle } from '../../lib/xtell-history'
-import { TitleEditor } from '../components/xtell/TitleEditor'
-import { TempleArtwork, TEMPLE_ART, type TempleKey } from '../components/xtell/TempleArtwork'
+import { describeVisit, notAskedKey, firstAsk, cleanTitle } from '../../lib/xoracle-history'
+import { TitleEditor } from '../components/xoracle/TitleEditor'
+import { TempleArtwork, TEMPLE_ART, type TempleKey } from '../components/xoracle/TempleArtwork'
 
 export type SectionKey =
   | 'duels' | 'xcreates' | 'xfilm' | 'xworlds' | 'xarchs'
@@ -66,7 +66,7 @@ const SECTIONS: SectionDef[] = [
   { key: 'xpersonas', nameKey: 'nav.xpersona', icon: 'persona',  view: 'persona', preview: 4, previewPhone: 2 },
   { key: 'xtalks',    nameKey: 'nav.xtalk',    icon: 'talk',     view: 'list',    preview: 4, previewPhone: 3 },
   { key: 'xgames',    nameKey: 'nav.xgame',    icon: 'game',     view: 'list',    preview: 4, previewPhone: 3 },
-  { key: 'xtell',     nameKey: 'nav.xtell',    icon: 'tell',     view: 'xtell',   preview: 4, previewPhone: 3 },
+  { key: 'xtell',     nameKey: 'nav.xoracle',    icon: 'tell',     view: 'xtell',   preview: 4, previewPhone: 3 },
   { key: 'votes',     nameKey: 'lib.votes',    icon: 'vote',     view: 'list',    modes: true, preview: 4, previewPhone: 3 },
 ]
 export const DEFAULT_SECTIONS: SectionKey[] = ['duels', 'xcreates']
@@ -634,7 +634,7 @@ function Items({ def, items, actions, onRemoved, expanded }: { def: SectionDef; 
       ))}
     </div>
   )
-  if (def.view === 'xtell') return <XTellRows items={items} actions={actions} onRemoved={onRemoved} expanded={expanded} />
+  if (def.view === 'xtell') return <XOracleRows items={items} actions={actions} onRemoved={onRemoved} expanded={expanded} />
   // Conversation and session rows: XDirect, XCut, XTalk, XGame, XVote.
   return (
     <ul className={`${cls} plib-rows`}>
@@ -657,8 +657,8 @@ function Items({ def, items, actions, onRemoved, expanded }: { def: SectionDef; 
 
 // X先知's saved readings, one row each: named by its title or first
 // question, what it was about, when, and Continue / Rename / Delete exactly
-// as XTellActivity offers them (delete asks once, in the row).
-function XTellRows({ items, actions, onRemoved, expanded }: { items: Item[]; actions: LibraryActions; onRemoved: (id: string) => void; expanded: boolean }) {
+// as XOracleActivity offers them (delete asks once, in the row).
+function XOracleRows({ items, actions, onRemoved, expanded }: { items: Item[]; actions: LibraryActions; onRemoved: (id: string) => void; expanded: boolean }) {
   const { t } = useLang()
   const date = useDate()
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -666,7 +666,7 @@ function XTellRows({ items, actions, onRemoved, expanded }: { items: Item[]; act
   const [failed, setFailed] = useState<string | null>(null)
   const [titles, setTitles] = useState<Record<string, string>>({})
   return (
-    <ul className={`plib-grid plib-grid-list plib-rows plib-xtell${expanded ? ' is-expanded' : ''}`}>
+    <ul className={`plib-grid plib-grid-list plib-rows plib-xoracle${expanded ? ' is-expanded' : ''}`}>
       {items.map(it => {
         const r = it.raw as { temple: string; title: string | null; subject: unknown; turns?: Array<{ role: string }> }
         const title = titles[it.id] ?? r.title ?? ''
@@ -687,22 +687,22 @@ function XTellRows({ items, actions, onRemoved, expanded }: { items: Item[]; act
             <span className="plib-row-main">
               <span className="plib-card-title">{named || what || t(notAskedKey(r.temple))}</span>
               <span className="plib-card-meta">
-                {[t(`xtell.site.focus.${r.temple}.name`), named ? what : null, asked ? `${asked} ${t('xtell.saved.turns')}` : t(notAskedKey(r.temple)), date(it.created)].filter(Boolean).join(' · ')}
+                {[t(`xoracle.site.focus.${r.temple}.name`), named ? what : null, asked ? `${asked} ${t('xoracle.saved.turns')}` : t(notAskedKey(r.temple)), date(it.created)].filter(Boolean).join(' · ')}
               </span>
-              {failed === it.id && <span role="alert" className="plib-row-error">{t('xtell.saved.deleteFailed')}</span>}
+              {failed === it.id && <span role="alert" className="plib-row-error">{t('xoracle.saved.deleteFailed')}</span>}
             </span>
             <span className="plib-row-acts">
               {confirming === it.id ? <>
-                <span className="plib-row-confirm">{t('xtell.saved.deleteConfirm')}</span>
+                <span className="plib-row-confirm">{t('xoracle.saved.deleteConfirm')}</span>
                 <button type="button" className="is-danger" onClick={async () => {
                   setConfirming(null)
                   if (await actions.eraseReading(it.id)) { setFailed(null); onRemoved(it.id) } else setFailed(it.id)
-                }}>{t('xtell.saved.deleteYes')}</button>
-                <button type="button" onClick={() => setConfirming(null)}>{t('xtell.saved.deleteNo')}</button>
+                }}>{t('xoracle.saved.deleteYes')}</button>
+                <button type="button" onClick={() => setConfirming(null)}>{t('xoracle.saved.deleteNo')}</button>
               </> : <>
-                <a href={it.href} className="is-primary">{t('xtell.saved.continue')}</a>
-                {r.temple !== 'daily' && <button type="button" onClick={() => { setConfirming(null); setRenaming(it.id) }}>{t('xtell.saved.rename')}</button>}
-                <button type="button" onClick={() => { setFailed(null); setConfirming(it.id) }}>{t('xtell.saved.delete')}</button>
+                <a href={it.href} className="is-primary">{t('xoracle.saved.continue')}</a>
+                {r.temple !== 'daily' && <button type="button" onClick={() => { setConfirming(null); setRenaming(it.id) }}>{t('xoracle.saved.rename')}</button>}
+                <button type="button" onClick={() => { setFailed(null); setConfirming(it.id) }}>{t('xoracle.saved.delete')}</button>
               </>}
             </span>
           </li>
@@ -736,7 +736,7 @@ function MediaBox({ m }: { m?: Media }) {
 }
 
 // ── The top bar: Profile, Library ───────────────────────────────────────
-// X先知's own top bar on www (XTellNav embedded: .xtell-embedded-bar and its
+// X先知's own top bar on www (XOracleNav embedded: .xoracle-embedded-bar and its
 // temple row), with two items: the same white strip across the content
 // area, icon over a 12px label, centred, sticky under the phone's top bar
 // (owner, Oct 15: "top bar should match XTell's"). Favorite returns when
@@ -748,14 +748,14 @@ export function ProfileViewTabs({ view, onChange }: { view: ProfileView; onChang
   const { t } = useLang()
   const tabs: [ProfileView, string, string][] = [['profile', 'user', 'profile.view.profile'], ['library', 'image', 'profile.view.library']]
   return (
-    <div className="xtell-embedded-bar pview-bar">
-      <div className="xtell-embedded-inner">
-        <div className="xtell-temple-wrap">
-          <nav className="xtell-temple-nav" aria-label={t('profile.view.label')}>
+    <div className="xoracle-embedded-bar pview-bar">
+      <div className="xoracle-embedded-inner">
+        <div className="xoracle-temple-wrap">
+          <nav className="xoracle-temple-nav" aria-label={t('profile.view.label')}>
             {tabs.map(([v, icon, key]) => (
               <a key={v} href={`/profile?view=${v}`} aria-current={view === v ? 'page' : undefined}
                 onClick={e => { e.preventDefault(); onChange(v) }}>
-                <span className="xtell-nav-icon pview-icon"><LibIcon name={icon} size={30} /></span>
+                <span className="xoracle-nav-icon pview-icon"><LibIcon name={icon} size={30} /></span>
                 <span>{t(key)}</span>
               </a>
             ))}

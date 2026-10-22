@@ -5,7 +5,7 @@
 //   2. The visitor's saved choice: the `modelxd_lang` cookie, which the
 //      server can read; before the cookie existed the choice lived only in
 //      localStorage (`modelxd:lang`), and it is still written there too.
-//   3. The browser's language, site-aware: on the XTell door only the
+//   3. The browser's language, site-aware: on the XOracle door only the
 //      browser's own language counts (the first in its list): Japanese,
 //      Korean or Simplified Chinese as themselves, anything else (English
 //      included) 繁體; elsewhere the first supported language in the list
@@ -35,7 +35,7 @@ export type Lang = 'en' | 'zh-Hant' | 'zh-Hans' | 'ja' | 'ko'
 export const LANG_CODES: readonly Lang[] = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko']
 
 /** The saved choice the server can read. Host-only, like the localStorage it
- *  mirrors: each door (www, xtell., xcreate.) keeps its own choice, as before. */
+ *  mirrors: each door (www, xoracle., xcreate.) keeps its own choice, as before. */
 export const LANG_COOKIE = 'modelxd_lang'
 /** The saved choice in localStorage (the only store before the cookie). */
 export const LANG_STORAGE_KEY = 'modelxd:lang'
@@ -75,7 +75,7 @@ export function acceptTags(header: string | null | undefined): string[] {
     .map(x => x.tag)
 }
 
-/** The browser fallback, site-aware. On the XTell door (Taiwan market,
+/** The browser fallback, site-aware. On the XOracle door (Taiwan market,
  *  owner Sep 24: an English browser gets 繁體) only the browser's own
  *  language counts, the first in its list: ja / ko / zh-Hans as themselves
  *  (a bare "zh" is Traditional), anything else 繁體. The rest of the list is
@@ -83,7 +83,7 @@ export function acceptTags(header: string | null | undefined): string[] {
  *  third came up in Japanese). Elsewhere the first supported language in
  *  the list wins, English otherwise. */
 export function browserLang(tags: readonly string[], site: Site): Lang {
-  if (site === 'xtell') {
+  if (site === 'xoracle') {
     const first = tags[0] ?? ''
     const match = langFromTag(first)
     if (match === 'ja' || match === 'ko') return match

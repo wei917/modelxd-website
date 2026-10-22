@@ -1,0 +1,1802 @@
+# XORACLE-PAGE.md — X先知 (`/xoracle`; X算命 until Oct 3)
+
+> Everything about the XOracle surface. Written 2026-08-30, updated 2026-09-01
+> (關帝廟 + 四面佛 + 九曜廟; 媽祖廟, 姓名亭, 測字亭 Sep 22), verified against the code the same day. Read this before touching `app/xoracle/*`, `lib/xoracle.ts`,
+> `lib/classics.ts`, or `app/api/xoracle/*`.
+
+## What it is
+
+Fortune telling as an application surface, aimed at the Taiwan/Japan market.
+**Entertainment, clearly labeled (僅供娛樂), and kept far from anything
+measured** — it must never share a byline with XEval's benchmark claims.
+
+The design metaphor is the owner's: **each template is a Temple (廟)**. You
+don't open a chat about love — you visit 月老廟. The street page lists the
+temples; each temple is one divination method with its own ink-wash cover
+(house art language: painterly, no robots, no AI-slop).
+
+## The room is in the address (`?t=`, Oct 18)
+
+Owner, after X創作's tabs went into `?type=`: "should XOracle follow this
+design too?" → yes; "don't worry about old users or old ads" (old `#bazi`
+links simply open the street). A room is `?t=<room>` on the street's page
+(`/?t=bazi` on the door, `/xoracle?t=bazi` on www), the form shared links
+already had, so the server draws the room at first paint (an ad's room link
+used to show the street until the page woke up) and the top bar marks it
+there too. `lib/xoracle-room.ts`: `goToRoom(key | null)` opens a room or the
+street in place with a history step (Back returns to the street, as with
+the hash), and `opensInPlace()` lets a plain click on a room link (top bar,
+hero, wordmark) do that instead of reloading; Next keeps `useSearchParams`
+in step with the browser's own history calls. The street reads the room
+from `useSearchParams`; a change after the page opened is a navigation (it
+drops `?reading=` and the guide's suggestion), the first look is not.
+
+## Two front doors (Sep 23–24)
+
+`xtell.modelxd.com` serves the same app through `lib/site.ts` + `proxy.ts`
+(see `docs/XORACLE-CODEX-BRIEF.md` for the contract and the split of work with
+Codex). On that host `app/page.tsx` renders `XOracleClient` at `/`, the shell
+is Codex's D2+D5 explorer (`app/components/xoracle/*`: one large selected
+temple portrait, purpose copy, a real entry button, and an illustrated
+icon-plus-label menu for the ten methods; assets in `public/xoracle/approved/`,
+provenance in Codex's design directory), and non-XOracle pages 302 to `/`.
+**Art decision (owner, Sep 24):** the standalone host uses those
+sculptural portraits and screenprint icons, not the ink-wash covers (so does
+www's `/xoracle` since Oct 4); the ink-wash rule below still governs every
+temple cover.
+The host is attached to Vercel's Production target, so it ships with `main`.
+
+**On www at /xoracle too (Oct 4; owner: no subdomains).** www's `/xoracle`
+(dev.modelxd.com/xoracle to test; www.modelxd.com/xoracle stays behind www's
+password for now) shows the door's homepage and temples inside www's own
+shell: the left nav with the ModelXD logo and the account, X先知 lit (owner:
+"you still need the left nav bar, same as other paths. the logo is
+modelxd"). On top of the content sits the temples row alone
+(`XOracleNav embedded`, class `.xoracle-embedded-bar`, never `.xoracle-nav`, which
+switches the whole page to the door's layout); it sticks under the phone's
+60px top bar. The row sits in the banner's column (1280px, 32px gutters,
+like `.xoracle-explorer-container`) and its temples are centered when they all
+fit (about 1500px wide and up), from the left with the › arrow when they do
+not: a centered row that overflows loses its first temples off the left
+edge, where no scroll reaches (owner, Oct 4). `XOracleBaseProvider` (`app/components/xoracle/XOracleBase.tsx`)
+gives the links their base: `''` on the door (`/?t=bazi`), `/xoracle` on www
+(`/xoracle?t=bazi`, `templeHref`/`doorHome` in `lib/site.ts`). The door's footer
+too (owner, Oct 4: "the footer is gone"), the door's colours
+(`.xoracle-site.is-in-www`), www's fonts and title. Inside a temple, the
+sidebar's X先知 link goes back to the street in place (Nav.tsx, `goToRoom`
+in `lib/xoracle-room.ts`). Guests get the free
+chart as on the door (the sidebar link is no longer protected) and sign in at
+the first question; the sign-in comes back to the temple (`/xoracle?t=bazi`,
+AuthModal). The settings and saved visits are the X先知 tab of www's
+`/profile` (opened by `/profile#xoracle-…`, the links in 今日運勢 and the
+personality card); a visit opens on `/xoracle?reading=<id>`. `proxy.ts` keeps
+`/xoracle` on a non-door host in www's shell (`isXOraclePath`), so a leftover
+`?site=` cookie cannot turn it into a door. The old www card grid in
+`client.tsx` (the non-standalone path, `RequireTempleAuth`) is unreachable
+now. Until Oct 22 xtell.modelxd.com kept serving the public with share
+links pointing there.
+
+**xtell.modelxd.com forwards (Oct 22; owner: "redirect xtell.modelxd.com to
+dev.modelxd.com/xoracle").** `oldDoorRedirect` in `proxy.ts`: a 307 to
+`MAIN_ORIGIN` with the query kept, `/` → `/xoracle`, any other page to the
+same page there; `/api/*` on the old host still answers, for tabs opened
+before. Share links are `https://dev.modelxd.com/xoracle?t=<temple>…`
+(`shareUrl`'s `path`), and `/xoracle` itself now carries the temple's preview
+title and picture for `?t=` (`xoracleMetadata` on every host, canonical
+`dev.modelxd.com/xoracle`). A sign-in and the browser's storage belong to a
+host, so someone coming from the old door signs in again on dev and finds
+their saved birth details there only if the account saved them. The door's
+shell (`XOracleNav`, `XOracleFooter`, data-site="xoracle") stays for local
+use (:3001, `?site=xoracle`; the old `?site=xtell` still works). The same day
+the code took the name: everything XTell became XOracle except saved data
+(CLAUDE.md, Legacy redirects).
+
+**Reaching us (Sep 27).** The XOracle footer carries 「聯絡我們：support@modelxd.com」
+(the address shown as it is, `ContactEmail plain`; support@ is a Workspace
+alias of the founder inbox since Sep 28, and replaced founder@ everywhere on
+the site) and 回報問題 (the bug report form with a page
+screenshot, stored in `feedback`, works signed out; `BugReport`), the same
+pieces as www's sidebar. Before this the street had no contact at all; the
+address was only inside the Terms and Privacy pages.
+
+## Signed out: the free chart, sign-in at the first question (Oct 1)
+
+Owner, Oct 1, on the first Japanese ad clicks (4 and 5 seconds, neither
+signed in): "if they click ad, it should land to the landing page and no
+sign in is needed", then "don't build something too complicated". The
+Japanese ad links to a room (`?t=bazi`), and every room opened with the
+sign-in dialog that cannot be closed (Sep 25).
+
+On xtell.modelxd.com a signed-out visitor can now open a room, fill in the
+form and see the chart. The chart route casts it without a session and does
+not save it (`save()` returns null without an account, so there is no
+`readingId`). Sending a question to a teacher, or adding one, opens the
+ordinary sign-in dialog (closable; the chart and the question stay). After
+signing in the visitor comes back to the same room (the dialog keeps the
+query, `?t=`), but the form starts again: details typed before are not carried
+over, on purpose, to keep it simple.
+
+Two rooms stay sign-in first, because their free step calls a model on
+our account: 解夢 scans with one, and the fortune cookie writes its slip with
+one and counts two free a meal per account. The list is `SIGN_IN_FIRST` in
+`lib/xoracle-guest.ts`; those rooms still mount `XOracleAuthGate`, and their
+branches of the chart route answer 401 without a session.
+
+孫子兵法 joined the open rooms on Oct 2, for a ChatGPT ad (owner: an ad for a
+room that is not 迷信, so it can be approved; OpenAI's ad policy allows
+digital products and education and treats religion as sensitive). Its lookup
+is a model call we pay for, so a signed-out visitor gets
+`GUEST_SUNZI_PER_DAY` (3) a day from one address, counted in memory per
+server instance (a floor, like the site agent's), then
+`sunzi_guest_limit`: "sign in to keep going". Nothing is saved for them. Since Oct 4 `/xoracle` on www is the same (it was sign-in only before).
+
+## The architecture rule (the one thing you must not break)
+
+**The model never computes the chart. Code computes the chart; the model only
+interprets it.**
+
+```
+user birth input → server library computes the chart (deterministic, checkable)
+                 → chart facts serialized into the MASTER's system prompt
+                 → user chats; every turn carries the facts natively
+                 → model writes the reading, billed at list price
+```
+
+Why: a model recalls 干支 calendar rules impressively well (all four frontier
+models passed the 立春 trap unaided — tested Aug 29) but "usually right" is
+the worst place to be, because a wrong 排盤 is instantly checkable against
+any Taiwanese 排盤 site and torches credibility. A library is right every
+time for free. The models' job is the part with no right answer: the reading.
+
+## Temples (15 live; 相學館 local only, Oct 6)
+
+| temple | method | engine | notes |
+|---|---|---|---|
+| 八字廟 | BaZi four pillars | `lunar-typescript` (MIT, zero deps) | 節氣-exact: year pillar turns at the 立春 INSTANT (20:40:24-level precision), 五虎遁/五鼠遁, 藏干, 十神, 納音, 大運 via `getYun(gender)`. **稱骨 (Sep 27):** a 幾兩幾錢 card under the pillars, see "稱骨" below |
+| 紫微斗數廟 | Zi Wei Dou Shu | `iztro` (MIT) | 12 palaces, major/minor/adjective stars, brightness + 四化 (mutagen), 五行局, 命主/身主. Needs an exact hour — 命宮 cannot be placed without one. **運限 (Sep 24):** `a.horoscope(date)` gives the 大限 in force (natal palace + age range), this year's and next year's 流年, and the current 流月, each with its 命宮's natal palace, its 四化 by star, and the role→natal-palace map (流年官祿 = 本命 X 宮). Serialized in `ziweiFacts` and shown on the board; `ziweiChart(b, now)` takes the date so the golden suite freezes it. Before this both masters correctly said the chart had no 流年 |
+| 月老廟 | 合婚 (two people) | `lunar-typescript` ×2 | Two birth rows (第一位/第二位, each with own gender — defaults M+F, fully editable). Both charts ride the system slot; 查看命盤 stacks two boards |
+| 關帝廟 | 靈籤 (求籤 + 擲筊) | `content/qian/guandi.json` + `lib/xoracle-ritual.ts` | No birth, no chart. Ritual: draw 1–100 (browser crypto), throw 筊 until **a 聖筊** (笑/陰 → redraw; three in a row until Sep 28, when the owner made it one). Only the NUMBER travels; the poem + six Qing commentaries load from disk on the server. Added Sep 1. **稟告 (Sep 24, optional, both 籤 temples):** a collapsed block for 稱呼, 縣市 and a birth row; whatever is filled in goes to the master (`bingGaoFacts`), a birth adds the 八字 + this year's 流年 under the stick (same `liuNian` as 四面佛). Never an address; nothing stored. 籤是主、命是輔 is in both prompts |
+| 媽祖廟 | 六十甲子籤 (求籤 + 擲筊) | `content/qian/mazu.json` + `lib/xoracle-ritual.ts` | Same ritual as 關帝廟 with a 60-stick tube (`QIAN_COUNTS`). Wikisource《天上聖母六十甲子籤》, the set used at 鎮瀾宮/朝天宮: 甲子 label, a 五行/season/direction line (shown neutral, it is a hint not a grade), four lines, 卦頭故事. No per-topic 解曰 in this edition, and the master is told so. Added Sep 22 |
+| 姓名亭 | 姓名學 (五格剖象) | `lib/names.ts` + `content/names/kangxi.json` | Surname + given name (**1–3 chars each since Sep 28**: Chinese, Japanese kanji, Korean hanja; 々 = the character it repeats; 新字體 as written; no kana/Hangul; inputs never cut while an IME composes). 康熙筆畫 from Unicode Unihan `kRSUnicode` at the radical's FULL form (氵=水 4, 艹=艸 6, 阝=阜 8/邑 7, 月=肉 6, 王=玉 5−1=4), numerals by value. 天/人/地/外/總格, 熊崎式 81 數理 (吉/半吉/凶, wraps by −80), 三才 五行 生剋. Master never counts strokes; a second name goes back through the form. Added Sep 22 |
+| 測字亭 | 拆字 | `lib/names.ts` + 《測字秘牒》 | One character + the matter asked. Code gives the 康熙 radical, its strokes, the character's strokes and the radical's 五行 (common radicals only). **The decomposition is the master's**, and the prompt makes it spell every part out so the visitor can check it, because no license-clean IDS dataset exists (CHISE/cjkvi-ids are GPL). Classic: 清 程省《測字秘牒》 from Wikisource via `lib/classics`. Added Sep 22 |
+| 四面佛 | 四面許願 + 流年 | `lunar-typescript` | Birth row + four wish boxes (平安/事業/婚姻/財富, clockwise) + 還願 pledge. Chart = the visitor's 八字 plus `liuNian()`: this year's 天干 as 十神 vs 日主, 地支 vs 日支 and 年支 (太歲 label), the 大運 in force. The keeper says which face the year favours from THAT, not from vibes. Added Sep 1 |
+| 九曜廟 | Jyotish (吠陀占星), Shani patron | `lib/jyotish.ts` on `astronomy-engine` 2.1 (MIT) | Needs a **birth place** (`lib/xoracle-places.ts`, ~58 curated cities, IANA zones so DST resolves). Sidereal Lahiri; Lagna; nine grahas with sign/degree/whole-sign house/nakshatra-pada/D9; mean-node Rahu/Ketu; retrograde; Vimshottari maha + antar. Checked against Swiss Ephemeris within 15" on four charts. Added Sep 1 |
+| 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
+| 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
+| 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
+| 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xoracle-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
+| 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xoracle/tarot/` | The visitor's own ritual (Oct 1, `TarotRitual.tsx`): 洗牌 (the browser shuffles the 78, Fisher–Yates, crypto, each card lying upright or reversed at even odds; as often as they like), 切牌 (one of three piles to the top), then the whole deck face down in an arc to choose 1, 3 (past/present/future) or 5 (二擇一, 關係; Oct 2) from, then each chosen card turned over; only ids travel, after the last turn. Each laid card shows our own modern reading in the visitor's language (`content/tarot/modern.json`), Waite's text one tap away. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
+| 幸運餅乾 | Fortune cookie | `lib/xoracle-cookie.ts`, `lib/xoracle-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; the license travels with the data in `content/cookie/LICENSE-fortune-cookie.txt`, and since Oct 2 the credit is no longer printed under each cookie (owner: "remove it"; MIT asks for the notice with copies, not on screen); `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server, and the slip is returned at once; the note under it is written after, streamed by `/api/xoracle/cookie/note` (Sep 29), once per cookie (`notePending`, lowered in the same UPDATE that checks it; a second tab is told it is being written and asks again), in the slip's language (`noteLang`), and saved even if the reader leaves (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
+| 九星気学 | Nine Star Ki | `lib/kyusei.ts` (+ `lib/kyusei-words.ts`, lunar-typescript for 立春 and the 節) | Birth date (hour optional). Code: 本命星 by the 立春 year (11 − year mod 9), 月命星 by the 節月 (寅 month starts 八白 / 五黄 / 二黒 by the year's group), this year's and month's 洛書 boards (南 on top), 五黄殺 · 暗剣殺 · 破 · 本命殺 · 本命的殺, and lucky directions by 相生・比和 (五黄 never), with 最大吉 where the 月命星 also fits; 八方塞がり when one's own star is in the centre (no lucky direction, said as a time to hold, not an omen). A 立春 or 節入り-day birth with the hour unknown or close gets the other side's star too. The boards are as of the visitor's local date, saved with the visit (`today`, `asToday`). Icon: generated like 觀音's (GPT Image 2.5 Sunburst image edit against the object icons 八字 紫微 測字 占星, medium, $0.022 a draft), then the nine discs recoloured in code into the real 定位盤 (南 on top: 四緑 九紫 二黒 / 三碧 五黄 七赤 / 八白 一白 六白); in the street's share picture. Japan's menu puts it right after 四柱推命. Added Sep 29 |
+| 宿曜占星術 | Sukuyō | `lib/sukuyo.ts` (+ `lib/sukuyo-words.ts`, lunar-typescript's lunar dates) | Birth date, and optionally a partner's birth date (date only, saved with the visit). Code: the 宿曜経 calendar (旧暦 1月1日 室, 2月 奎, 3月 胃, 4月 畢, 5月 参, 6月 鬼, 7月 張, 8月 角, 9月 氐, 10月 心, 11月 斗, 12月 虚, then one 宿 a day, 牛 unused) gives the 本命宿 and today's 宿; 三九の秘法 names what any 宿 is to one's own (命 業 胎; 栄 衰 安 危 成 壊 友 親 in each nine) and a pair's relation (栄親, 友衰, 安壊, 危成, 命, 業胎). Checked against a published 2026 calendar (rekichu.com, January, across the 12月1日 boundary). The lunar dates are China's calendar, which in rare months starts a day off Japan's 旧暦; a leap-month birth takes its month's number; both said. Board: the two 宿, today's kind of day with a conventional meaning, the pair, and the 三九 table (three rows of nine). Icon: generated the same way (a crescent in a night circle over a sutra scroll), then the ring of stars redrawn in code as exactly 27, evenly spaced. Six drafts for both temples cost $0.133. Added Sep 29 |
+| 孫子兵法 | The Art of War, for what to do next (not fortune-telling) | `lib/sunzi.ts` + `lib/sunzi-scan.ts` + `content/sunzi/sunzi.json` | No birth. The situation as written (≤1,500 chars, any language) + an optional decision. Built like 解夢: a quick house-paid model picks the lines of the thirteen chapters that speak to it, each with a plain AI translation in the page language, shown free; the 軍師 (paid) turns them into next steps. See "孫子兵法" below. Added Sep 29 |
+
+## 關帝靈籤 corpus (`scripts/fetch-guandi-qian.ts`)
+
+Wikisource《關聖帝君靈籤》, 清刊本 (姑蘇鈕氏藏板), public domain. Fetched
+through the MediaWiki API in two batches of 50 — anonymous bulk page loads
+without a User-Agent get refused, which looked like throttling and was not.
+
+The hundred pages were transcribed by two hands: **format A** (籤 1–10:
+`<poem>`, `===聖意===` … `===占驗===`, the 甲子 label in the header) and
+**format B** (籤 11–100: two 。-joined lines, `'''聖意：'''` …
+`'''故事及記載：'''`, no label, ■ variant-character notes, and a modern
+twelve-topic 解籤簿 (功名/六甲/求財…) pasted inside 聖意). The parser reads
+both. The twelve-topic sheet is **dropped** — it is a 20th-century temple
+sheet, not the Qing text, and its copyright is unknown; only the edition
+that is clearly public domain goes in. The label for B is derived,
+第n籤 = STEMS[(n-1)/10] + STEMS[(n-1)%10], and the parser asserts that
+formula against every A page (第一籤 甲甲 … 第十籤 甲癸 … 第一百籤 癸癸).
+
+The commentaries ride with the poem in `guandiFacts()` as citable original
+text (聖意, 東坡解, 碧仙註, 解曰, 釋義, plus 占驗 on A and 典故 on B) — 一籤
+一書 — so `lib/classics.ts` has nothing to retrieve for this temple and its
+source list is empty. The golden suite checks count, four lines each, 聖意 +
+解曰 everywhere, and three frozen sticks (1, 57, 100). The 57 expectation was
+first written from memory as 庚庚 and was wrong (己庚) — the same lesson as
+the 立春 case: observe, never recall.
+
+## 媽祖 六十甲子籤 corpus (`scripts/fetch-mazu-qian.ts`)
+
+One Wikisource page, sixty entries, one regex. The 籤 order is the
+traditional one (甲子, 甲寅, 甲辰, 甲午, 甲申, 甲戌, 乙丑 …), stepping two
+branches at a time, not the calendar's sixty-cycle, so never derive the
+label from the number. The `Qian` shape is shared with 關帝: `luck` holds
+the 五行 line, `sections` holds only 卦頭故事. `qianCorpus(temple)`,
+`qianOf(n, temple)`, `validQian(n, temple)` and `guandiFacts(q, ask,
+temple)` take the temple; the closing 允准 line names the right deity.
+
+## 姓名 strokes (`scripts/build-kangxi-strokes.ts`)
+
+Unicode dropped `kRSKangXi` from Unihan (gone by Unicode 17); `kRSUnicode`
+is the surviving radical.residual field and encodes the same 康熙 convention
+姓名學 uses: the radical at its full form plus the residual strokes, with a
+NEGATIVE residual for reduced radical forms (王 = 玉 5 − 1 = 4). Radical
+stroke counts come from each radical's unified-ideograph form via
+`kTotalStrokes`, bridged by `CJKRadicals.txt`; simplified radical variants
+(`120'`) are skipped. The only rule Unihan cannot know is the numeral
+convention (一 … 十 count as their value), applied as an override. Scope is
+URO + Extension A, 27,584 characters, 386 KB with the radical number kept
+per character for 測字. The build spot-checks 48 surnames and given-name
+characters against the tables 姓名學 books print; all hold. Inputs are
+`Unihan_IRGSources.txt` and `CJKRadicals.txt` from unicode.org, not kept in
+the repo.
+
+## Saved readings (`supabase/105_xtell_readings.sql`, Sep 24)
+
+Owner: people paid for these, both the chart and the conversation are kept,
+and a saved reading is resumable. One row per temple visit:
+
+- `/api/xoracle/chart` inserts the row (subject = the request reduced to the
+  keys the routes read, chart = what was shown, extras = match/year/bazi) and
+  returns `readingId`. A save failure never blocks the chart (log only); until
+  105 is applied the site simply behaves as before.
+- `/api/xoracle/reading` takes `readingId` + `qid` and, when the reply settles,
+  calls `xtell_append_turns` (SECURITY INVOKER, runs under the visitor's own
+  RLS): appends the question once per `qid` even when two masters answer,
+  appends each assistant turn with model + cost, accumulates `cost_cents`,
+  sets `title` from the first question.
+- The account page lists rows (browser client, owner RLS): temple, title or
+  「只排了盤」, date, question count, cost, Continue (`/?reading=<id>`),
+  Delete (soft, `deleted_at`).
+- Each temple's entry form also lists the visitor's saved visits to THAT
+  temple (`TempleHistory`, owner Sep 24: history in each temple, not only
+  the account page), with Continue (in place, via `onResume`) and Delete.
+- `?reading=<id>` reopens: `XOracleClient` fetches the row (signed out, the
+  sign-in dialog opens instead, since Oct 4: the read is the owner's alone,
+  and the refused read was a Postgres error), opens the temple,
+  and `TempleRoom` seeds every input, the chart, the extras and the turns
+  from it, so the next question sends exactly what the original visit sent
+  plus the saved history. The ritual shows as confirmed; the engine line is
+  not stored and is blank on a reopened room.
+- Proven on pglite before shipping: dedup, cost, title, cross-user isolation,
+  anon denied (`has_table_privilege` / `has_function_privilege` false).
+- **Await before close.** The append and the debit are awaited inside
+  `onDone` before `controller.close()`. Vercel freezes the function when the
+  response ends; the first live follow-up lost its append to exactly that.
+  Any future write in a streaming route follows the same rule.
+
+## The Jyotish engine (`lib/jyotish.ts`)
+
+No mature JS library exists (surveyed Sep 1: `vedic-astro` is positions +
+panchang with one star, `grahan` is Sun/Moon, `jyotishganit` is Python,
+Swiss Ephemeris bindings are a native addon under AGPL). The whole thing is
+~250 lines on `astronomy-engine`, which gives true-ecliptic-of-date
+positions (`Ecliptic(GeoVector)` and `EclipticGeoMoon`) and sidereal time.
+
+- **Ayanamsa**: Lahiri = 23.857092° at J2000 (the Swiss Ephemeris value,
+  observed) + IAU 2006 general precession in longitude. Matches pyswisseph to
+  0.0" on every test date.
+- **Rahu**: Meeus mean node; Ketu opposite. Most Indian software defaults to
+  mean node.
+- **Lagna**: from GAST + longitude and the mean obliquity, standard formula.
+- **Houses**: whole sign from the Lagna. **D9**: standard 9-fold division.
+- **Dasha**: Vimshottari from the Moon's nakshatra, 365.25-day years; the
+  antardashas of the current mahadasha are laid over its FULL span so a
+  birth-truncated first period comes out right.
+- **Time zones**: `zonedToUtc` resolves local wall time through Intl with the
+  place's IANA zone, so 1985 Tokyo and 2000 New York both come out right
+  without a tz database.
+- **Verification**: `scripts/xoracle-golden.ts` carries Swiss Ephemeris
+  (pyswisseph, SIDM_LAHIRI) reference longitudes for four charts; the engine
+  sits within 15" and the suite fails past 60" (a twentieth of a pada). The
+  remaining ±12" is aberration/nutation modelling, invisible at pada scale.
+  Reference numbers were produced in a scratch venv (`pip install
+  pyswisseph`) and copied in — regenerate the same way if the engine changes.
+
+The facts serializer names each 宿 in Sanskrit plus the 宿曜經 Chinese
+equivalent (Ashwini = 婁 … Revati = 奎; the Tang mapping drops 牛/Abhijit),
+and the classics corpus for this temple is the 宿曜經 itself
+(`content/classics/suyaojing.txt`, Wikisource, fetched via the API's
+`variant=zh-hant` because the page is stored in simplified script).
+
+## The Western engine (`lib/astrology.ts`)
+
+Built on the same `astronomy-engine` as `lib/jyotish.ts`, and deliberately so:
+that file already computes TROPICAL longitudes and a tropical ascendant and
+then subtracts the Lahiri ayanamsa. Western astrology is those numbers without
+the subtraction, so the ephemeris, the timezone handling and the arcsecond
+accuracy were already paid for. `scripts/test-astrology.ts` asserts the
+relationship holds (`tropical - Lahiri == sidereal`, to 0.0").
+
+What is genuinely ours, and how each part is checked:
+
+- **Placidus houses.** Placidus divides each quadrant by TIME, so every cusp
+  depends on its own declination and has to be iterated. It is verified from
+  its DEFINITION rather than against a published table: the suite takes the
+  cusp the code returns, independently recomputes that degree's declination and
+  semi-diurnal arc, and asks what fraction of its own arc it has travelled.
+  Cusps 11, 12, 2 and 3 land on exactly 1/3 and 2/3 to nine decimal places. A
+  second test pins the closed-form case: at the equator every ascensional
+  difference is zero, so Placidus must collapse to equal thirds of right
+  ascension, and it does.
+- **Above |lat| 66°** a degree of the ecliptic can be circumpolar: it never
+  rises, so there is no arc to divide and Placidus has no answer. The engine
+  returns equal houses and sets `system: 'equal'`, which the board prints. A
+  silent NaN or a quietly wrong cusp would be far worse than saying so.
+- **No Chiron, no asteroids.** `astronomy-engine` has no ephemeris for them.
+  A number we cannot check has no business on a board whose whole promise is
+  that it is checkable.
+- **Transits at a 1° orb.** Roughly a day of solar motion. A wider orb puts
+  thirty aspects in force every day of the year, which is the same as having
+  none: it cannot say what is different about today. The exact date is found
+  by bisection over a ±45-day window, so a retrograde planet reports the next
+  crossing rather than pretending there is only one.
+- **Progressions report the Sun and Moon only.** The outer planets barely move
+  in ninety days, so a progressed Pluto is the natal Pluto with a decimal on
+  it. The angles are left out because progressing them needs a choice between
+  Naibod, solar arc and progressed sidereal time that the schools disagree on,
+  and picking one silently would make the board unverifiable.
+- **The solar return** is found by bisection to the second and cast at the
+  BIRTH place, so the room needs no second input. Verified by the definition:
+  the return Sun lands on the natal Sun within an arcsecond.
+- **Composite midpoints are taken the short way round.** The long way puts the
+  composite Sun opposite where every other program puts it.
+
+**Nothing is stored.** 今日運勢 is the one room someone returns to daily, and
+the birth row for it lives in the visitor's own browser (`localStorage`, key
+`xtell.zhanxing.birth`), wrapped in try/catch because a private window throws
+on access rather than returning null. A birth date, an exact time and a place
+is the most identifying thing anyone types into this site and XOracle holds no
+personal records at all; a table only earns itself if a chart ever has to
+follow someone across devices or feed a notification.
+
+**占星塔 has no classics corpus** (`lib/classics.ts` declares `[]`). Its
+classics are Ptolemy and Lilly, neither of which is in `content/classics`, and
+pointing it at 《宿曜經》 because that file mentions the twelve signs would
+ground a Western reading in a Buddhist text about a different system.
+
+## 易學堂 (Sep 26)
+
+Owner: a learning hall where an AI teacher answers beginners; structured
+courses and videos come later (the ten one-minute intro-tour scripts, reviewed and corrected, are in `docs/XORACLE-YIXUE-COURSE.md`). Built with Codex, who reviewed the
+engine independently and made the art.
+
+- **Corpus** — `scripts/fetch-zhouyi.ts` builds `content/yijing/zhouyi.json`
+  from 維基文庫《周易》 (public domain): 卦辭, 彖, 大象, six 爻辭 with 小象,
+  用九/用六, 文言 on 乾/坤, page revision ids. Every page must agree three
+  ways or the build fails: its own 第N卦, its 「X下Y上」 trigram line, and the
+  yin/yang pattern of its 爻 labels. The 十翼 remainder (繫辭上下, 說卦, 序卦,
+  雜卦, under `易傳/` because `周易/繫辭上` is a redirect) goes to
+  `content/classics/zhouyi-*.txt` for 問老師's retrieval.
+- **Corrections** — 42, the only edits, each in the JSON with a witness
+  edition: simplified slips (后/後, 系/係/繫, 丑/醜, 云/雲, 愿/願 …) found by
+  sending every distinct character through Wikisource's zh-hant converter and
+  reading each hit in context; two wrong characters (剛柔際也, 長裕而不設);
+  one broken phrase (剝：不利有攸往, Codex). Right-as-classical forms stay:
+  于, 无, 恒, 輿尸, 渙奔其机, 鴻漸于干, 辟難, 變化云為, and 后 = sovereign in
+  three 大象. The converter misses characters valid in both scripts (系 was
+  found by hand), so a new corpus needs the same context pass.
+- **The rule** — 朱熹《易學啟蒙·考變占第四》 as printed in 《性理大全書》卷十七,
+  quoted per case on the board. 彖辭 there means the 卦辭. Two and four
+  moving lines carry his own 「經傳無文，今以例推之」. Three moving lines:
+  both 卦辭, 本卦 = 貞, 之卦 = 悔, 前十卦主貞/後十卦主悔; the source names the
+  endpoints for 乾 and 坤 (玉齋胡氏), and for the other 62 the split (初爻
+  among the moving lines = 前十) is derived from the same 卦變圖 order. The
+  board, the facts and the code all say so. Six moving: 乾 用九, 坤 用六,
+  others the 之卦 卦辭.
+- **Not 納甲** — the three-coin throw is only a way to get six lines. No 世應,
+  六親, 納甲干支 or 六神 is computed, and the teacher is told not to add them.
+- **Tests** — `scripts/test-yijing.ts` (in `npm run test:xoracle`): 朱熹's own
+  左傳/國語 casts (屯之比 … 穆姜 艮之隨, 蔡墨 乾之坤), the 乾/坤 前十/後十
+  endpoints, Codex's ten independent cases verbatim, all 4096 casts
+  resolving to text that exists, the corpus against the table, numeric
+  references across all five UI languages, script variants, and follow-up
+  grounding from the nearest user-named hexagram. A newly named hexagram
+  replaces the prior topic; assistant replies cannot invent the source target.
+- **Teacher conversation is the default** — new visits start with 問老師.
+  Visitors prepare an actual question or situation before choosing teachers
+  and reviewing the estimate; drafting or entering never invokes a paid
+  model. Empty teacher requests are rejected in both UI and API. Knowledge
+  questions get direct teaching; personal situations with missing context
+  call for one to three relevant follow-up questions before individual
+  analysis. User facts, sourced quotations and interpretation stay distinct.
+  There is no randomly assigned or profile-assigned hexagram in this mode.
+  Retrieval uses the visitor's current question and recent user turns.
+  With incomplete personal context, the first reply should offer a useful
+  framework that does not depend on unknown facts, then ask targeted questions.
+  Certainty restrictions apply to unsupported personal outcomes, not verified
+  knowledge. The homepage promises quotations only when a relevant source is
+  available; the question field explains saved history and avoids asking for
+  unnecessary personal details.
+  Source lookup includes named hexagrams, quoted classical phrases (including
+  shared phrases with multiple locations), and a small curated index for
+  yin/yang, career decisions, and collaboration/disagreement in five languages.
+  Matching folds character variants; displayed quotations stay verbatim from
+  the corpus. Concept matches are optional reading analogies, never a personal
+  cast. The stricter classic-passage relevance gate applies only to 易學堂.
+- **Optional practice** — casting is under the collapsed 傳統方法練習
+  disclosure, labelled 起卦練習. It teaches the traditional method and
+  does not claim the random symbols establish personal facts or predictions.
+  Existing cast records still reopen in their original mode.
+  The practice room also accepts the six recorded throw totals (6–9), entered
+  chronologically from bottom line to top. Missing values are never filled in.
+  Manual input omits coin faces instead of fabricating them and uses the same
+  server calculation, source texts, reading rules and saved-visit workflow.
+  Viewing results is free; a paid teacher response still requires Send.
+  This supports the accepted introductory tour's home casting exercise.
+- **Behavioral evaluation** — `scripts/fixtures/yixue-teacher-cases.json`
+  contains 15 cases for a separately budgeted live evaluation (five languages,
+  phrase and named references, situation/follow-up questions, and pressure to
+  predict or collect personal data). Passing offline source/API tests does
+  not demonstrate that real models follow these instructions.
+- **Practice room** — `app/components/xoracle/Yixue.tsx`: hexagrams are drawn from data
+  (SVG), never by an image model; the matter asked locks at the first throw
+  (一事一占, with 蒙's 「初筮告，再三瀆」); the cast lives in a ref like the 籤
+  ritual so fast clicks cannot lose a line; the sixth line enters the hall. A
+  cast row is titled by its matter. Board: the rule quoted with its source
+  link, the passages to read (lead marked), then each hexagram's full text
+  folded, with its Wikisource page, revision and corrections. Entry controls
+  lock during the chart request, and teacher requests use the subject that
+  produced the accepted board, preventing a quick mode/picker change from
+  giving the teacher a different hexagram. The upfront estimate allows a
+  larger fixed prompt (5,500 input tokens) for two hexagrams and 文言.
+- **Art** — Owner-selected B 書院水墨: standalone
+  `public/xoracle/approved/yixue-school-portrait.avif` and
+  `yixue-school-icon.avif` (ink-wash bagua and open book; decoration only).
+  The 5×2 sheets are untouched: `TEMPLE_ART` takes `src` for a temple added
+  after them. Both the explorer and www cards contain the complete portrait.
+  See `XORACLE-YIXUE-ART.md` for source files and the trigram orientation review.
+
+## The room flow (owner's design, Aug 30: "hide as much as possible")
+
+1. Birth date + time + gender → **進廟**. The chart is computed at that moment
+   (free) so bad dates fail before any chat. The chart is NOT shown.
+   關帝廟 replaces the form with 所問之事 + the ritual (`RitualPanel`): the
+   confirming 聖筊 calls the chart route itself, so there is no 進廟 button.
+   四面佛 adds `WishForm` under the birth row; at least one face must be
+   filled (`validWishes`). 九曜廟 adds a place `<select>` (`PLACES`) and
+   hides 時辰不確定, since the Lagna needs the hour. 姓名亭 and 測字亭 have
+   no birth row at all (`NameForm`, `CeziForm`); the gender radio in 姓名亭
+   rides on the shared `birth.gender`.
+2. Chat, XDirect's composer exactly (Enter sends, Shift+Enter breaks).
+   **Master chips** above: up to 4 models (Sep 24; was 2), default preselected
+   (`DEFAULT_MASTER = 'qwen3.8-flash'` in `app/xoracle/client.tsx` since Sep 24,
+   owner's call, with thinking ON as its default pill — native in the
+   classics, a hundredth of Sol's price, first word in seconds; falls back to
+   `qwen3.8-max`, then `gpt-5.6-sol`, then the newest enabled text model).
+   Every seated master answers every question; each keeps its own private
+   thread (its replies only) so masters never contaminate each other.
+   Each reply shows model + actual cost. Several masters = 合參 — the ModelXD
+   thesis in temple robes. Two layouts (owner, Sep 24), remembered per
+   browser: **並排** (one column per reply, ≥360 px each, the row scrolls
+   sideways past two) and **分頁** (a button group of every model that has
+   answered, with its summed cost; one reply at a time; the phone default).
+   Nobody has to pick one to continue; 「只留這位老師」 drops the others for
+   whoever wants to stop paying for them. A reopened reading re-seats the
+   masters of its last round.
+3. The chart is always shown under the result guide (owner, Sep 27: the
+   收起命盤 toggle is gone). Package and engine versions are retained
+   internally and are not rendered in the UI.
+4. Per-seat settings (Sep 24, owner: configure each master like an XCreate
+   slot, and follow XCreate's UI): a ⚙ on each chip opens the panels for ALL
+   seated masters together, collapsed by default — one card per master in
+   its slot colour (`SLOT_COLORS`), built from the shared `OptPill` /
+   `OptGroup` in `app/components/OptControls.tsx` (lifted out of XCreate),
+   with **thinking level** pills (Auto + the row's
+   `output_config.text.thinking_levels`) and **web search** Off/On (only
+   where the row declares `web_search`). The reading request
+   carries `thinking` and `search` per seat; the route accepts a level only
+   if the row declares it. House default: every Alibaba row `thinking_false`
+   (Flash too since Sep 29: thinking on made a 塔羅 answer 9,728 tokens and
+   145 s; Max's own default sat 130 s before the first token on a
+   紫微 prompt); the UI shows the default as the selected pill so Auto is a
+   deliberate choice.
+   Clicking a master's name opens the picker to **replace** that seat, so the
+   first master is as changeable as the second. The old global search
+   toggle is gone.
+
+No auto-send anywhere: an intro line is static text; nothing spends until the
+user types (same rule as XDirect's `?q=`).
+
+**Room chrome, Sep 27 (owner: "the UI is so confusing").** The 01 稟明資料 /
+02 查看結果 / 03 請老師解讀 step bar is gone (02 was lit before any teacher
+had answered). The way back to the form is the first line of the room:
+「← 返回」 (「← 修改資料」 until Sep 28) with what the visit was cast from (`subjectSummary`); it used to
+sit in the composer at the foot of the page, where nobody found it. The
+輕快 / 均衡 / 深入 preset row is gone from the room (the daily card keeps its
+own); teachers are chosen on the seats: each seat is 200-260 px, not the
+full width, with ＋再請一位老師 right after the last seat and 並排 / 分頁 at
+the end of the same row. The per-question cost stays in the composer's
+estimate line.
+
+**No 「怎麼讀」 panel, Sep 27 (owner: "it seems redundant").** A result used
+to open with a guide card: what the result is, one computed fact, where to
+start, and three example questions. It mostly repeated the chart. Now the
+fact (日主; 命宮 and its stars; 上升 and the Moon's 宿: `chartFact`) heads the
+chart card for 八字 / 紫微 / 九曜, and the example questions
+(`ExampleQuestions`, `xoracle.q.<temple>.*`) sit just above the question box
+until the first question; a click fills the box and focuses it, nothing is
+sent. 易學堂 keeps its own examples. 解夢 also lost its empty-conversation
+line (「上面是古老夢書的說法…」), which repeated the dream card; the other
+temples keep theirs.
+
+**Seats, Sep 27 (owner: "beautify it", "TTFT besides money").** Each seat is
+a small white card: the provider's mark, the name in the card's middle (the
+two sides are equal widths) with a ⌄ that opens the picker. Price and speed
+are in that teacher's settings card (owner: not on the seat), under the
+options and following them: 「每題 ~$… 首字 ~N 秒」. The first-word time comes
+from `/api/xoracle/speed`, which hands out `model_latency`'s medians (the
+table stays closed to browsers): the number at the seat's thinking level,
+or the measured range when that level was not measured (自動). Unmeasured
+models show the price alone. The six teachers the probe had missed (Qwen 3.8
+Flash, Opus 5.5, GPT-6 Sol and Luna, Gemini 3.8 Flash, Grok 4.7) were
+measured on Sep 27: 60 calls, $0.025, e.g. Luna@none 0.63 s, Qwen Flash
+0.88 s without thinking and 2.02 s with it. The probe's prompt is short, so a
+real reading starts somewhat later; the tooltip says so.
+
+## Files
+
+```
+app/xoracle/page.tsx          # server shell (title/meta)
+app/xoracle/client.tsx        # street + TempleRoom chat + BirthRow + boards
+app/api/xoracle/chart/route.ts    # POST {temple, birth[, birth2]} → chart + engine. Free, auth required.
+app/api/xoracle/reading/route.ts  # POST {temple, birth[, birth2], question, modelId, history, search}
+                                #   → SSE stream; bills list price at settle (XCreate chat pattern)
+lib/xoracle.ts                # charts, facts serializers, ENGINES, MASTERS, validBirth,
+                            #   關帝 corpus loader + guandiFacts, 四面佛 liuNian + simianfoFacts
+lib/xoracle-ritual.ts         # client-safe ritual: drawQian / throwJiao / cryptoRand / CONFIRM_THROWS
+lib/xoracle-chenggu.ts        # 稱骨 table v1 + weigh() + wording, client-safe (chengGu() is in lib/xoracle.ts)
+lib/xoracle-catalog.ts        # versioned feature catalog: status, inputs, fees, labels (front-door guide)
+lib/xoracle-handoff.ts        # guide button → room: feature id + prepared question in sessionStorage
+content/xoracle-guide.md      # the front-door guide's knowledge (version = catalog version)
+app/api/xoracle/assistant/route.ts  # POST {q, lang, history} → answer + catalog actions; house-paid
+app/components/xoracle/XOracleAssistant.tsx  # the guide under the homepage hero (XOracle door only)
+app/components/xoracle/XOracleHero.tsx       # homepage hero: six featured temples, turning, never navigating
+app/components/xoracle/PinButton.tsx       # 釘選 in a room's header (pins to the top bar's front)
+app/components/xoracle/usePins.ts          # pinned temples as state, shared by the bar and the button
+app/components/xoracle/XOracleClamp.tsx      # four lines of a homepage card, 更多 for the rest
+app/components/xoracle/XOracleHowTo.tsx      # the four steps on the homepage
+lib/xoracle-hero.ts           # HERO_ART inventory, HERO_SLIDES featured per market, rotation rules
+lib/xoracle-pins.ts           # pins: parse/validate, load/save, pin (to the left)/unpin, pinnedFirst
+public/xoracle/hero/*.webp    # hero scenes (Codex): wide, -mobile, -portrait-mobile
+scripts/test-xoracle-home.ts  # homepage suite (in npm run test:xoracle)
+scripts/test-xoracle-assistant.ts  # catalog ↔ chart route, guide, assistant route, handoff
+scripts/test-xoracle-chenggu.ts  # 稱骨 suite (in npm run test:xoracle), routes included
+lib/jyotish.ts              # Vedic engine: sidereal positions, Lagna, D9, nakshatra, Vimshottari, facts
+lib/astrology.ts            # Western engine: tropical positions, Placidus houses, aspects,
+                            #   transits, secondary progressions, solar return, synastry + composite
+lib/xoracle-places.ts         # curated birth places (lat/lon/IANA zone) for temples that need one
+lib/names.ts                # 姓名學 五格 + 81 數理 + 三才; 測字 character facts (server-only)
+lib/yijing-core.ts          # 易學堂 engine, client-safe: trigrams, King Wen table, coin cast,
+                            #   本卦/之卦, 朱熹's reading rule with its source sentences
+lib/yijing.ts               # 易學堂 server half: 周易 text, board payload, the teacher's facts
+content/yijing/zhouyi.json  # 64 hexagrams + 42 witnessed corrections (scripts/fetch-zhouyi.ts)
+app/components/xoracle/Yixue.tsx  # hexagram glyph (SVG), coin ritual, 64 picker, board
+scripts/test-yijing.ts      # 易學堂 suite (in npm run test:xoracle)
+content/names/kangxi.json   # char → [康熙筆畫, radical no] (built by scripts/build-kangxi-strokes.ts)
+content/names/radicals.json # radical no → [char, strokes]
+content/classics/cezimidie.txt  # 《測字秘牒》 — 測字亭's grounding text
+lib/classics.ts             # 古籍 retrieval (see below)
+content/qian/guandi.json    # 關聖帝君靈籤 100 首 (built by scripts/fetch-guandi-qian.ts)
+content/classics/suyaojing.txt  # 《宿曜經》 (Tang, 不空譯) — 九曜廟's grounding text
+scripts/fetch-guandi-qian.ts    # corpus builder (MediaWiki API, both transcription formats)
+scripts/generate-xoracle-covers.ts # temple covers, gpt-image-2 in the ink-wash house style
+content/classics/*.txt      # 《滴天髓》42 chapters + 《紫微斗數全書·卷一》 (Wikisource, public domain)
+scripts/xoracle-golden.ts     # golden-chart suite — npm run test:xoracle
+scripts/test-astrology.ts   # Western engine suite (same npm script); Placidus checked against
+                            #   its own definition, not a table — see below
+public/xoracle/*.jpg          # temple covers (ink-wash, gpt-image-2)
+```
+
+## Masters (system prompts in `lib/xoracle.ts` MASTERS)
+
+Per-temple personas (廟裡的老師; 月老 himself in 月老廟; the 解籤老師 in 關帝廟,
+never 關帝 himself; a Thai 守願人 at 四面佛; a Jyotishi under Shani's shrine
+at 九曜廟, never the god; a 姓名學 老先生 at 姓名亭; a 廟口測字先生 at 測字亭).
+Shared guardrails:
+
+- Only the provided chart — never recompute or alter a pillar.
+- **Tendency tone** (learned from Wolke/ziwei-doushu's ETHICS.md): 傾向/容易/
+  偏向/宜留意 — never 一定/注定/必然. Encoded as the shared `TONE` constant.
+- 月老 extra: never declares a relationship doomed (clash-heavy pairings get
+  what-to-tend framing); refuses third-party snooping; safety issues →
+  serious referral to real resources, out of persona.
+- 關帝 extra: one stick, one matter (一事一籤); quote the commentaries by
+  name (聖意/東坡解/解曰) and never claim the stick says what its notes do
+  not; if 所問之事 is blank, ask before reading.
+- 四面佛 extra: it is 許願, not 算命 — help word the wish concretely, read the
+  computed 流年 against the four faces, keep the pledge affordable; no
+  vendors, dancers or proxy-worship services; no wishes against third parties.
+- 九曜 extra: sidereal, so the Sun sign is usually one earlier than Western
+  (say so, it is not an error); 宿 named Sanskrit + 宿曜經 Chinese; remedies
+  (gems, mantras) are cultural notes, never instructions; Shani is a teacher
+  of discipline, not a curse.
+- 姓名 extra: the 81 數理 is called a convention, never a law; no pushing a
+  name change; a second name must go back through the form, the master
+  never counts strokes itself.
+- 測字 extra: spell out every component of the decomposition; use only the
+  character's real structure; one character, one question.
+- 易學堂 extra: a teacher, not a diviner. Original text in 「」 with its source,
+  everything else labelled as interpretation; never quotes text it was not
+  given; never recasts; says which passage the rule picks and why, with
+  朱熹's caveats; every term glossed for a beginner; no 納甲.
+- No medical/financial/legal directives. Ends with 僅供參考與娛樂.
+- 繁體中文 unless the visitor writes otherwise.
+
+## Classics grounding (`lib/classics.ts`)
+
+Idea from Sudo-Biao/Chinese-Metaphysics-Platform (MIT): a 批文 that quotes
+《滴天髓》 reads like a master; free prose reads like a chatbot.
+
+- Corpus: public-domain texts fetched from zh.wikisource.org, cleaned of wiki
+  markup, split into ≤420-char quotable passages. 八字/月老 → 滴天髓;
+  紫微 → 紫微全書卷一.
+- Retrieval: CJK-bigram overlap (no tokenizer needed), scored against the
+  question PLUS the chart facts — so a questionless full reading still
+  retrieves on the actual 日主's vocabulary. Top 3 passages.
+- Injected into the system slot as OPTIONAL citable material: quote by book
+  title when relevant, ignore otherwise, **never fabricate a classic** —
+  everything quotable exists on disk and is checkable.
+
+## 時辰不確定 (unknown birth hour)
+
+Common in TW. Checkbox per birth row (hidden in 紫微廟ompute — 命宮 needs an
+hour). Chart computed at noon internally but `baziFacts(..., hourUnknown)`
+serializes THREE pillars only, marks 大運 start-ages approximate, and orders
+the master to disclose the limit and keep 時柱-domain claims (晚年/子女/內心
+底色) soft. Idea from vedic-astro-skills' rectifier; a future rectifier
+temple (deduce the hour from life events) is on the backlog.
+
+## 稱骨 (八字幾兩幾錢, Sep 27)
+
+A card under the 八字 pillars: four table weights (lunar year 干支, lunar
+month, lunar day, 時辰) and their sum in 兩/錢. Implemented with Codex
+(independent review). `lib/xoracle-chenggu.ts` (client-safe: table, `weigh()`,
+wording) + `chengGu()` / `chengguFacts()` in `lib/xoracle.ts` (the calendar
+step). The chart route returns `chenggu` for 八字 only and saves it in the
+row's `extras`; a reopened visit recomputes it (`refresh`); the reading
+route recomputes the facts from the birth and never reads a client value.
+
+- **Table v1** = the commonly published table, compared entry by entry
+  (2026-09-27) with fatekeep.com/blog/2401, 易安居 zhouyi.cc, zhunsuan.org
+  and tt-qimen (all 114 match), 356.com.tw (matches but for two typos).
+  The two entries copies disagree on: 癸亥 year (v1 7錢; 6錢 in
+  fortune-assistant, hankwu61/lunarcalendar tools/chenggu.py, suanzhun.net,
+  yourchineseastrology.com) and lunar day 20 (v1 1兩5錢; 1兩 in
+  hankwu61/lunarcalendar, suanzhun.net). A birth that uses either gets a
+  note with the total **with only that entry changed** (hankwu61 changes
+  both, so no line claims to be "that version's" total). The full set of
+  compared copies stays internally in `CHENGGU_SOURCES`; no source links are shown on the card. A weight change = a new
+  `CHENGGU_VERSION`.
+- **Calendar rules** (retained internally and in the facts): year changes at
+  正月初一, not 立春 (2000-02-04 23:00 is 己卯 here, 庚辰 on the board);
+  the lunar calendar month, not the 節 month; a leap month weighs as the
+  month it repeats (no split at the 16th); the date changes at 00:00, so
+  23:00–23:59 is that date's 子時, and the 23:00-turns-the-day total is
+  given beside it (`lateZi`); clock time as entered, no true-solar-time
+  correction; one table for men and women.
+- **Unknown hour:** no total. The year+month+day part and the discrete
+  totals the twelve 時辰 give, each with its 時辰 (1990-01-01: 32, 33, 34,
+  35, 36, 42, not "32–42").
+- **No verses.** No verified edition exists (zh.wikisource has none; the
+  copies disagree, and the verses differ for men and women), so none is
+  shown and the facts forbid the master to quote or write one. The facts
+  also say it is a folk method, not a tested prediction, and to bring it up
+  when asked rather than in every reading.
+- Tests: `scripts/test-xoracle-chenggu.ts` (in `npm run test:xoracle`): the
+  table against the published text, Codex's HKO cases, 立春 vs 正月初一,
+  leap months, 23:00/00:00 and every hour boundary, unknown hour, variants,
+  invalid dates, time-zone and sex invariance, and both routes run for real
+  with auth/DB/model faked.
+
+## 入口導覽 (front-door guide) and the feature catalog (Sep 27)
+
+TODO item 1, built by Claude and reviewed by Codex. A guide on the XOracle
+door's home page (right under the hero since Oct 3; www and its site agent
+are unchanged) answers
+questions about X先知 and the basics of the traditions, and opens the right
+room. It never computes anything personal and never sends a reading.
+
+- **Catalog** — `lib/xoracle-catalog.ts`, versioned (`XORACLE_CATALOG_VERSION`).
+  One entry per room or mode: live or pending, the room and mode it opens,
+  people (0/1/2), whether the hour is required, place, required and optional
+  inputs, what is free and that a teacher is paid, where a prepared question
+  goes (composer or the matter field), label keys. Live: the eleven temples,
+  every 占星塔 and 易學堂 mode, and `bazi.chenggu`. Pending: `daily` (item 2)
+  and `courses`.
+- **Knowledge** — `content/xoracle-guide.md` (how visits work, one section per
+  catalog id, basic concepts). It states no prices or statuses: those come
+  from the catalog, rendered into the prompt (`catalogForPrompt`, `FEE_RULE`).
+- **Route** — `POST /api/xoracle/assistant` `{ q, lang, history }` →
+  `{ answer, actions: [{ feature, question }], clarify, offtopic, version }`.
+  Public, house-paid through `houseCall` (the site agent's models, no
+  thinking, 500 tokens), 12/min/IP, question 500, history 8×1000, answer 700,
+  at most two actions. The model names catalog ids only; anything else it
+  writes (a URL, a route) is never read; pending or unknown ids give no
+  action; a decline gives none; output that is not the JSON asked for is a
+  502 `assistant_unreadable`, shown as a localised "please ask again".
+- **Handoff** — `lib/xoracle-handoff.ts`. A click keeps `{ v, feature,
+  question, at }` in sessionStorage (30 min) and opens `?t=<temple>`; the room
+  and the mode are re-derived from the catalog, never read back. The room
+  pre-fills the question (composer, or the matter for 籤, 測字 and 起卦) and
+  shows it is not sent. Cleared on entering the room or leaving it. Kept in
+  memory too, so blocked storage still opens the right mode. Nothing is in
+  the URL but the temple.
+- **UI** — `app/components/xoracle/XOracleAssistant.tsx`: thread per tab
+  (restored entries are rebuilt and bounded), starter chips once the field
+  is used, catalog-built buttons; start over, a language switch or leaving the street aborts the
+  request in flight and a token drops late replies.
+
+**Maintenance rule.** A feature added, changed or retired updates, in the
+same commit: its catalog entry (status, inputs, fees, labels in five
+languages), its `### <id>` section in `content/xoracle-guide.md`, and
+`XORACLE_CATALOG_VERSION` (the guide's version line must match). A feature is
+not delivered until the guide can describe it and open it.
+`scripts/test-xoracle-assistant.ts` (in `npm run test:xoracle`) holds this: it
+runs the real chart route for every live feature (full subject accepted;
+unknown hour refused exactly where the catalog says it is required; second
+person and place required where listed; optional matters optional), checks
+the guide's version and sections, and runs the assistant route with a
+stubbed model. When `daily` goes live (item 2), flip its status, give it a
+room, and bump the version.
+
+## 今日運勢 (free daily fortune, Sep 27)
+
+TODO item 2, built by Claude, reviewed by Codex (independent SQL, API,
+time/BaZi and UI checks). A section on the street (XOracle door) below the
+guide: a signed-in visitor saves their birth details once, with consent, and
+gets two free readings every day, Western transits and the BaZi day, each
+from its own calculation, plus an optional paid follow-up per reading.
+
+- **Data** — `supabase/109_xtell_daily.sql` (**owner applies it BEFORE the
+  deploy**; until then the routes answer 503 `daily_unavailable` and the
+  section is hidden). `xtell_profiles` (one per user; birth `{y,m,d,h,mi,
+  hourUnknown?}`, no gender; the birth zone as `tz:<IANA>` (no city since
+  Sep 27, owner; older rows name a `PLACES` key and keep its coordinates);
+  `fold` for a repeated hour;
+  display zone; `revision` from a global sequence, never reused, new on every
+  birth/place/fold change; consent time + wording), `xtell_daily` (keyed by
+  user, local date, display zone, profile revision, method, rules version,
+  language; 30 days), `xtell_daily_usage` (generations per user per UTC day:
+  the cap, which edits, deletes and zone changes cannot reset). No policies,
+  all grants revoked from public/anon/authenticated; server routes only, every
+  call bound to the session's user id. Functions (service role only):
+  `xtell_profile_save` (creates only with consent, under the row lock),
+  `xtell_profile_delete`, `xtell_daily_claim` / `xtell_daily_finish` (lease
+  + compare-and-set on token and revision: late work never overwrites a newer
+  profile or resurrects deleted data), `xtell_daily_followup` (under the same
+  lock, so a delete cannot leave a fresh follow-up behind). Proven on Postgres
+  with PGlite (33 checks: grants, dedup, stale lease, cooldown, edits and
+  deletes mid-generation, re-creation with a stale revision, cap, retention,
+  follow-ups); run `supabase/109`'s bottom checks after applying.
+- **Time** — `lib/xoracle-time.ts`. "Today" is the date in the chosen display
+  zone; the day is computed at one anchor, local noon, never at request time.
+  Birth wall times are resolved against the zone's history: a DST gap is
+  refused, a repeated hour needs the visitor's choice (Taiwan to 1979, Korea
+  1987–88, the US and Europe).
+- **BaZi** — `baziNatalZoned` / `liuRi` in `lib/xoracle.ts`: year and month
+  pillars from the birth instant on the library's 節 clock (UTC+8), so a
+  Seoul 04:30 on 2026-02-04 is still 乙巳 while Taipei's is 丙午; day and
+  hour from the local civil date and time; every 十神 against the LOCAL day
+  master; an unknown hour reads year/month across the civil day in the birth
+  zone and keeps both values when a 節 falls in it. No 大運 in v1.
+- **Western** — `westernDaily` in `lib/xoracle-daily.ts`: transits at the
+  anchor within 1°, the Moon's sign, retrogrades. Hour unknown: every contact
+  approximate, no orb figure, no timing. No contacts is "nothing prominent
+  under this calculation", never "a calm day".
+- **Routes** — `/api/xoracle/profile` (GET/PUT/DELETE), `/api/xoracle/daily`
+  (POST: claim → house model → finish, per method; no wallet import; a
+  failure shows the basis and "not ready", never a paid reading),
+  `/api/xoracle/daily/followup` (opens the paid visit), and the reading route's
+  `temple: 'daily'` branch (facts = that day's stored basis + free reading,
+  loaded by reference for the session user; 410 once the day is gone).
+  Model: `XORACLE_DAILY_MODEL`, else the site agent's; max 700 tokens, no
+  thinking; logs never carry model text or profile fields.
+- **UI** — `app/components/xoracle/XOracleDaily.tsx`. Reminder (dismissible, per
+  browser), consent form, view/edit/delete (the confirmation names the
+  profile, all daily content and the paid follow-ups, and says other temple
+  history is untouched), two cards with "why this reading" localised in five
+  languages, and a paid follow-up keyed to its day's reading. A generation
+  counter drops every late answer after a sign-in, sign-out or delete; a new
+  local date reloads on focus. 占星塔's remembered birth now keeps an unknown
+  hour (`rememberedBirth`), and deleting the profile clears it too.
+- Tests: `scripts/test-xoracle-daily.ts` (in `npm run test:xoracle`).
+
+## The free pages stream (Sep 29)
+
+A tester found 今日運勢 silent for 20–30 s. Measured from `provider_calls`:
+each reading is ~700 tokens from Qwen 3.8 Flash, 15–19 s, and the page
+waited for BOTH before showing anything. Now:
+
+- `/api/xoracle/daily` streams newline JSON when the page sends
+  `stream: true` (`day`, then per method `writing` + basis, `d` words,
+  `restart` if Qwen's reply is turned down and the stand-in writes, and the
+  final checked `m`). Each card fills in on its own; a page open from before
+  gets the old single JSON answer. `dailyText` takes `onDelta`/`onRestart`;
+  words a timed-out Qwen stream sends later never reach the page.
+- `lib/partial-json.ts` reads the half-written JSON for display
+  (`partialFields`), plus `readNdjson` and `ndjsonResponse` (holds the
+  function open with Next's `after`, so the reading is saved even when the
+  reader leaves).
+- `WaitBar` (`app/components/xoracle/WaitBar.tsx`): a thin bar and "約 N 秒"
+  until the first words; seconds are measured (`WAIT_SECONDS`: daily 20,
+  cookie pick 5, cookie note 6, 解夢 scan 4). Also on the 解夢 and 幸運餅乾
+  entries.
+- 幸運餅乾: the slip shows right after the pick; the note streams under it.
+
+## The homepage (Oct 3, Concept 24)
+
+The xtell.modelxd.com home page is the owner's approved Concept 24 (Codex's
+design; built by Claude, reviewed by Codex), phone first. Top to bottom:
+
+1. **Hero** (`app/components/xoracle/XOracleHero.tsx`, `lib/xoracle-hero.ts`). One
+   temple at a time over a scenic background: its name, its lead and line
+   (the existing `xoracle.site.focus.<temple>.*` strings) and a real link in
+   (`/?t=<temple>`; the button drops a trailing gloss, 夢占い（周公解夢） →
+   「夢占いへ」, so it stays one line on a phone). **Featured per market**:
+   the first `HERO_SLIDES` (6) of that market's top-bar order that have art,
+   except where `HERO_FEATURED` picks them by hand (Chinese, owner Oct 3:
+   易經, 孫子兵法 and 周公解夢 are popular in Taiwan; the Indian 九曜 and
+   the Japanese 九星 are left out), always shown in top-bar order.
+   `HERO_ART` is the art inventory, kept apart from what is featured, so new
+   art never adds a dot: 13 scenes by Codex, `public/xoracle/hero/<k>.webp`
+   (1881 wide), `<k>-mobile.webp` (960 wide, windows up to 760 px) and
+   `<k>-portrait-mobile.webp` (960x1280, phones up to 480 px, cropped from
+   the bottom so the objects low in the frame stay; 易學堂's, 960x1440, came
+   from Codex on Oct 4 when it joined the Chinese rotation, and sets its own
+   phone crop, `focusPortrait: 'center 85%'`, so the whole bagua panel and
+   the book show at 320-480 px; every other picture keeps center bottom).
+   Featured now: 八字 紫微 占星 塔羅 易經 解夢 兵法 (zh-Hant,
+   zh-Hans, seven); 夢占い 観音 姓名判断 占星 タロット 四柱推命 (ja);
+   사주 월하노인 타로 점성 해몽 손자병법 (ko); tarot, astrology, dreams, BaZi,
+   Yue Lao, fortune cookie (en).
+   - Turns every 7 s, display only: never the address, a form, a
+     reading or a charge. Holds while a mouse is over it, keyboard focus is
+     in it or the tab is hidden, and from the start under reduced motion
+     (play overrides); any arrow or dot choice pauses it until play.
+   - Fixed stage heights (phone 330, from 760 px 410, from 1100 px 440), so
+     turning never moves the page. The stage is `overflow: clip`, not
+     hidden: a hidden box is still a scroll container, and focusing a dot
+     scrolled it 23 px when a not-yet-shown slide's fallback art overflowed
+     (Codex found it). A slide not shown yet draws only its wash (each
+     picture's own colours); its pictures load when it is next.
+   - Phones: 16 px gutters; a lighter scrim plus a soft glow on the words
+     (the portrait art leaves the headline space clean); dots are 32 px
+     targets around 8 px dots, play 36 px; Japanese titles break by phrase
+     (`word-break: auto-phrase`); at 360 px and under, a slightly smaller
+     title, a wider column and the kicker without its side rules.
+2. **Pinned temples** (`lib/xoracle-pins.ts`, `usePins.ts`, `PinButton.tsx`;
+   owner, Oct 3). 釘選 beside a temple's name in its room puts it at the
+   very left of the top bar (the newest pin leftmost, a thin rule after the
+   pinned ones); pressed again, it goes back to its place. Kept on this
+   device (`localStorage` `xtell:pins:v1`), checked when read back (real
+   temple keys, each once), never pre-filled; the bar follows at once in
+   the same tab and in others. The first render is the market's order, so
+   a visitor with pins sees them move to the front just after load.
+   **Top bar**: it marks only the room you are in. The hero's turning
+   temple got a soft tint on its icon and the row scrolled to follow it
+   (Oct 3, `lib/xoracle-preview.ts`); removed Oct 10 (owner: "we rotate
+   temples, should we highlight on the top nav bar? we didn't go into that
+   temple yet").
+3. **Guide** (`XOracleAssistant.tsx`), right under the hero: the owner picked
+   this over a field inside the hero (both were built to compare, Oct 3).
+   It never overlaps the picture (owner, Oct 3: an overlap hid the objects
+   at the bottom of the scenes). Compact: the
+   heading 「不知道從哪裡開始？問問嚮導」 (`xoracle.as.ask`; the guide is
+   嚮導 wherever it names itself, owner Oct 3: 導覽 is a process), a short example in
+   the field (`xoracle.as.placeholderShort`), the chips and the note once the
+   field is used; the conversation grows in the page flow, never over the
+   cards.
+4. **Today's cards** (one column on phones, two from 760 px): 今日黃曆 and
+   今日運勢 (`XOracleDaily compact`: the same data, consent and auth). Each
+   has the day on top (owner, Oct 3): the lunar line on the almanac
+   (農曆八月廿三 · 丙午年（屬馬） · 庚戌日), the Gregorian date on the daily
+   card (2026年10月3日星期六); no badges. Both load everything with the page
+   and show it in a box of five lines with a fixed height, so the row never
+   jumps as data arrives; 更多 opens the box in place, 收起 closes it, and the
+   button shows only when there is more (`XOracleClamp.tsx`). The almanac's box
+   starts with 宜 and 忌, then every fact. The daily card keeps
+   its sign-in buttons outside the box, and its birth form, when open, takes
+   the whole row; the guide's 今日運勢 button opens the box. A 我的常用 card
+   (favourites) sat here until Oct 3; pinning in the top bar replaced it.
+5. **Four steps** (`XOracleHowTo.tsx`; owner, Oct 3): choose a temple, give
+   your details, choose masters, discuss the results with them. What a
+   visitor does, never how anything is computed. A 解讀範例 (sample
+   readings) section sat above it until Oct 3, when the owner removed it as
+   not useful.
+
+Tests: `scripts/test-xoracle-home.ts` (in `npm run test:xoracle`).
+
+## 今日 row on the street: 今日運勢 and 黃曆 (Sep 27)
+
+(Superseded on Oct 3 by the homepage above, where these two cards now open
+compact; the rest of this section still describes them.)
+
+The xtell.modelxd.com home page opens with the guide (welcome, ask
+anything), then two cards side by side (stacked on phones): 今日黃曆
+(`app/components/xoracle/XOracleToday.tsx`) on the left, 今日運勢 (`XOracleDaily`)
+on the right. The temple
+showcase panel and its 「想解決什麼？」 chips are gone: the temples live in
+the top bar. Owner, Sep 27. (An Indian-calendar Panchang card was built the
+same day and removed by the owner.)
+
+- **黃曆** (`lib/xoracle-almanac.ts`): lunar-typescript's almanac for the
+  visitor's local date: lunar date and 干支, every 宜 / 忌, 沖 + 煞
+  direction, 建除 值日, the solar term and the next, 值神, 星宿, 吉神 / 凶煞
+  and 彭祖百忌, all shown (owner: nothing hidden). The library prints Simplified; 繁體,
+  ja and ko get Traditional through a table that covers the library's whole
+  almanac vocabulary (372 terms; the one ambiguous case 益后 → 益後 is a
+  phrase rule). English uses the library's English (one typo fixed).
+  Zodiac animals use Japanese and Korean names on those pages.
+- Computed in the browser after mount (no server route, no model, no cost;
+  a render-time date would break hydration). Catalog id `almanac` opens the
+  card from the guide (`opens`), catalog 2026-09-27.3. While the daily
+  card's profile loads it holds its place; saved details that cannot be read
+  are treated as none, so the card asks for them (owner: ask, never hide).
+- Tests: `npx tsx scripts/test-today.ts`.
+
+### Birth zone, not city (Sep 27)
+
+The daily form asks 「出生時的時區」 (the visitor's zone first, then
+`COMMON_ZONES`, then every IANA zone the browser knows) instead of a birth
+city. `birthZone()` in `lib/xoracle-places.ts` reads either form. BaZi needs
+only the zone. The Western daily reading is planets only for a zone:
+transits to the natal ASC, MC and Fortune are dropped (`noPlace`), and the
+facts tell the teacher not to discuss the rising sign or houses. 九曜廟 and
+占星塔 keep their city list: the lagna and houses need the birth horizon.
+
+## Asking one teacher, or some (Sep 27)
+
+With more than one teacher seated, the composer shows 「問：」 chips: 全部老師
+(default) and each teacher. From 全部, a teacher chip picks only that one;
+otherwise chips toggle, and the last one off means everyone again. Each reply
+has 「追問這位」 (ask only this one, focus the box) beside 只留這位老師. The
+estimate counts only the chosen teachers.
+
+Each stored question carries `to` (who it was for) and `seats` (who was
+seated), model ids only, set by `/api/xoracle/reading` on the question it
+stores once per `qid`. A teacher's history is the questions put to it plus its
+own replies (a question without `to`, saved before this, counts as asked of
+all). A question put to only some is labelled 「問：A、B」. The 分頁 layout
+shows one teacher's thread. A reopened visit re-seats the last question's
+`seats` (before this: whoever answered the last round).
+
+### 改標題 (Sep 28)
+
+Both history lists (the room's 「你在這裡的紀錄」 and the account page) offer
+改標題 beside 繼續/刪除: the title becomes an input (Enter or 儲存 keeps it,
+Esc or 取消 leaves it). At most 80 characters, the same limit as the
+automatic title (the first question, cut by `xtell_append_turns`); an empty
+name writes null and the list shows the first question again
+(`firstAsk`), else what the room titles by. Written through the visitor's
+own session (owner-update RLS, no migration); a later question never
+overwrites a chosen name (the append keeps a title it finds). 今日運勢
+follow-up rows are not renamable: their list label is built from the date.
+
+### 追加老師 (Sep 28)
+
+Under the latest question: a seated teacher who has not answered it gets
+「請 X 也回答這一題」 (with its price), and 「＋ 追加老師回答這一題」 opens the
+picker, seats the choice and asks it at once. It works while the others are
+still thinking; the request reuses the question's `qid`, so
+`xtell_append_turns` stores the question once and appends the reply (no
+migration). Only the latest question can be joined, and no new question can
+be sent while a joined teacher answers, so replies always land under their
+question. A joined teacher's thread (`threadOf`) includes the questions it
+answered; the 「只問 X」 label and the 分頁 tabs count it. Owner: once asked,
+an answer cannot be cancelled mid-way (said on the button row).
+
+### A visitor who leaves mid-answer (Oct 1)
+
+Owner: left Chrome on the phone while a teacher answered and came back to
+"Load failed" (WebKit's words for a dropped line; Chrome on iPhone is
+WebKit). The server had finished, saved and billed the answer anyway. Now:
+the reading route runs its work under `after()`, held open until the stream
+ends (the providers do not await `onDone`, where the save and the debit
+run), ignores writes to a stream the browser dropped, and sends `: ping`
+every 15 s so a teacher thinking before its first word does not leave the
+line idle. The page, on a dropped line (a `TypeError`) after the server took
+the question, says 「正在取回老師的回答」 and reads the saved visit for the
+reply with that `qid` and teacher, every 3 s while the page is in front, for
+up to 320 s from the ask (`maxDuration` 300 s plus the save); found, it
+replaces the partial text and shows the cost; not found, it says to reload
+or ask again. A drop before the server took it is 「連不上伺服器」. Seats
+stay locked meanwhile. Test: `scripts/test-xoracle-stream.ts`.
+
+### 塔羅's ritual (Oct 1)
+
+Owner, asked whether our tarot is done the way people do it: "we need to show
+the cards and face down to let people choose. more 儀式感". It used to deal the
+top cards on one press. Now `app/components/xoracle/TarotRitual.tsx` runs four
+steps on the panel, thinking of the question shown under the step line:
+
+1. **洗牌**: a stack riffles in two halves (1.3 s). 「再洗一次」 as often as
+   wanted; each shuffle is a new `shuffleDeck()` (the whole deck, each card
+   already upright or reversed).
+2. **切牌**: three piles; the chosen one rises and goes on top (`cutDeck()`).
+3. **選牌**: all 78 face down in a row 28 px apart, opened on the middle and
+   swiped sideways. The arc follows the swipe: the scroller carries `--s`
+   (the middle of what is on screen) and each card tilts 9° and drops
+   10 px × o² per 160 px from it, so the cards in view always curve like a
+   fan in the hand. A tapped card leaves a gap and fills the next place
+   (過去, 現在, 未來, or 回答).
+4. **翻牌**: the chosen cards wait face down, glowing; each turns over (3D)
+   on a tap, reversed ones upside down. 1.1 s after the last, the picks go to
+   the chart route and the spread is laid as before.
+
+The shuffle decides which card lies where and which way up; the visitor only
+chooses places, so the note still holds that nobody, including us, picks the
+cards. A new spread restarts the ritual; 「重新洗牌」 does too until the turn;
+a failed laying shows its error and returns to 洗牌. The card back (owner:
+"can your cards have ModelXD logo at the back", "not just put logo there.
+need to merge fuse with tarot style") is draft D of four made by
+`scripts/generate-tarot-back.ts` (gpt-image-2 edits with `public/logo.png`
+as the reference, ~$0.23 a draft): the logo's star grown into a gold compass
+rose in a zodiac ring, suns and moons in the corners, narrowed from 2:3 to
+the 1909 cards' 360×626 (`public/xoracle/tarot-back.webp`, 57 KB); the CSS
+pattern under it shows until it loads. Not 180° symmetric (the logo is red
+on one side, blue on the other), which only matters for a printed deck: the
+page draws every back the same way up. Mouse-only hover lifts (a
+finger left :hover behind on the neighbour); no motion under
+`prefers-reduced-motion`. Tests: `scripts/test-xoracle-tarot.ts`.
+
+### Masters' memory (Oct 3): see docs/XORACLE-MEMORY.md
+
+A master used to reread only the last 20 messages the page sent. Since Oct 3
+the reading route builds each master's whole thread from the visitor's
+saved conversation (`lib/xoracle-thread.ts`), and adds the account's birth
+details (for reference, never recited), today's date in the visitor's zone
+with the day's facts (computed, not stored), and the master's own summary.
+Past 70% of its window a master summarizes the older part of its thread
+with its own model (like compacting a chat), billed to the visitor like an
+answer. Each seat shows a 「記憶 N%」 bar that opens 「對話摘要」. Messages and
+summaries live in
+`xtell_messages` / `xtell_memories` (migration 126); before it runs the
+route quietly behaves as before. The full design is `docs/XORACLE-MEMORY.md`.
+
+### 大師 / master (Oct 2)
+
+Owner: the readers are 大師 (zh-Hant), 大师 (zh-Hans), master (en), 마스터
+(ko); Japanese keeps 先生 (大師 reads as a Buddhist saint there). This is the
+word on every page, in the masters' own instructions (「你是八字廟的駐廟大師」),
+and in what the system tells them. In code and comments they are still
+"teachers" (`TeacherPicker`, `askTeacher`), which no visitor sees.
+
+### 占星塔: 目前的天象 on every visit; no sending people elsewhere (Oct 2)
+
+Owner, on a birth-chart (本命) visit that asked 「最近的行運對我的工作有什麼
+影響？」: all four teachers said no transits were attached (true: only the
+今日 mode computed them), and when asked how to attach them, sent the
+visitor to other astrology websites to paste results back. Now:
+
+- Every 占星 mode's facts end with **目前的天象**, computed at the moment of
+  the question (`zhanxingFacts(…, at = new Date())`, `currentSkyFacts` in
+  lib/astrology.ts): the date, the Moon's sign, what is retrograde, today's
+  1° transits from the Sun to Mars and the nodes, and **this season's slow
+  transits** (`seasonTransits`: Jupiter to Pluto against the natal chart,
+  2° orb, exact date when within ±45 days). Each aspect is listed once; the
+  今日 mode adds only the season's slow ones its own list lacks
+  (`seasonOnlyFacts`). An unknown birth hour still never targets the Moon or
+  the angles.
+- The 占星 teacher is told the current sky is always attached, to answer
+  「最近、這陣子」 from it (empty lists: say so, read the natal chart), and
+  that the year's themes are in this room's 「年度」 option.
+- **Every teacher** (the shared `TONE`, and 易學堂's own rules): never send a
+  visitor to another website, app or charting tool to look something up
+  and paste it back; what is not attached is not computed here, or is in
+  one of this site's own options.
+
+Tests: `scripts/test-astrology.ts` (the last block).
+
+### 塔羅: 二擇一, 關係 and modern meanings (Oct 2)
+
+Owner, on the open items from "is our tarot the same way people do it?":
+"do your best judgement". Both done, no API spend.
+
+- **二擇一** (`choice`, 5 cards: now, pathA, pathB, endA, endB) in the
+  traditional shape: 現況 bottom-centre, each road on its side, where it ends
+  above it (`grid-template-areas: "endA . endB" "pathA now pathB"`). Two
+  optional boxes name the options (`optA`/`optB`, 40 characters, kept with
+  the visit, `asOptions()`); the teacher gets them, and is told to compare
+  the two roads and never decide for the visitor.
+- **關係** (`love`, 5 cards: you, them, bond, block, next): the two hearts
+  with the bond between them, what to face and what comes next below. The
+  teacher is told never to say 注定.
+- On a phone the laid five-card spread becomes two columns so the readings
+  stay legible; the ritual's places keep the shape (72 px cards).
+- **Modern meanings**: `content/tarot/modern.json`, 78 cards × upright and
+  reversed × five languages, written for X先知 (not taken from any book):
+  2-4 keywords and one plain sentence, gentle on the hard cards (死神 =
+  結束、轉變、放下; 寶劍十 = 谷底、結束、轉機), no death, illness or money
+  advice, no em dashes, no card names in the text. `tarotModern()` adds them
+  to each laid card; the board shows them under the card in the visitor's
+  language with Waite's 1911 text in the fold; the teacher sees the
+  zh-Hant line as 「本站的現代解讀」 and is told Waite's text stays the
+  source. The source line credits them. Drafted by five parallel helpers
+  (one per suit) in the session and checked by script and by reading.
+
+Tests: `scripts/test-xoracle-tarot.ts` (spreads, options, facts, layouts,
+strings, every meaning present and clean).
+
+### 👍 / 👎 and the share counter (Oct 1)
+
+Owner: "add thumb up and thumb down for each response", then "its own
+table or combine with share?" and "can we also log what type of share?".
+Two tables, one migration (`supabase/122_xtell_votes_shares.sql`, server
+only):
+
+- **Votes** (`xtell_answer_votes`): `AnswerVote.tsx` under every finished
+  teacher answer in a saved visit. Tap to choose, tap again to take it back;
+  one row per person per answer (visit, `qid`, model), +1 or -1, with the
+  temple and country. `/api/xoracle/vote` reads the visit with the caller's
+  session and refuses (404) an answer that is not in it; GET returns the
+  caller's own votes for the visit, so a reopened visit shows them. Only the
+  visitor sees their vote. Deleting the visit or the account leaves the vote
+  as an anonymous count (`on delete set null`). Before 122 runs the route
+  answers 503 and the buttons stay hidden.
+- **Shares** (`xtell_shares`): every press in a share dialog, what (`answer`,
+  `daily`, `almanac`, `cookie`, `tarot`, `qian`), temple, teacher for an
+  answer, how (`save`, `download`, `share`, `copy`) and the ending (`done`,
+  `cancelled`, `failed`). Each `ShareButton` passes `log: { kind, temple,
+  modelId }`; the report goes through `/api/visit` (docs/SITE-VISITS.md). The
+  share sheet never says which app was picked.
+
+`/admin/traffic` has "XTell teacher votes" and "XTell shares" in the filtered
+part (range and country). Tests: `scripts/test-xoracle-votes.ts`; the
+migration was proven on PGlite (scratchpad `pg/t122.mjs`: 19 checks,
+including a visitor deleting their visit under its own policies).
+
+## 解夢 (Sep 27)
+
+Owner: "add 解夢", then "if we just allow users to talk to AI, they can just
+talk to ChatGPT free". So the room is the book first: the dream is read
+against 《周公解夢》 and the lines it points at are shown **free** (a quick
+house-paid model picks them, see below). Teachers are optional and paid, and
+they are given only those lines to quote.
+
+**The book.** Chinese Wikisource 《周公解夢》, revision 7907671
+(2026-07-11), `{{Pd-old}}`. A folk dream book traditionally attributed to
+周公: an eight-line preface poem, then 27 themed sections (天地日月星辰 …
+龜鱉魚蝦昆蟲) of seven-character entries, image then meaning
+(「被馬咬有祿位至」), 988 in all. `scripts/fetch-zhougong.mjs [revid]`
+rebuilds `content/jiemeng/zhougong.json` byte for byte, refuses a page that
+no longer carries `{{Pd-old}}`, and adds each entry's Simplified and
+Japanese-kanji form with OpenCC (tw→cn, tw→jp; 简体 pages show the
+Simplified form; the Japanese form served the first, character-matching
+build and is now unused). OpenCC runs at build time only; it is not a
+dependency (`npm i --no-save opencc-js@1` or `NODE_PATH`).
+
+**The lines: a quick model, not word matching** (owner, Sep 27: "your
+search results show a lot of unrelated lines … ask another quick AI to do a
+pre scan"). The first build matched characters (pairs and IDF-weighted
+singles against each entry's head); it pulled 開門 for 開心, 新衣 for 新娘,
+男子 for 男友, and only a dream about teeth came back clean. Now
+`lib/jiemeng-scan.ts` gives a quick model the whole book as a fixed system
+prompt (`scanSystem()`: the 27 section titles and all 988 lines, numbered,
+~11k tokens, so the provider caches it) and the dream as the message; it
+answers `{"ids": [...]}`, at most 8, most relevant first, empty when nothing
+fits. `scanIds()` keeps only whole numbers the book holds, so no line the
+book does not have can reach the page or a teacher. A dream in any language
+finds lines.
+
+- **Models** (house-paid; the visitor chose neither, so a failure moves to
+  another provider): GPT-6 Luna at reasoning `none`, then Gemini 3.1
+  Flash-Lite. Measured on nine dreams in four languages: Luna 1.1-2.8s,
+  $0.0011 the first call and $0.00012 once cached, zero to two lines, none
+  unrelated, but it missed 見嫁娶 for an ex's wedding; Flash-Lite 0.7-0.9s,
+  $0.0029 / $0.0011, found it. Qwen 3.8 Flash was tried as the fallback and
+  dropped (eight lines for a dream of a late grandmother cooking, half
+  unrelated). Both failing: 503 `dream_scan_failed`, "try again"; no
+  word-matched lines as a fallback.
+- **Reuse and cap** (chart route): a dream this visitor already looked up
+  keeps its lines, no second call. At most `SCANS_PER_DAY` (30) dream visits
+  a day, counted from their own `xtell_readings` rows with a `chart.scan`
+  (429 `dream_daily_limit`). A jiemeng chart is saved even with `refresh`,
+  so no scan goes uncounted. The chart records which model chose the lines
+  (`chart.scan`).
+- **Reading route**: the teacher gets the lines of the visitor's own saved
+  visit (by `readingId`, RLS-scoped); only when there is no saved visit are
+  the page's line numbers taken, each checked against the book and read from
+  disk, like a 籤 number.
+- Tests: `scripts/test-xoracle-jiemeng.ts` (in `npm run test:xoracle`), models
+  stubbed.
+
+**The teacher** (`MASTERS.jiemeng`, 解夢先生). Quotes only the attached
+entries, with their section; says plainly when a hit is beside the point
+(先祖考 is a late father); presents 吉凶 as the book's saying, not a
+prediction; asks one or two questions about the dreamer's life; no medical or
+psychological diagnosis, and a recurring nightmare gets a gentle word about
+seeing a professional; never frightens; ends with the reference and
+entertainment note. The reading route re-matches the dream itself
+(`dreamMatches(dream)`), so a client cannot hand the teacher lines the book
+does not hold. `lib/classics.ts` has no 解夢 classic on purpose: the book is
+the grounding.
+
+**Saved visits** are titled with the dream's first line; history describes
+one by the clipped dream (`describeVisit`).
+
+**The icon** (owner: "a young lady dreaming, not an old man"): a young woman
+asleep on a porcelain pillow under a navy night circle, the dream cloud with
+the moon and 莊周's butterfly. Generated in XCreate (GPT Image 2.5 Sunburst,
+image edit, medium, 3 outputs, $0.068) against a style sheet cropped from
+`icons.avif` (媽祖, 九曜, 月老, 四面佛), picked for reading at 40px.
+`jiemeng-icon.avif` (300), `jiemeng-portrait.avif` (640), `jiemeng.jpg` (the
+www card, on the art's own paper #f8f4e9 so no square shows), and
+`jiemeng-icon-clear.avif` from `scripts/xoracle-clear-icons.mjs`.
+
+## 孫子兵法 (Sep 29)
+
+Owner: "孫子兵法 is to teach you what to do next", built after LINE. Not
+fortune-telling: the visitor writes the situation they face and, optionally,
+the decision in front of them. It is 解夢's shape (see above) on another
+book.
+
+**The book.** Chinese Wikisource 《孫子兵法》, revision 7906064
+(2026-07-02). 孫武, c. 500 BC, public domain; the page has no licence tag,
+so `scripts/fetch-sunzi.mjs [revid]` checks the header names 孫武 instead.
+The thirteen chapters only (孫星衍's appended 答話 and notes are left out),
+split into 319 lines: paragraphs cut after 。 or ！ (not ？, so 始計's 七計
+stay one line with their answer), a line over 100 characters cut again at
+； (行軍's list of signs), a line of three characters or fewer joined to the
+next (「微哉！微哉！」). `{{另|A|B}}` keeps the page's reading A (「勝可擅也」).
+Every character of the chapters is kept (7,435 with punctuation).
+Simplified by OpenCC at build time.
+
+**The lines** (`lib/sunzi-scan.ts`): the same scanners as 解夢 (GPT-6 Luna
+at reasoning none, then Gemini 3.1 Flash-Lite), the whole book as a fixed
+system prompt, and `{"picks": [{"id", "gloss"}]}` back: at most 5 lines,
+each with a one-sentence translation of the line in the page language. The
+gloss is labelled 白話（AI 翻譯） on the page; the line is the book's, checked
+by number (`sunziLines`), and a sentence that stands in two chapters (「合於
+利而動，不合於利而止。」 in 九地 and 火攻) is shown once. The prompt says a
+gloss is a translation, never advice, with an example: Flash-Lite wrote
+advice ("…冷静に計算してください") until it did. Never picks lines to help
+deceive or harm someone; asked for revenge on an ex, Luna picked 不戰而屈人
+之兵 and 合於利而動. Measured Sep 29 (seven situations, four languages): Luna
+1.7-3.3s, $0.0001-0.0009; Flash-Lite 1.2-1.7s, $0.0015-0.0024. Probe
+spend $0.007.
+
+**Chart route**: the same situation, decision and language keeps its lines
+(no second call); another language is a new lookup, since the translations
+are per language. 30 new lookups a day (`sunzi_daily_limit`), counted from
+saved visits; always saved; titled by the situation's first line.
+**Reading route**: the 軍師 gets the saved visit's lines by `readingId`, or
+the page's numbers checked against the book; never the translations.
+
+**The 軍師** (`MASTERS.sunzi`): restates the situation first (知彼知己) and
+asks one or two questions when a key fact is missing; quotes only the
+attached lines with their chapter; at most three concrete next steps, one
+thing not to do yet, and how to tell the time is right; with family,
+partners or colleagues, communication and boundaries, never scheming; never
+helps deceive, manipulate, threaten, take revenge or break the law (詭道 is
+about an enemy state, not people); safety situations go to real help.
+
+**The icon** is the owner's (Sep 29): a red war banner with a mountain
+emblem on a spear-tipped pole, a shield on a black rock, a gold brushed sun
+and clouds, and 「孫子兵法」 in gold-edged black below a rule; a 1254² image
+resized to `sunzi-icon.avif` (300) and `sunzi-portrait.avif` (640), with
+`sunzi-icon-clear.avif` from `scripts/xoracle-clear-icons.mjs`. It replaced
+four drafts drawn in code and six generated battle backgrounds ($0.135),
+all in git history or the session scratchpad only. **Oct 3 (owner):** the
+painted words are cropped off all three files (the picture kept down to just
+under the gold rule, scaled 1.12 and centred; no redraw), since the top bar
+now names it in full: 孫子兵法 / 孙子兵法 / 孫子の兵法 / 손자병법 (English
+stays Art of War).
+
+Tests: `scripts/test-xoracle-sunzi.ts` (in `npm run test:xoracle`), models
+stubbed.
+
+## 相學館 (Oct 6-7, local trial, not pushed)
+
+面相 and 手相 in one temple (owner: one temple, named 相學館 on Oct 7; 觀相閣
+until then; Japanese 手相・人相,
+Korean 관상·손금, English Face & Palm Reading; 手相・面相 in the top bar,
+right after the rotation in every market). Flow (owner, Oct 6):
+
+1. **Tutorial** in the room (`XiangTutorial` in `app/components/xoracle/Xiang.tsx`):
+   三停, 五官, 印堂, the four main palm lines (the life line is not lifespan),
+   男左女右 or the dominant hand, and photo tips. Five languages.
+2. **Photos**: face, left palm, right palm, at least one, taken with the
+   camera or chosen; gender and dominant hand. The browser shrinks each to
+   1280 px JPEG (which drops EXIF, location included). Signed out, the slots
+   are replaced by a sign-in button: the reading runs on our account.
+3. **Check, then read** (`/api/xoracle/chart`, temple `guanxiang`;
+   `lib/xiang.ts`, `lib/xiang-scan.ts`, house-paid like 解夢's lookup):
+   a cheap model checks each photo, leniently (owner: "don't be too
+   harsh"; only a clear no fails, with a tip under that photo; which hand
+   it is is not asked, a wrong guess misled once); then a qualified vision
+   model writes the 相盤: the features in words in the visitor's language,
+   the face's marks and box (the face photo's 0-1000 space), and the palm
+   lines it sees, in words only, cleaned and clamped by `cleanChart`. Ten
+   readings a day per visitor (each reading is its own visit, a two-person
+   one too), never on a refresh.
+4. **The visitor checks it**: the face is marked on the photo in the
+   browser (三停 dashed, 印堂/眼/鼻/口 marked, labelled "approximate"); palm
+   lines are not drawn (owner, Oct 6: "still not accurate, I would rather
+   not showing those lines"; see **Palm lines** below), the words list them.
+   A box for corrections travels with every question and is kept on the
+   visit (`extras.note`). 「存成圖片」 makes one image of the marked faces on
+   the device (share sheet on a phone, a download elsewhere).
+5. **Masters** read the saved 相盤 as text (`xiangFacts`), so any master can
+   join; the photos never reach them. MASTERS.guanxiang: only what the 相盤
+   says, tendencies never fate, never illness, health, lifespan or death,
+   never rating looks, own photos or the agreed other person's only.
+
+**看我們兩個** (owner, Oct 6: "upload your partner/wife/husband/girlfriend/
+boyfriend/your lovers/crush ... similar to 月老"). A switch at the top of the
+form: 看自己 / 看我們兩個. The other person gets who they are to the visitor
+(`RELATIONS`: 配偶, 男女朋友, 曖昧中, 暗戀, 其他), three photo slots (at least
+one), gender and dominant hand, and a required tick 「照片中的人知道並同意我把
+他／她的照片放上來看相。」 The chart route refuses without it (`xiang_consent`)
+or without their photos (`partner_photo_required`), checks their photos
+like the visitor's (`partnerChecks`), and one reader call describes both
+(theirs after the visitor's, under `partner`; the reader is never told the
+relation). The visit keeps `subject.partner` = relation, gender, hand,
+which photos, consent: true; never the photos. Both faces are marked side
+by side (swiped on a phone) and saved as one image with 你 / 對方 on them.
+The masters read 合相: where the two are alike (夫妻相) or complement each
+other and how they may get along, never 配不配, 會不會在一起 or 適不適合結婚,
+never who looks better; for 暗戀 or 曖昧, never what the other person feels
+or will do, and no pushing past their wishes. Live run on made-up photos
+(Oct 7): Claude Opus 5.5 described both in 38 s for $0.09.
+
+**The form's look** (Oct 8). A first restyle (jade, hand-drawn SVG guides)
+was rejected by the owner: "why you use green? and so many ugly drawings. if
+you can't draw you should call gpt image. ask it for a good layout and
+implement it". So GPT Image 2 drew it (`scripts/xiang-ui-art.ts`, about $0.80):
+two phone mockups, "rows" (a card per photo: the picture, its words, two
+square buttons) used on phones and "tiles" (three tiles: the name, the
+picture, a 拍照 | 選照片 bar) from 760px; and the guide pictures, first painted
+in colour, then (owner: "can you use black and white 中性 face and palms?")
+black-and-white ink drawings, and since Oct 9 a young woman's face and hands
+like the icon's (owner: "should be female, young lady as well"), on a light
+grey ground (`public/xoracle/xiang/guide-face.avif`, `guide-palm-right.avif`,
+the left palm its mirror: seen palm-on, a left palm's thumb is on the left of
+the picture; the first prompt had it backwards and the slots swapped, caught
+by the owner; illustration only). The site's own paper, ink and one vermilion
+accent, a blush tint for what is chosen, serif headings, no green
+(`.xoracle-xiang-*`, `--xg-*`). The form sits on the page's paper (no card,
+`.xoracle-entry-form.is-xiang`). Order (Oct 8): the three steps (放上照片 → 核對相盤 →
+大師解讀, joined by a line; removed Oct 9, owner: "I don't think we need the
+steps row"), 看自己 / 看我們兩個 as two equal buttons (removed Oct 9), 照片 and
+the three cards (a photo shows whole, contained; 移除; the check's tick or
+tip; a drop state on a computer), gender and hand in one two-half panel, the
+other person under a rule (relation chips, the same cards, the consent box),
+the 怎麼看面相、手相 row, the privacy line and one wide 開始觀相 button. On
+phones the intro runs full width under the icon and title. Signed out, the
+same cards without buttons and one sign-in. Native radios in labelled groups,
+visible focus, calmer motion when asked. Behaviour, payloads and the
+one-photo minimum unchanged.
+
+**Small tiles, two sets, and the lesson** (Oct 9). Owner: "the slots are
+way too big"; "side by side 6 slots, no need to put two rows"; then "remove
+看自己 看我們兩個 row", "you always show two sets. the left one is me and the
+right one is another person", and gender and hand "也要在拍照下方". So there
+is no mode choice: the form always shows the visitor's three tiles on the left
+and the other person's (marked 選填) on the right, a rule between. Above
+each person's tiles, their name, gender and hand sit in one row as small
+pill choices (owner: "moving gender selection and dominate hand next to 你
+and 對方 選填? so one row and make the buttons smaller"; `XiangPersonHead`);
+on a phone the column is too narrow, so the three stack. 拍照 and the
+relation chips got smaller with them. A reading is for two once the other person has a photo (or a
+reopened visit was for two: `xiangPair` in client.tsx); only then do who
+they are (chips) and the consent tick show, under their tiles on a computer
+and across both on a phone. `XiangForm` takes the other person as a
+`partner` prop. Each photo is a small tile (`.xoracle-xiang-slot`, a CSS
+container): the picture is the button (a phone offers its camera or its
+photos; a computer its files, or a photo dropped on it; a 選照片 chip or a +
+says so), its name, and 拍照 under it where the tile has room (not on a
+phone, where tiles are about 50 px); the check's tick or ! sits on the
+picture and its words are listed under the tiles. The photo tips are one
+line under 照片.
+
+The guides follow each person's gender (owner: the young woman "像印度人...
+改掉。畫中國人。要有男性女性 根據性別"): GPT Image 2 ink drawings of a young
+Chinese woman and man, and a woman's and a man's right palm with their
+mirrors (`guide-face-{female,male}.avif`,
+`guide-palm-{left,right}-{female,male}.avif`; $0.63 for the faces and the
+man's palm). The man was redrawn twice: a slight smile and a buzz cut
+(owner: "smile a little bit and remove hair maybe?"; $0.21), then bald, calm
+and softer (owner: "looks bad still… 中性一點 不要笑得太多。頭髮不要。光頭。像古代的
+畫像也行"; $0.42 for two versions, the woman's style and an old 相書 portrait;
+the first matched the woman better), then, since the bald one looked "有點像
+犯人", a rounder face and an ordinary short haircut with a side part, calm
+with a faint smile (owner: "臉圓一點 髮型用正常人的"; $0.42 for two versions),
+and finally (Oct 10, owner: "make the male placeholder more less human? 像古代
+那種 或者中醫那種經絡圖？ 盡量不要太像某些人") a schematic man like an old 相書
+woodblock print: a topknot, a robe collar, simplified features, no likeness of
+anyone ($0.42 with a 經絡圖 version beside it); then the woman the same way
+(owner: "女生也改掉"; $0.21), redrawn with smooth, light hair and a small bun
+on the crown (owner: "the hair looks bad"; $0.42 for two versions), then with
+the hair black again, in close smooth lines like the man's (owner: "why is it
+white hair???"; $0.42 for two versions); the lesson's face is hers (its
+numbers re-placed). The woman's palm was redrawn lighter, with slender
+fingers (owner, Oct 10: "女生的palm placeholder, 太黑 fingers太粗"; $0.42 for
+two versions). The tiles and the lesson's pictures are white, the drawings'
+backgrounds lifted to pure white (owner, Oct 10: "the background of those
+placeholders are very dark"; they were a cool grey, #f4f4f4, on the warm
+paper). The palms are smaller in their tiles (owner: "palms are too big. it
+covers too much of the placeholder images", then "稍微大一點", then "just need
+to be smaller"): 78% of the tile, near the top,
+the wrist fading to white so the 選照片 chip sits in the empty part; and the
+man's palm is flat line art as light as the woman's (owner: "for man, the
+palm is too real, make it more flat"; $0.42 for two versions). The woman's
+palm was drawn once more, thinner (owner: "你懂不懂什麼叫修長纖細的手啊"; $0.42
+for two), but its spindly pointed fingers were worse ("are you kidding me?");
+real stock photos were looked for (free libraries had few usable palms) and
+the owner chose the earlier light drawing back ("your previous previous
+versions are good, just need to be smaller"). By default the visitor (left) is a woman and the other
+person (right) a man (owner: "move female to the left and put male to the
+right by default"; `defaultBirth` in client.tsx, 相學館 only). One privacy
+line serves one or two people (owner: "只放你自己的照片。…" was wrong once the
+other person's tiles were always there): your photos, or the other
+person's if they agreed; we do not keep them; a shared image is made on
+your device (it said 手機).
+
+Owner, same day: "in 怎麼看面相、手相 you should draw the image to teach users
+which line means what on palm. and for face, which area is for what". The
+row opens on two numbered pictures: the woman's guide face (its 三停 lines
+drawn in) with nine areas (上停, 中停, 下停, 印堂 and the five 官, each with
+what tradition reads there), and a palm GPT Image 2 drew for it
+(`scripts/xiang-ui-art.ts learn`, $0.21; it left out the heart line and ran
+the fate line down the arm, so those two were fixed on the picture by hand)
+with the five lines the reader knows (`LINE_KEYS`: 生命線, 智慧線, 感情線,
+事業線, 太陽線). The numbers are set on the pictures by the page
+(`FACE_PINS`, `PALM_PINS` in % of the picture; re-measure them if a picture
+changes), so the words are in every language (`xoracle.xiang.learn.*`); then
+the photo tips.
+
+**Photo shape, palm lines, the 相盤's tiles** (Oct 9). Owner: "when people
+take picture, we should limit to 1:1 or 9:16, not 16:9"; "the analysis
+results imags are too big. we should use the same size as the placeholder.
+face + palms"; "can we process the palm with filters to only show clear lines
+instead of original pictures? and we use those to feed into AI models".
+- `shrinkPhoto(file, key)` keeps every photo between square and 9:16: a
+  landscape one keeps its middle square, a very tall one its middle 9:16. The
+  computer's camera shows and takes its middle square (a webcam is wide).
+- A palm then goes through `lib/palm-lines.ts` (plain arithmetic, no
+  library): the skin coloured like the middle of the picture, opened and the
+  biggest patch kept (the hand), its own light divided out, and the creases
+  drawn dark on white with the hand's outline. The models read that picture
+  and the 相盤 shows it; the tile keeps the photo as taken (owner: "taking palm
+  photo still shows the original photo. you show the line photo after the
+  analysis"; `XiangPhoto.linePhoto`); `PALM_AS_LINES` in lib/xiang.ts tells the photo check
+  and the reader what they are looking at (the reader says it cannot judge the
+  mounts from it). Tried on the owner's own palm photo (this computer only):
+  Gemini 3.1 Flash-Lite passed it as a palm ($0.0004); Claude Opus 5.5 read
+  all five lines, the heart line "清楚、顏色深", the head line faint ($0.057).
+- The 相盤 shows every photo as the form's tiles, the visitor's then the other
+  person's: the face with its marks (the labels and thick lines only when a
+  tile is opened large, `XiangZoom`), each palm as its lines. The saved image
+  has them all, each with its caption.
+
+**相書 look** (Oct 11, pushed Oct 12 to main + dev, owner "let's push this version first"; owner: "with the new skill, can you redesign the
+page and let me try?", the frontend-design skill loaded). Same structure, a
+new look: the room as a page of an old woodblock-printed 相書. The photos and
+the 相盤 sit on grained paper inside a 文武邊欄 (thick rule, thin rule) on a
+computer, between the same top and bottom rules on a phone (full width);
+headings carry a vermilion 魚尾; names, captions and choices are set in the
+book's serif; 選填 is a small 朱文 seal; chosen answers are inked black;
+plates have a hairline inside their frame; 開始觀相 and the other buttons are
+square seals; the plates come up one after another like ink spreading (off
+under reduced motion). One CSS block at the end of the 相學館 rules in
+app/globals.css ("相學館 as a page of an old 相書"); remove it to go back.
+
+**Privacy**: the photos are never stored. The visit keeps the 相盤, gender,
+dominant hand, which photos there were (and the other person's relation,
+gender, hand and the visitor's tick), and the correction. A reopened visit
+has the written 相盤 only (re-add the photos to see the marks).
+
+**Models** (`scripts/xiang-model-test.ts` on made-up photos, Oct 6; draw with
+`scripts/xiang-draw.py`): reader Claude Opus 5.5 (52 s, $0.11; face points
+accurate, palm lines plausible), stand-in GPT-6.1 Sol ($0.05, 77 s; slipped
+one simplified character). GPT-6 Astra and Claude Fable 5.1 read as well but
+took 136 s / 72 s for $0.25. Claude Sonnet 5 and Gemini 3.1 Pro misplaced
+points; Grok 4.7 took 405 s. Checker Gemini 3.1 Flash-Lite (~1 s,
+$0.0004 a photo), stand-in GPT-6 Luna. Total test spend about $5.10 (photos,
+readers, icon drafts, the palm-line trials below, three live runs, one
+made-up second face).
+
+**Palm lines: not drawn** (owner, Oct 6: the reader's were "not accurate at
+all", then "fix with Gemini 3.8 Flash", then, after the trials below, "still
+not accurate, I would rather not showing those lines"; outside libraries
+such as MediaPipe were ruled out: "we want Model to compete head to head").
+The tracer and the snap were removed; the record stays. Measured with a crease score: how much darker
+the skin under a line is than 9-12 px beside it, left / right test palm
+(`scripts/xiang-best-test.ts`, `xiang-point-test.ts`, `xiang-image-test.ts`).
+Claude Opus 5.5's own points -0.1 / -0.8, no relation to the creases.
+Gemini 3.8 Flash in its own point format: low 7.6 / 13.0 (6-12 s, $0.007 a
+palm), its default 4.8 / 12.8, high 1.5 / 5.1. GPT-6 Astra at low 4.6 / 1.7
+(~20 s, $0.045). Image models drawing on the left palm themselves: Nano
+Banana 2 10.9 ($0.10), Nano Banana Pro 10.7, GPT Image 2 -0.3 (a textbook
+palm, not this one), Grok Imagine 2.0 -0.4, GPT Image 2.5 Sunburst -3.5,
+Qwen Image 3.0 Pro -5.4. The snap (`lib/xiang-snap.ts`: each point may move
+up to 2.2% of the photo's width across the line, onto the deepest valley
+darker than EACH side by 3 of 255, so an edge or a shadow never pulls;
+smoothed) takes Gemini's to 16.9 / 20.3 and Astra's to 9.8 / 11.9. On a real
+phone photo of a palm (fainter creases, the hand smaller in the frame)
+Gemini's went from 5.2 to 7.4, every line on a visible crease; the first
+rule (darker than the two sides on average) had bent its life line onto the
+thumb's outline. Even so, the owner judged the lines not accurate enough to show.
+
+**Icon** (approved Oct 8 in Codex's session, owner: "yes, this is it!"): a
+jade-and-gold framed card, a front-facing young woman with face-reading guide
+lines beside an open palm with its lines and dots. Source: Codex's
+`04-jade-coral-young-lady-straight-fingers.png` (1254 px, transparent),
+kept outside the repo. Installed unchanged by `scripts/xoracle-icon-from-png.mjs
+guanxiang <png>`: the invisible margin trimmed (alpha 1 of 255 or less; the
+art is 965×860), centred at 95% of the width (84% of the height; 88% until the
+owner's "the temple icon is too small ... but not too big", Oct 8; the value is
+kept per temple in the script's FILL_BY_TEMPLE), and written
+as `guanxiang-icon-clear.avif` (300 px, its own transparency: the top bar,
+lists, www thumbs), `guanxiang-icon.avif` (300 px on the set's paper #fbf7ee:
+the room header, the share picture) and `guanxiang-portrait.avif` (640 px on
+paper: the banner and explorer, neither showing 相學館 today).
+`scripts/xoracle-clear-icons.mjs` no longer derives this temple's clear icon.
+Before it (Oct 6-7, `scripts/xiang-icon.ts`, about $6 of drafts): a face and
+palm on a navy circle ("looks really bad and similar to 九曜廟's"), four
+concepts, a desk scene in ten styles, the hand alone, eight face-and-palm
+emblems (no profiles: 面相 is read from the front), and a seal with face
+lines.
+
+## Birthplace and 「填入我的生日」, round two (Oct 1, owner bug report)
+
+- **No default city.** Rooms that need a birthplace (占星, 九曜) used to start
+  on Taipei (Tokyo, Seoul on those pages), so a visitor who never looked got
+  a chart for a city they were not born in. The place now starts empty and
+  the room refuses to cast until one is picked (`place_invalid`, as the
+  routes already did).
+- **Typed and picked** (`PlacePicker`, `searchPlaces` in lib/xoracle-places.ts):
+  a city is found by any of its names (繁體, 简体, 日本語, 한국어, English,
+  a few aliases such as 悉尼, NYC), names that start with what was typed
+  first. Before anything is typed, the cities of the visitor's country are
+  offered: Vercel's `x-vercel-ip-country`, passed from the server pages, else
+  the page's language. A city not on the list: the nearest large one; the
+  ascendant and houses move a little, the planets not at all.
+- **「填入我的生日」 fills only the birthday saved on the account.** It filled
+  1900-1-1 from the 占星 room's old copy in the browser; that copy is no
+  longer written and is cleared when a room opens. Signed in with nothing
+  saved, the button says so and links to the account page, where the form
+  now opens in place. Signed out, there is no button.
+
+## 「填入我的生日」 (Oct 1)
+
+Owner: "when user enter that kind of temple, we add a button to fill user's
+info, but not auto fill since other people will see their birthday if they
+watch you use the website."
+
+- Every birth row that is the visitor's own (the single rows, the first
+  person in 月老 and 合盤, the stick rooms' optional 稟告 birth) shows
+  「填入我的生日」 when a birthday is saved; pressing it fills the date and
+  time. Nothing is filled on load.
+- The source is the daily fortune's saved profile (`/api/xoracle/profile`),
+  else this browser's 占星 copy (`xtell.zhanxing.birth`). Gender and city
+  come from the browser copy only when it is the same birthday (the profile
+  stores neither). A room that needs the hour (紫微, 九曜) keeps its own when
+  the saved hour is unknown.
+- 占星 used to restore its copy on load, and the daily form prefilled a new
+  profile from it; both now wait for the same button.
+- The profile is fetched quietly when a room opens, but nothing from it is on
+  screen until the press.
+
+## The visitor's own personality type (Oct 1)
+
+Owner (Sep 30): "we allow users to enter in the profile page, and optionally
+give temple master to use". The first piece of a later combined XOracle
+temple that reads everything a visitor has told us.
+
+- **What:** the four letters people know as "MBTI" (nearly always from the
+  free 16Personalities test), plus the -A / -T some results carry. Typed in
+  on the XOracle account page (「我的人格類型」, `PersonalitySettings` in
+  `app/components/xoracle/XOraclePersonality.tsx`). We run no test of our own
+  yet; the official MBTI® and 16Personalities cannot be licensed in
+  practice, and OEJTS is non-commercial. A later test would use the
+  public-domain IPIP questions (`source: 'test'`, `scores` are kept for it).
+- **Stored:** `xtell_personality` (supabase/119), one row per account,
+  server only like `xtell_profiles`, deleted with the account.
+  `/api/xoracle/personality` GET / PUT / DELETE, own row only; 503 before 119
+  runs, and the section hides.
+- **Used:** only in 孫子兵法, 月老 (plus an optional partner type chosen in
+  the room) and 塔羅 (`PERSONALITY_TEMPLES`), and only while the box
+  「附上我的人格類型（INFJ）」 is ticked; it is off by default. Never in the
+  stick rooms or the chart rooms, never in the daily reading. An attached
+  type rides in the visit's subject (`mbti`, `mbti2`), so a reopened visit
+  asks with the same type.
+- **The teacher is told** (`personalityFacts`, after the room's own facts)
+  that it is the visitor's own description, not a fortune and not a
+  diagnosis; to use it only where it fits, a mention or two; never over the
+  stick, cards, chart or book; never as fate or a ranking of types.
+- **Not on screen unasked** (owner, Oct 1): the room's box reads
+  「附上我的人格類型」 and names the letters only once ticked; the account
+  page shows 「已儲存（已隱藏，按「修改」查看）」, like the birthday.
+- **The word:** the label says MBTI because that is what people call it,
+  with 「MBTI® 為 The Myers-Briggs Company 的商標…並非官方測驗」 under it.
+
+## The signed-in test round (Sep 29)
+
+Owner: "do another round of test … try each feature one by one". All 18
+rooms, the guide, the almanac, the daily fortune, the account and legal
+pages, on the live site in 日本語 (signed-in in the owner's Chrome at 606 px,
+signed-out at phone width), one teacher question a room. What it found, and
+what changed:
+
+- **Sub-cent answers were never billed.** The reading route rounded each
+  answer's cost to whole cents; the default teacher's answers cost $0.0002
+  to $0.0007, so all 18 were charged $0. `114_credit_fractions.sql` keeps
+  the part under a cent per user (millionths of a dollar) and
+  `accrueFraction()` (lib/credits.ts) returns the whole cents now due; over
+  time a user pays the sum rounded down, never more than list. Without the
+  migration the old rounding stands. Only XOracle readings use it so far.
+- **The daily 西洋 reading came back in 繁體 on a Japanese page** and was
+  cached for the day: the brief said "Keep Chinese technical terms in
+  Chinese characters", and the facts are Chinese. The brief now says to
+  translate; `inLanguage()` (lib/xoracle-lang-check.ts: kana for Japanese,
+  hangul for Korean, Latin for English) refuses a reading in another
+  language so the stand-in writes it; `DAILY_RULES` is `-2`, so rows cached
+  before are not served. `leaksChinese` missed it: literary 繁體 has none of
+  its marker characters.
+- **Chinese terms in Japanese answers, replaced by code (Sep 30).** The
+  default teacher (Qwen 3.8 Flash, thinking off) wrote 処女座, 月亮, 命主星,
+  大運 in the Jyotish room, 還願 and 參宿 with the glossary in its prompt.
+  `jaTermStream()` (lib/xoracle-lang-check.ts) replaces a fixed list per room
+  as the answer streams, holding back 16 characters so a word cut between
+  two pieces is still caught; what is shown is what is saved. The daily
+  reading goes through `fixJaTerms()` before it is saved. **Add a word only
+  if it cannot be part of another Japanese phrase** (合相 is in 「場合相手」;
+  東北 is a region; 「利西南」 is the 易's own text) and add a line to
+  scripts/test-xoracle-ja.ts. Off when the visitor wrote without kana, since
+  the teacher then answers in their language.
+- **Teachers contradicted the chart** (a 相害 year called harmonious; 癸 and
+  丙 called a 干合; a stem placed in the wrong pillar; 媽祖 given a 大吉 it
+  does not have; 売 said to contain 貝; a 爻辭 called a 卦辭). `TONE` now
+  says: relations and yearly verdicts only as attached, never the opposite;
+  name the pillar; no gender roles. 媽祖, 易 and 測字 have their own lines.
+- **Chinese on Japanese pages.** The boards read names from the engines'
+  Chinese tables: signs, planets, elements and modalities now come from the
+  string table (`sign(t, i)`, `plName`), the Vedic board too (`rasiName`,
+  `grahaName`, `nakName`); relation words through `relText` (無特殊關係,
+  兩盤合看涵蓋, 同為, 生, 剋, the animals); lunar dates in figures
+  (`lunarLocal`); 納音 in Japanese forms; the name board's 格 labels, grades
+  and 三才 line as strings, with the 81 數理 idioms on Chinese pages only;
+  媽祖's line and its doubled heading; 歲, 畫. Japanese answers get a
+  glossary (`JA_TERMS`: ハウス, コンジャンクション, ホロスコープ, 命式,
+  おみくじ, no 簡体字, no guessed readings or 書き下し). The guide is given the
+  rooms' names in the page language (`roomNamesFor`).
+- **Places:** 20 Japanese and 6 Korean cities; `placeLabel`, `placesFor`
+  (the visitor's country first) and `defaultPlaceFor` (Tokyo, Seoul).
+- **Names:** schools differ on new-form kanji. The count stays the written
+  form's (the earlier decision); Japanese pages also show the old form and
+  its strokes (続 → 續 21, `content/names/kyujitai.json`, 298 pairs from
+  OpenCC's table by `scripts/build-kyujitai.mjs`), and the teacher is told
+  both schools and not to mix the forms when taking a character apart.
+- **解夢 lines carry an AI translation** on pages that are not Chinese, like
+  孫子兵法's (「齒自落者父母凶」 alone frightened a reader). The scan answers
+  `{"picks": [{"id", "gloss"}]}`; a dream looked up on a Chinese page is
+  looked up again on a Japanese one.
+- **Also:** no 称骨 card in Japanese; 九星 and 宿曜 summaries show the date
+  only; the almanac card no longer says 農民暦; plan dates in the site
+  language; LINE and the 孫子兵法 situation in the privacy summaries; the
+  cookie slip about "credits" is not drawn.
+- **Account history grouped by temple** (owner, same day): one `<details>` a
+  temple in `XOracleActivity`, the temple visited last on top and open.
+- **書き下し and translations for the 260 temple poems** (owner: "spend", up
+  to $5): 關帝 100, 媽祖 60 and 元三大師 観音百籤 100 each have a 書き下し
+  文 (a line a line of the poem) and a modern Japanese translation in
+  `content/qian/kundoku-ja.json`, written once by Claude Opus 5.5
+  (`scripts/translate-qian-ja.ts`, ten poems a call, resumable, capped).
+  Measured on five poems first: Opus $0.0078 a poem, GPT-6 Astra $0.022
+  with readings no better. Spent $1.96 in all. Three lines the model left
+  as bare kanji were completed by hand. `qianOf()` attaches them as
+  `qian.ja`; Japanese pages show both under the poem, labelled (AI); a
+  Japanese answer is handed the same reading and told not to write its own
+  (`guandiFacts(…, lang)`). The 清刊本 notes of 關帝 (聖意, 東坡解 …) are
+  still Chinese only; the teacher explains them.
+
+## Each market's order (Sep 28, Japan and English redone Oct 2, Chinese Oct 3)
+
+**Oct 3 (owner):** in every market the top bar starts with the homepage
+rotation, in the same order (`scripts/test-xoracle-home.ts` holds this). For
+Chinese that moved 易經, 周公解夢 and 孫子兵法 up to follow 塔羅 (popular in
+Taiwan), ahead of 九曜, 九星 and 宿曜: 八字 紫微 占星 塔羅 易經 解夢 兵法 九曜
+九星 宿曜 姓名 測字 幸運餅乾 觀音 月老 關帝 媽祖 四面佛. Japanese, Korean and
+English already began with their rotation (its first six).
+
+`displayTemples(lang)` (TempleArtwork.tsx): every temple in every language,
+only the order changes. Oct 2 (owner: "optimize the temple order on the top
+nav bar for different countries", after a Japanese visitor read the page as a
+translated Taiwanese site):
+
+- 日本語, by Japanese search demand (Keyword Planner, Japan, Sep 30): 夢占い,
+  観音 (おみくじ), 姓名, 西洋占星, タロット, 四柱推命, 九星気学, 縁結び, 宿曜, 易経,
+  紫微, 兵法, クッキー, インド占星, 関帝, 媽祖, 四面仏, 字占い.
+- English (the US): Tarot, Astrology, Dreams, BaZi, Yue Lao, Cookie, I Ching,
+  Navagraha, Art of War, Zi Wei, Nine Star, Guanyin, Guan Di, Mazu, Brahma,
+  Sukuyō, Names, Character. The rooms that need Chinese characters or names
+  go last.
+- 한국어 (Sep 28, unchanged): 八字 (사주), 月老 (궁합), 塔羅, 占星, 解夢, 孫子, 籤餅,
+  姓名, 易經, 紫微, 觀音, 關帝, 媽祖, 九曜, 九星, 宿曜, 四面佛, 測字.
+- Chinese: changed Oct 3 (above); before that, the owner's Sep 24 order,
+  computed methods first, 觀音 leading the deity rooms.
+
+**Icons (觀音, 塔羅):** generated in XCreate (GPT Image 2.5 Sunburst, image
+edit, medium, 3 outputs each, $0.067 each) against style sheets cropped from
+`icons.avif` (deities: 媽祖, 九曜, 月老, 四面佛; objects: 八字, 紫微, 占星,
+測字), picked for reading at 40–48 px. `*-icon.avif` (300), `*-portrait.avif`
+(640), `*-icon-clear.avif` from `scripts/xoracle-clear-icons.mjs`.
+
+## 分享 (Share, Sep 28)
+
+One button beside a teacher's reply, a 籤, the 今日運勢 cards and the 黃曆
+opens a dialog with a 1080×1350 picture and a link.
+
+- **Drawn on the device** (`app/components/xoracle/ShareButton.tsx`, canvas,
+  the phone's own fonts): no server, no model, nothing uploaded or published.
+  The dialog shows the picture before it leaves; a phone gets its share sheet
+  (`navigator.share` with the PNG), a computer downloads it and copies the link.
+- **What goes on it**: the temple's icon and name, the result, X先知, the
+  address, a QR code (`qrcode-generator`, MIT, loaded only on share). A reply
+  is cut to its opening ~150 characters (`shareExcerpt`, `lib/xoracle-share.ts`);
+  headings and tables are left out, and **any clause holding a date or clock
+  time is dropped** (`dropDates`) so a teacher repeating the birth back cannot
+  put it on the picture. The question and the birth form never go on it.
+- **The link**: `https://dev.modelxd.com/xoracle?t=<temple>&ref=<code>&utm_source=share` (on xtell.modelxd.com's `/` until Oct 22).
+  `?t=` is the room itself, as every room link is since Oct 18 (a link
+  preview can read a query, not a hash); `ref` is the sharer's referral code (signed-in only, from
+  `/api/referral`), parked by Nav as any referral link is; `utm_source=share`
+  is what the visit log counts. 今日運勢 and 黃曆 link to the street.
+- **Link previews**: `xoracleMetadata(lang, temple)` gives `?t=` links the
+  temple's title and `public/xoracle/og/<temple>.jpg`; other XOracle pages get
+  `og/street.jpg`. The pictures are built once from the approved art by
+  `node scripts/xoracle-og-images.mjs` (Songti TC from the Mac's fonts) and
+  committed; rerun it when the art changes.
+- Tests: `scripts/test-xoracle-share.ts` (in `test:xoracle`), preview names and
+  files in `scripts/test-lang.ts`.
+
+## Golden charts (`npm run test:xoracle`)
+
+Frozen OBSERVED outputs (never hand-recalled — the first version froze two
+remembered values and both were wrong; the suite caught its own author):
+
+- 1990-01-01 15:25 → 己巳 丙子 丙寅 丙申 (pre-立春 trap; model-verified 4/4)
+- 1985-07-20 09:00 → 乙丑 癸未 庚申 辛巳 (model-verified)
+- 2000-02-04 **12:00 vs 21:30** — same calendar day straddling the 20:40:24
+  立春 instant: 己卯/丁丑 vs 庚辰/戊寅, day pillar 壬辰 unchanged
+- 1988-06-15 23:30 晚子時 → 戊辰 戊午 辛丑 庚子 (day pillar stays, 子時 stem
+  from the NEXT day's stem — 日不變、時遁次日干 school; frozen so a library
+  upgrade silently switching schools fails loudly)
+- 紫微 1990-01-01 申時 → 命宮己巳 巨門[旺], 木三局, 命主武曲/身主天機
+
+Run it before shipping ANY dependency bump that touches lunar-typescript or
+iztro.
+
+## Studied repos (owner-shared, Aug 30 — learn, credit, respect licenses)
+
+| repo | took | license line |
+|---|---|---|
+| Wolke/ziwei-doushu | tendency-tone ethics rule | CC BY-NC-SA — **learn only** |
+| CNWU16/vedic-astro-skills | hourUnknown; (backlog: rectifier) | AGPL + commercial restrictions — **never copy** |
+| Horace-Maxwell/horosa-skill | provenance line; golden-fact tests; 合參-flags-contradictions framing | AGPL — **learn only** |
+| Sudo-Biao/Chinese-Metaphysics-Platform | classics KB + retrieval; independent confirmation of pillar algorithms | MIT — portable with attribution |
+
+## Backlog (owner picks)
+
+- ~~籤詩亭~~ — shipped Sep 1 as 關帝廟, Sep 22 as 媽祖廟. Other 籤 sets (
+  觀音一百籤) would be new corpora on the same ritual.
+- ~~印度 temple~~ — shipped Sep 1 as 九曜廟 (one temple, Shani patron; the
+  owner's 太陽神廟/納迪葉 ideas would be further personas over the same
+  engine). Not yet: divisional charts beyond D9, Shadbala, transits, true
+  node option, a free-text geocoder for places outside the list.
+- Birth-time rectifier temple; 六爻亭 (interactive coin ritual); 擇日
+- 真太陽時 toggle (Taipei ≈ +6 min vs UTC+8 meridian)
+- ~~Persistence~~ — shipped Sep 24 (see "Saved readings"); 流年 refresh of an old chart is still open
+- Share cards for 批文; XDev MCP exposure of chart tools
+- More classics (淵海子平, 三命通會) as corpus grows
+
+## User-facing technical metadata (Sep 27)
+
+Package names, dependency versions and internal table version IDs stay in server metadata and development records; the UI does not render the engine payload. Chart copy describes relevant calculation conventions and limitations without implementation or validation-log details. Per the owner’s follow-up, 稱骨 no longer shows 計算方式 or 查看來源, including their explanatory text and links. Calculation rules and source comparisons remain internal. This applies across all temples and five locales.
+
+
+## 稱骨 result explanation (Sep 27)
+
+The result now includes a neutral 2兩1錢–7兩1錢 position scale, brief
+traditional themes for all 51 weights in five languages, and 請老師解讀.
+The scale is not a percentile or good/bad score. Unknown hours keep separate
+dots and descriptions for each possible total. The button fills and focuses
+the existing priced composer; it does not send or charge automatically.
+`lib/xoracle-chenggu-reading.ts` holds editorial themes shared with the server's
+tutor facts. Internal reference: the original public-domain verses reproduced
+at https://www.deeporacle.ai/bazi/tools/chenggu, checked Sep 27. These are
+brief thematic descriptions, not quoted verses or personal predictions.
+No method/source sections are restored. The page states: 稱骨是民俗解讀，重量不代表人生好壞。

@@ -17,7 +17,7 @@ const EMAIL = SUPPORT_EMAIL
 
 /** `plain`: the address itself as the link, no copy and no flash (owner,
  *  Sep 28: 「已複製 …」 read as a riddle). The bug form uses it; www's
- *  sidebar keeps the label with copy-on-click; the XTell footer has its own
+ *  sidebar keeps the label with copy-on-click; the XOracle footer has its own
  *  聯絡我們 mail link (Oct 4). */
 export default function ContactEmail({ className, style, plain }: { className?: string; style?: React.CSSProperties; plain?: boolean }) {
   const t = useT()

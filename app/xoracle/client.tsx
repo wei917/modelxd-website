@@ -1,5 +1,5 @@
 'use client'
-// app/xtell/client.tsx — the temple street.
+// app/xoracle/client.tsx — the temple street.
 //
 // Each template is a temple (owner, Aug 29). Two temples in phase 1: 八字廟
 // and 紫微斗數廟. The flow inside each is the same three steps, and the order
@@ -17,64 +17,64 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { goToRoom } from '../../lib/xtell-room'
+import { goToRoom } from '../../lib/xoracle-room'
 import { useSite } from '../../lib/useSite'
-import { XTELL_PATH } from '../../lib/site'
+import { XORACLE_PATH } from '../../lib/site'
 import { setPageKey } from '../../lib/page-key'
-import XTellAuthGate from '../components/xtell/XTellAuthGate'
+import XOracleAuthGate from '../components/xoracle/XOracleAuthGate'
 import { useAuthModal } from '../../lib/AuthModalContext'
-import { SIGN_IN_FIRST } from '../../lib/xtell-guest'
-import { TEMPLES, PURPOSES } from '../components/xtell/TempleStreet'
-import { TempleArtwork } from '../components/xtell/TempleArtwork'
-import XTellNav, { XTellFooter } from '../components/xtell/XTellNav'
-import { XTellBaseProvider } from '../components/xtell/XTellBase'
-import { XiangForm, XiangBoard, XiangPrivacy, type XiangPhotos, type XiangPhoto, type XiangCheck } from '../components/xtell/Xiang'
+import { SIGN_IN_FIRST } from '../../lib/xoracle-guest'
+import { TEMPLES, PURPOSES } from '../components/xoracle/TempleStreet'
+import { TempleArtwork } from '../components/xoracle/TempleArtwork'
+import XOracleNav, { XOracleFooter } from '../components/xoracle/XOracleNav'
+import { XOracleBaseProvider } from '../components/xoracle/XOracleBase'
+import { XiangForm, XiangBoard, XiangPrivacy, type XiangPhotos, type XiangPhoto, type XiangCheck } from '../components/xoracle/Xiang'
 import { asRelation, type XiangPhotoKey, type XiangRelation } from '../../lib/xiang'
 import { createBrowserClient } from '@supabase/ssr'
 import { useT, useLang, tOr } from '../../lib/i18n'
-import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xtell-birth'
+import { birthProblem, daysInMonth, birthYears, REMEMBER_KEY, rememberedBirth } from '../../lib/xoracle-birth'
 import { useRequireAuth } from '../../lib/useRequireAuth'
 import type { PickerModel } from '../components/ModelPickerDialog'
-import TeacherPicker from '../components/xtell/TeacherPicker'
-import MemoryDialog from '../components/xtell/MemoryDialog'
+import TeacherPicker from '../components/xoracle/TeacherPicker'
+import MemoryDialog from '../components/xoracle/MemoryDialog'
 import ContextMeter from '../components/ContextMeter'
 import { maxInputOf, summaryPointOf, formatTokens } from '../../lib/conversation-memory'
 import ReactMarkdown from 'react-markdown'
 import { REMARK_PLUGINS } from '../../lib/markdown'
 import ProviderLogo from '../components/ProviderLogo'
-import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xtell-ritual'
+import { drawQian, throwJiao, cryptoRand, CONFIRM_THROWS, QIAN_COUNTS, asQianEdition, needsJiao, type Jiao, type QianEdition } from '../../lib/xoracle-ritual'
 import { asSpread, SPREADS, SPREAD_KEYS, OPTION_MAX, type TarotPick, type TarotSpread, type TarotOptions } from '../../lib/tarot-draw'
-import { TarotRitual } from '../components/xtell/TarotRitual'
-import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xtell-cookie'
+import { TarotRitual } from '../components/xoracle/TarotRitual'
+import { cookieProblem, FOOD_MAX, ASK_MAX as COOKIE_ASK_MAX } from '../../lib/xoracle-cookie'
 import { OptPill, OptGroup, SLOT_COLORS, thinkingLabel } from '../components/OptControls'
 
-import { placesFor, placeLabel, placeOf, searchPlaces } from '../../lib/xtell-places'
+import { placesFor, placeLabel, placeOf, searchPlaces } from '../../lib/xoracle-places'
 import { GRAHA_ZH, GRAHA_SA, RASI, NAKSHATRA } from '../../lib/jyotish'
 import { PLANET_ZH, PLANET_GLYPH, POINT_ZH, SIGNS, ELEMENTS, MODALITIES, localStamp } from '../../lib/astrology'
 import { throwCoins, valueOf, validLines, type Coin, type LineValue } from '../../lib/yijing-core'
-import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xtell/Yixue'
-import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xtell-history'
-import { TitleEditor } from '../components/xtell/TitleEditor'
-import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xtell-presets'
-import XTellAssistant from '../components/xtell/XTellAssistant'
-import XTellHero from '../components/xtell/XTellHero'
-import PinButton from '../components/xtell/PinButton'
-import { XTellHowTo } from '../components/xtell/XTellHowTo'
-import XTellDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xtell/XTellDaily'
-import { AlmanacCard } from '../components/xtell/XTellToday'
-import { ShareButton } from '../components/xtell/ShareButton'
-import { AnswerVote } from '../components/xtell/AnswerVote'
-import { WaitBar, WAIT_SECONDS } from '../components/xtell/WaitBar'
+import { YixueQuestion, YixueManualCast, YixueRitual, YixuePicker, YixueBoard } from '../components/xoracle/Yixue'
+import { describeVisit, eraseReading, notAskedKey, renameReading, cleanTitle, firstAsk } from '../../lib/xoracle-history'
+import { TitleEditor } from '../components/xoracle/TitleEditor'
+import { EST_PROMPT_TOKENS, EST_YIXUE_PROMPT_TOKENS, estimateReadingUsd, estimateInputTokens, fmtUsdFor, levelsOf, defaultThinking } from '../../lib/xoracle-presets'
+import XOracleAssistant from '../components/xoracle/XOracleAssistant'
+import XOracleHero from '../components/xoracle/XOracleHero'
+import PinButton from '../components/xoracle/PinButton'
+import { XOracleHowTo } from '../components/xoracle/XOracleHowTo'
+import XOracleDaily, { DailyBoard, dailyTemple, type SavedDaily } from '../components/xoracle/XOracleDaily'
+import { AlmanacCard } from '../components/xoracle/XOracleToday'
+import { ShareButton } from '../components/xoracle/ShareButton'
+import { AnswerVote } from '../components/xoracle/AnswerVote'
+import { WaitBar, WAIT_SECONDS } from '../components/xoracle/WaitBar'
 import { kyWords, STAR_COLOR, STAR_LIGHT, BOARD_LAYOUT } from '../../lib/kyusei-words'
 import { skWords, GOOD_DAY, HARD_DAY } from '../../lib/sukuyo-words'
 import { partialFields, readNdjson } from '../../lib/partial-json'
-import { shareExcerpt } from '../../lib/xtell-share'
-import { liveFeature, type FeatureId } from '../../lib/xtell-catalog'
-import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xtell-handoff'
-import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xtell-chenggu-reading'
-import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xtell-chenggu'
-import { asPersonalityType, offersPersonality } from '../../lib/xtell-personality'
-import { PersonalityAttach, useSavedPersonality } from '../components/xtell/XTellPersonality'
+import { shareExcerpt } from '../../lib/xoracle-share'
+import { liveFeature, type FeatureId } from '../../lib/xoracle-catalog'
+import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xoracle-handoff'
+import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xoracle-chenggu-reading'
+import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xoracle-chenggu'
+import { asPersonalityType, offersPersonality } from '../../lib/xoracle-personality'
+import { PersonalityAttach, useSavedPersonality } from '../components/xoracle/XOraclePersonality'
 
 type Temple = 'bazi' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'zhanxing' | 'xingming' | 'cezi' | 'yixue' | 'jiemeng' | 'guanyin' | 'tarot' | 'cookie' | 'kyusei' | 'sukuyo' | 'sunzi' | 'guanxiang'
 /** The phone's local time as 'YYYY-MM-DDTHH:mm', for a datetime-local field. */
@@ -95,7 +95,7 @@ type SavedReading = { id: string; temple: string; subject: any; chart: any; extr
 const ASTRO_MODES = ['natal', 'synastry', 'today', 'year'] as const
 type AstroMode = (typeof ASTRO_MODES)[number]
 
-// 四面佛's faces, clockwise. Mirrors FACES in lib/xtell.ts (server-only file).
+// 四面佛's faces, clockwise. Mirrors FACES in lib/xoracle.ts (server-only file).
 const FACE_KEYS = ['peace', 'career', 'marriage', 'wealth'] as const
 type Wishes = Partial<Record<(typeof FACE_KEYS)[number], string>> & { pledge?: string }
 
@@ -112,7 +112,7 @@ const DAILY_HOME: Temple[] = ['zhanxing', 'bazi']
 const nowrap: React.CSSProperties = { whiteSpace: 'nowrap' }
 // Up to four masters at once (owner, Sep 24). Every seat keeps its own thread.
 const MAX_SEATS = 4
-const LAYOUT_KEY = 'xtell:layout'
+const LAYOUT_KEY = 'xtell:layout'  // stored name kept from XTell: what visitors saved is under it
 const FALLBACK_MASTERS = ['qwen3.8-max', 'gpt-5.6-sol']
 
 const mono = { fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase' as const }
@@ -136,7 +136,7 @@ const SITUATION_MAX = 1500
 const REFRESHED: Temple[] = ['bazi', 'yuelao', 'simianfo', 'guandi', 'mazu']
 
 /**
- * A refusal from /api/xtell/*, in the visitor's language (audit F05). The
+ * A refusal from /api/xoracle/*, in the visitor's language (audit F05). The
  * routes send a stable `code`; `birth2_*` is the same message as `birth_*`
  * for the second person. An unknown code shows the raw message rather than
  * nothing.
@@ -145,10 +145,10 @@ function errorText(t: (k: string) => string, code: string | undefined, raw: stri
   if (!code) return raw
   const m = code.match(/^(birth2?)_(.+)$/)
   if (m) {
-    const msg = tOr(t, `xtell.err.birth.${m[2]}`, raw)
-    return m[1] === 'birth2' ? t('xtell.err.second') + msg : msg
+    const msg = tOr(t, `xoracle.err.birth.${m[2]}`, raw)
+    return m[1] === 'birth2' ? t('xoracle.err.second') + msg : msg
   }
-  return tOr(t, `xtell.err.${code}`, raw)
+  return tOr(t, `xoracle.err.${code}`, raw)
 }
 class CodedError extends Error { constructor(message: string, readonly code?: string) { super(message) } }
 
@@ -234,17 +234,17 @@ function fieldOf(code: string | null): string | null {
  *  question is written so the visitor can confirm it first. */
 function subjectSummary(t: (k: string) => string, temple: Temple, subj: any, lang = 'zh-Hant'): string {
   const pad = (n: number) => String(n).padStart(2, '0')
-  const born = (b: any) => !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)} ${b.hourUnknown ? t('xtell.hourunknown') : `${pad(b.h)}:${pad(b.mi)}`} · ${t(`xtell.${b.gender}`)}`
+  const born = (b: any) => !b ? '' : `${b.y}-${pad(b.m)}-${pad(b.d)} ${b.hourUnknown ? t('xoracle.hourunknown') : `${pad(b.h)}:${pad(b.mi)}`} · ${t(`xoracle.${b.gender}`)}`
   const where = (k: unknown) => placeLabel(placeOf(k), lang)
   if (temple === 'yuelao' || (temple === 'zhanxing' && subj.mode === 'synastry')) {
-    return `${t('xtell.person1')} ${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}　${t('xtell.person2')} ${born(subj.birth2)}${subj.place2 ? ` · ${where(subj.place2)}` : ''}`
+    return `${t('xoracle.person1')} ${born(subj.birth)}${subj.place ? ` · ${where(subj.place)}` : ''}　${t('xoracle.person2')} ${born(subj.birth2)}${subj.place2 ? ` · ${where(subj.place2)}` : ''}`
   }
-  if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xtell.${subj.gender}`)}`
+  if (temple === 'xingming') return `${subj.surname ?? ''}${subj.given ?? ''} · ${t(`xoracle.${subj.gender}`)}`
   if (temple === 'cezi') return `「${subj.ch ?? ''}」${subj.ask ? ` · ${String(subj.ask).slice(0, 40)}` : ''}`
   if (temple === 'jiemeng') { const d = String(subj.dream ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
   if (temple === 'sunzi') { const d = String(subj.situation ?? '').replace(/\s+/g, ' '); return `「${d.slice(0, 40)}${d.length > 40 ? '…' : ''}」` }
-  if (temple === 'guanxiang') return [...(Array.isArray(subj.have) ? subj.have : Object.keys(subj.photos ?? {})).map((k: string) => t(`xtell.xiang.slot.${k}`)), t(`xtell.${subj.gender === 'female' ? 'female' : 'male'}`),
-    ...(subj.partner && typeof subj.partner === 'object' ? [`${t('xtell.xiang.partner')}（${t(`xtell.xiang.rel.${asRelation(subj.partner.relation)}`)}）`] : [])].join(' · ')
+  if (temple === 'guanxiang') return [...(Array.isArray(subj.have) ? subj.have : Object.keys(subj.photos ?? {})).map((k: string) => t(`xoracle.xiang.slot.${k}`)), t(`xoracle.${subj.gender === 'female' ? 'female' : 'male'}`),
+    ...(subj.partner && typeof subj.partner === 'object' ? [`${t('xoracle.xiang.partner')}（${t(`xoracle.xiang.rel.${asRelation(subj.partner.relation)}`)}）`] : [])].join(' · ')
   if (temple === 'cookie') return `${String(subj.food ?? '').slice(0, 40)}${subj.mealAt ? ` · ${String(subj.mealAt).replace('T', ' ')}` : ''}`
   if (isQian(temple) || temple === 'tarot') return subj.ask ? String(subj.ask).slice(0, 60) : ''
   // 九星気学 and 宿曜 read the date only: no hour or gender in the line.
@@ -263,16 +263,16 @@ function RequireTempleAuth() { useRequireAuth(); return null }
  *  page): the birthplace picker offers that country's cities first. */
 const VisitorCountry = createContext<string | null>(null)
 
-export default function XTellClient({ country = null, ...rest }: { standalone?: boolean; almanacSection?: React.ReactNode; country?: string | null }) {
-  return <VisitorCountry.Provider value={country}><XTellStreet {...rest} /></VisitorCountry.Provider>
+export default function XOracleClient({ country = null, ...rest }: { standalone?: boolean; almanacSection?: React.ReactNode; country?: string | null }) {
+  return <VisitorCountry.Provider value={country}><XOracleStreet {...rest} /></VisitorCountry.Provider>
 }
 
-function XTellStreet({ standalone: standaloneOverride, almanacSection }: { standalone?: boolean; almanacSection?: React.ReactNode }) {
+function XOracleStreet({ standalone: standaloneOverride, almanacSection }: { standalone?: boolean; almanacSection?: React.ReactNode }) {
   const site = useSite()
-  const standalone = standaloneOverride ?? site === 'xtell'
+  const standalone = standaloneOverride ?? site === 'xoracle'
   const t = useT()
   const { show: showSignIn } = useAuthModal()
-  // The room is ?t=<room> (lib/xtell-room.ts, Oct 18): read on the server
+  // The room is ?t=<room> (lib/xoracle-room.ts, Oct 18): read on the server
   // too, so a room link (an ad, a share) opens on the room, not the street.
   const roomParam = useSearchParams()?.get('t') ?? null
   const [temple, setTemple] = useState<Temple | null>(() => standalone && TEMPLES.includes(roomParam as Temple) ? roomParam as Temple : null)
@@ -289,7 +289,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
   const [opened, setOpened] = useState(0)
   // The front-door guide's suggestion for the room being opened (standalone
   // street only): the feature and the question it prepared. Kept in this
-  // tab's sessionStorage too (lib/xtell-handoff.ts), so it survives a reload
+  // tab's sessionStorage too (lib/xoracle-handoff.ts), so it survives a reload
   // or the sign-in round trip; the room re-derives its mode from the catalog.
   const [handoff, setHandoff] = useState<Handoff | null>(null)
   // The daily fortune on the street: the guide's "daily" button bumps the
@@ -382,7 +382,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     const feature = liveFeature(id)
     if (feature?.opens === 'daily') { setDailySignal(n => n + 1); return }
     // Today's almanac is a card on the street itself.
-    if (feature?.opens) { document.getElementById(`xtell-${feature.opens}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+    if (feature?.opens) { document.getElementById(`xoracle-${feature.opens}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
     if (!feature?.temple) return
     const store = sessionStore()
     if (store) writeHandoff(store, feature.id, question)
@@ -402,40 +402,40 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
     chooseTemple(null)
   }
 
-  // On www (/xtell, owner Oct 4: no subdomains) the door's content sits in
+  // On www (/xoracle, owner Oct 4: no subdomains) the door's content sits in
   // www's own shell: the temples row on top (the shell's left nav carries
   // the ModelXD logo and the account), links under /xoracle, and the door's
   // footer at the bottom, as on xtell.modelxd.com.
-  const inWww = site !== 'xtell'
-  if (standalone) return <XTellBaseProvider base={inWww ? XTELL_PATH : ''}><div className={'xtell-site' + (inWww ? ' is-in-www xtell-www-page' : '')}>
-    {inWww && <XTellNav user={null} embedded />}
-    <main id="xtell-main" className={'xtell-container' + (!temple ? ' xtell-explorer-container' : ' xtell-room-container')} tabIndex={-1}>
+  const inWww = site !== 'xoracle'
+  if (standalone) return <XOracleBaseProvider base={inWww ? XORACLE_PATH : ''}><div className={'xoracle-site' + (inWww ? ' is-in-www xoracle-www-page' : '')}>
+    {inWww && <XOracleNav user={null} embedded />}
+    <main id="xoracle-main" className={'xoracle-container' + (!temple ? ' xoracle-explorer-container' : ' xoracle-room-container')} tabIndex={-1}>
       {!temple ? <>
         {/* The homepage (Oct 3, the owner's approved Concept 24): a scenic
             entrance that turns through the temples, the guide right under
             it (the owner's pick of two placements), then today's almanac,
             and the free daily fortune side by side, and the steps. The temples
             stay in the top bar, where a visitor's pinned ones come first. */}
-        <XTellHero />
-        <XTellAssistant onOpen={openFromGuide} />
-        <div className="xtell-home-cards">
+        <XOracleHero />
+        <XOracleAssistant onOpen={openFromGuide} />
+        <div className="xoracle-home-cards">
           {/* Its own section, rendered on the server (AlmanacSection). */}
           {almanacSection ?? <AlmanacCard compact />}
-          <XTellDaily openSignal={dailySignal} onContinue={openDaily} compact />
+          <XOracleDaily openSignal={dailySignal} onContinue={openDaily} compact />
         </div>
-        <XTellHowTo />
+        <XOracleHowTo />
       </> : <>
         {/* Signed out, a room still casts its free chart; sign-in is asked
             at the first question to a teacher (owner, Oct 1). Three rooms
-            stay sign-in first (lib/xtell-guest.ts). */}
-        {SIGN_IN_FIRST.has(temple) && <XTellAuthGate />}
+            stay sign-in first (lib/xoracle-guest.ts). */}
+        {SIGN_IN_FIRST.has(temple) && <XOracleAuthGate />}
         <TempleRoom key={temple + (saved?.id ?? '') + (dailyRow ? `:daily:${dailyRow.id}` : '') + (handoff?.feature.temple === temple ? handoff.feature.id : '') + `:${opened}`} temple={temple} onBack={leaveRoom} standalone initial={saved?.temple === temple ? saved : null}
           daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null}
           handoff={saved?.temple === temple || handoff?.feature.temple !== temple ? null : handoff} onResume={resume} />
       </>}
     </main>
-    <XTellFooter />
-  </div></XTellBaseProvider>
+    <XOracleFooter />
+  </div></XOracleBaseProvider>
 
   return (
     <div className="xduel-page">
@@ -444,19 +444,19 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
         {/* House in-page header (XBoard/XEval pattern). The red "//" is drawn
             by .prompt-label.eyebrow in CSS, never typed into the string, and
             .page-headline sets the title size. This header was hand-rolled. */}
-        <div className="prompt-label eyebrow">{t('xtell.eyebrow')}</div>
-        <h1 className="page-headline" style={{ marginBottom: 10 }}>{t('xtell.title')}</h1>
-        <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.65, maxWidth: 700, margin: '0 0 34px' }}>{t('xtell.sub')}</p>
+        <div className="prompt-label eyebrow">{t('xoracle.eyebrow')}</div>
+        <h1 className="page-headline" style={{ marginBottom: 10 }}>{t('xoracle.title')}</h1>
+        <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.65, maxWidth: 700, margin: '0 0 34px' }}>{t('xoracle.sub')}</p>
 
         {!temple ? (<>
-          <div role="group" aria-label={t('xtell.purpose.title')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.purpose.title')}</span>
+          <div role="group" aria-label={t('xoracle.purpose.title')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xoracle.purpose.title')}</span>
             {([null, ...PURPOSES.map(p => p.key)] as Array<(typeof PURPOSES)[number]['key'] | null>).map(key => (
               <button key={key ?? 'all'} type="button" aria-pressed={purpose === key} onClick={() => setPurpose(key)} style={{
                 padding: '6px 13px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
                 border: `1px solid ${purpose === key ? 'var(--red)' : 'var(--border2)'}`, background: purpose === key ? 'var(--surface2)' : 'transparent',
                 color: purpose === key ? 'var(--red)' : 'var(--white)', fontWeight: purpose === key ? 700 : 500,
-              }}>{t('xtell.purpose.' + (key ?? 'all'))}</button>
+              }}>{t('xoracle.purpose.' + (key ?? 'all'))}</button>
             ))}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -470,10 +470,10 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
                 {/* The approved painted icon, as on xtell.modelxd.com's top bar
                     (owner, Oct 1: the first ink-wash scenes here, dark rooms
                     with faceless figures, "scares"). */}
-                <div className="xtell-www-thumb"><TempleArtwork temple={k} kind="icon" clear /></div>
+                <div className="xoracle-www-thumb"><TempleArtwork temple={k} kind="icon" clear /></div>
                 <div style={{ padding: '14px 18px 16px' }}>
-                  <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xtell.${k}.name`)}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xtell.${k}.desc`)}</div>
+                  <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>{t(`xoracle.${k}.name`)}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>{t(`xoracle.${k}.desc`)}</div>
                 </div>
               </div>
             ))}
@@ -483,7 +483,7 @@ function XTellStreet({ standalone: standaloneOverride, almanacSection }: { stand
             daily={dailyRow && dailyTemple(dailyRow.subject?.method) === temple ? dailyRow : null} onResume={resume} />
         )}
 
-        <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.disclaimer')}</div>
+        <div style={{ marginTop: 40, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.disclaimer')}</div>
       </div>
     </div>
   )
@@ -669,7 +669,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     const token = ++refreshToken.current
     if (staleRisk) setCheck('pending')
     // Recompute, never save (the route's `refresh`): the row stays as it was.
-    fetch('/api/xtell/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...init, temple, refresh: true }) })
+    fetch('/api/xoracle/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...init, temple, refresh: true }) })
       .then(async res => {
         const d = await res.json().catch(() => ({}))
         if (token !== refreshToken.current) return
@@ -696,12 +696,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   // Every model offered here, for the presets.
   const [catalog, setCatalog] = useState<PickerModel[]>([])
   // Measured seconds to a teacher's first word, per thinking level
-  // (/api/xtell/speed). Shown on the seats beside the price; a model nobody
+  // (/api/xoracle/speed). Shown on the seats beside the price; a model nobody
   // has measured shows the price alone.
   const [speeds, setSpeeds] = useState<Record<string, Record<string, number>>>({})
   useEffect(() => {
     let live = true
-    fetch('/api/xtell/speed').then(r => r.ok ? r.json() : null).then(d => { if (live && d?.speeds) setSpeeds(d.speeds) }).catch(() => {})
+    fetch('/api/xoracle/speed').then(r => r.ok ? r.json() : null).then(d => { if (live && d?.speeds) setSpeeds(d.speeds) }).catch(() => {})
     return () => { live = false }
   }, [])
   /** The seat's first-word time: the measured number at its thinking level,
@@ -891,7 +891,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       // message next to the form and in the visitor's language.
       const problem = subjectProblem(temple, requestSubject, astroMode)
       if (problem) throw new CodedError(problem, problem)
-      const res = await fetch('/api/xtell/chart', {
+      const res = await fetch('/api/xoracle/chart', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestSubject),
       })
@@ -926,7 +926,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
       // 月老廟: the scores land free and instantly, so the only thing left to
       // ask is what they mean. Write the question for them but do NOT send it
       // — sending spends credits, and that stays a click the visitor makes.
-      if (temple === 'yuelao') setInput(prev => prev || t('xtell.he.ask'))
+      if (temple === 'yuelao') setInput(prev => prev || t('xoracle.he.ask'))
       return true
     } catch (e: any) { fail(String(e?.message ?? e), e?.code); if (isQian(temple)) setRitualBoth(jiao ? 'drawn' : 'idle'); if (temple === 'tarot') picksRef.current = null; return false }
     finally {
@@ -1049,7 +1049,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     let taken = false, ended = false
     const since = Date.now(), visit = readingId
     try {
-      const res = await fetch('/api/xtell/reading', {
+      const res = await fetch('/api/xoracle/reading', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(daily ? { temple: 'daily' } : temple === 'yixue' ? yixueSubject.current ?? subject() : temple === 'guanxiang' ? { temple, note: xiangNote } : subject()), question: q, modelId: m.id, history, readingId, qid, to, seats,
@@ -1135,7 +1135,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     if (recovering.current === 0 && errCodeRef.current === 'stream_recovering') clearErr()
   }
 
-  // 記憶 (Oct 3, docs/XTELL-MEMORY.md): how much each master read for its
+  // 記憶 (Oct 3, docs/XORACLE-MEMORY.md): how much each master read for its
   // last answer, against its own limit (the catalog's context_window, read
   // with the master; lib/conversation-memory.ts). Sizes come from each answer
   // as it finishes, or from the conversation's stored answers when it reopens.
@@ -1157,15 +1157,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     setSummarizing(s => ({ ...s, [key]: true }))
     setMemoNote(n => { const next = { ...n }; delete next[key]; return next })
     try {
-      const res = await fetch('/api/xtell/memory', {
+      const res = await fetch('/api/xoracle/memory', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ readingId, modelId: m.id, lang, thinking: optsOf(m).thinking }),
       })
       const j = await res.json().catch(() => ({}))
       if (res.ok && typeof j.text === 'string') setFreshMemo(f => ({ ...f, [key]: { text: j.text, at: typeof j.at === 'string' ? j.at : new Date().toISOString() } }))
-      else setMemoNote(n => ({ ...n, [key]: t(j.code === 'nothing_to_summarize' ? 'xtell.mem.nothing' : j.code === 'no_credits' ? 'xtell.mem.nocredit' : 'xtell.mem.failed') }))
+      else setMemoNote(n => ({ ...n, [key]: t(j.code === 'nothing_to_summarize' ? 'xoracle.mem.nothing' : j.code === 'no_credits' ? 'xoracle.mem.nocredit' : 'xoracle.mem.failed') }))
     } catch {
-      setMemoNote(n => ({ ...n, [key]: t('xtell.mem.failed') }))
+      setMemoNote(n => ({ ...n, [key]: t('xoracle.mem.failed') }))
     } finally {
       summarizingRef.current.delete(key)
       setSummarizing(s => { const next = { ...s }; delete next[key]; return next })
@@ -1189,7 +1189,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
   }, [readingId])
 
   // 👍 / 👎 (owner, Oct 1), per answer: `${qid}:${modelId}` → 1 or -1. Only
-  // in a saved visit, and only once /api/xtell/vote answers: signed out, or
+  // in a saved visit, and only once /api/xoracle/vote answers: signed out, or
   // before migration 122 (503), the buttons stay hidden.
   const [votes, setVotes] = useState<Record<string, 1 | -1>>({})
   const [votesOn, setVotesOn] = useState(false)
@@ -1197,7 +1197,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     setVotes({}); setVotesOn(false)
     if (!readingId) return
     let live = true
-    fetch(`/api/xtell/vote?readingId=${readingId}`).then(r => r.ok ? r.json() : null).then(d => {
+    fetch(`/api/xoracle/vote?readingId=${readingId}`).then(r => r.ok ? r.json() : null).then(d => {
       if (!live || !Array.isArray(d?.votes)) return
       setVotes(Object.fromEntries(d.votes.filter((v: any) => v.vote === 1 || v.vote === -1).map((v: any) => [`${v.qid}:${v.modelId}`, v.vote])))
       setVotesOn(true)
@@ -1210,7 +1210,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     const put = (x: 0 | 1 | -1) => setVotes(vs => { const o = { ...vs }; if (x) o[key] = x; else delete o[key]; return o })
     put(next)
     try {
-      const r = await fetch('/api/xtell/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId, qid, modelId, vote: next }) })
+      const r = await fetch('/api/xoracle/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId, qid, modelId, vote: next }) })
       if (!r.ok) put(before)
     } catch { put(before) }
   }
@@ -1230,7 +1230,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     const typed = input.trim()
     if ((!typed && (questionRequired || !fromButton)) || busy || joining.length > 0 || masters.length === 0 || unverified || savedProblem) return
     if (!(await signedIn())) return
-    const q = typed || t('xtell.question.general')
+    const q = typed || t('xoracle.question.general')
     const to = recipients.map(m => m.id), seats = masters.map(m => m.id)
     // One id per question: every master's request carries it, the server
     // stores the question once (xtell_append_turns dedupes on it).
@@ -1327,31 +1327,31 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     // standalone room uses the page's full width, the 1216 px of the top bar
     // (owner, Sep 27: four teachers overflowed 980 px with space to spare on
     // both sides).
-    <div className={standalone ? "xtell-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: standalone ? 1216 : 980 }}>
+    <div className={standalone ? "xoracle-room" : undefined} data-entered={entered || undefined} style={{ maxWidth: standalone ? 1216 : 980 }}>
       {/* On the standalone site the header's 探索殿堂 link is the way back
-          (owner, Sep 24: no second back link); on www's /xtell the sidebar's
+          (owner, Sep 24: no second back link); on www's /xoracle the sidebar's
           X先知 link is (Nav.tsx). The button is for the old www grid only. */}
       {!standalone && (
         <button onClick={onBack} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12.5, cursor: 'pointer', padding: 0, marginBottom: 14 }}>
-          ← {t('xtell.back')}
+          ← {t('xoracle.back')}
         </button>
       )}
       {standalone ? <>
         {/* data-temple: a room may tune its own header (相學館 lays it out
             differently on phones); the others keep the shared look. */}
-        <header className="xtell-room-header" data-temple={temple}>
-          <TempleArtwork temple={temple} kind="icon" className="xtell-room-artwork" />
-          <div><p className="xtell-eyebrow">{t('xtell.site.street')}</p>
+        <header className="xoracle-room-header" data-temple={temple}>
+          <TempleArtwork temple={temple} kind="icon" className="xoracle-room-artwork" />
+          <div><p className="xoracle-eyebrow">{t('xoracle.site.street')}</p>
             {/* 釘選 puts this temple first in the top bar (owner, Oct 3). */}
-            <div className="xtell-room-title"><h1>{t(`xtell.site.focus.${temple}.name`)}</h1><PinButton temple={temple} /></div>
-            <p>{t(`xtell.site.focus.${temple}.description`)}</p></div>
+            <div className="xoracle-room-title"><h1>{t(`xoracle.site.focus.${temple}.name`)}</h1><PinButton temple={temple} /></div>
+            <p>{t(`xoracle.site.focus.${temple}.description`)}</p></div>
         </header>
-      </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xtell.${temple}.name`)}</h2>}
+      </> : <h2 style={{ fontSize: 19, fontWeight: 800, margin: '0 0 14px' }}>{t(`xoracle.${temple}.name`)}</h2>}
 
       {!entered ? (<>
-        <div className={standalone ? "xtell-entry-form" + (temple === 'guanxiang' ? ' is-xiang' : '') : undefined} aria-busy={entering || undefined} style={{ ...card, padding: '18px 20px', position: 'relative' }}>
-          {entering && <span className="xtell-entering-bar" aria-hidden="true" />}
-          {carried?.question && <p className="xtell-carried" role="note">{t('xtell.as.carried').replace('{q}', carried.question)}</p>}
+        <div className={standalone ? "xoracle-entry-form" + (temple === 'guanxiang' ? ' is-xiang' : '') : undefined} aria-busy={entering || undefined} style={{ ...card, padding: '18px 20px', position: 'relative' }}>
+          {entering && <span className="xoracle-entering-bar" aria-hidden="true" />}
+          {carried?.question && <p className="xoracle-carried" role="note">{t('xoracle.as.carried').replace('{q}', carried.question)}</p>}
           {/* 占星塔 picks the reading BEFORE the form, because 配對 needs a
               second person and 流年 needs a year. */}
           {temple === 'zhanxing' && (
@@ -1363,17 +1363,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
                     border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
                     background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
-                  }}>{t(`xtell.astro.${m}`)}</button>
+                  }}>{t(`xoracle.astro.${m}`)}</button>
                 )
               })}
               <span style={{ flexBasis: '100%', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, marginTop: 2 }}>
-                {t(`xtell.astro.${astroMode}.hint`)}
+                {t(`xoracle.astro.${astroMode}.hint`)}
               </span>
               {/* 12:00 and 台北 are prefilled so the form is never empty; a
                   visitor who changes only the date would otherwise get a
                   precise Ascendant for a time they never gave (Codex QA). */}
               <span style={{ flexBasis: '100%', fontSize: 12, color: 'var(--white)', lineHeight: 1.6 }}>
-                {t('xtell.astro.confirm')}
+                {t('xoracle.astro.confirm')}
               </span>
             </div>
           )}
@@ -1387,29 +1387,29 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                     padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, fontWeight: on ? 700 : 400,
                     border: `1px solid ${on ? 'var(--red)' : 'var(--border2)'}`,
                     background: on ? 'var(--red)' : 'transparent', color: on ? '#fff' : 'var(--muted)',
-                  }}>{t(`xtell.yixue.mode.${m}`)}</button>
+                  }}>{t(`xoracle.yixue.mode.${m}`)}</button>
                 )
               })}
               <details style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--muted)' }}>
-                <summary style={{ cursor: 'pointer', padding: '7px 0' }}>{t('xtell.yixue.practice')}</summary>
+                <summary style={{ cursor: 'pointer', padding: '7px 0' }}>{t('xoracle.yixue.practice')}</summary>
                 <button type="button" disabled={yixueEntryBusy} aria-pressed={yixueMode === 'cast'}
                   onClick={() => { if (!yixueEntryPending.current) setYixueMode('cast') }}
                   style={{ padding: '7px 12px', border: '1px solid var(--border2)', borderRadius: 8, background: 'transparent', color: 'var(--white)', font: 'inherit', cursor: 'pointer' }}>
-                  {t('xtell.yixue.mode.cast')}
+                  {t('xoracle.yixue.mode.cast')}
                 </button>
               </details>
               <span style={{ flexBasis: '100%', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6, marginTop: 2 }}>
-                {t(`xtell.yixue.mode.${yixueMode}.hint`)}
+                {t(`xoracle.yixue.mode.${yixueMode}.hint`)}
               </span>
             </div>
           )}
           {temple === 'yixue' ? (
             yixueMode === 'cast'
               ? <div style={{ display: 'grid', gap: 14 }}>
-                  <div role="group" aria-label={t('xtell.yixue.practice')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div role="group" aria-label={t('xoracle.yixue.practice')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {(['coins', 'manual'] as const).map(method => <button key={method} type="button" disabled={yixueEntryBusy} aria-pressed={castMethod === method}
                       onClick={() => chooseCastMethod(method)} style={{ padding: '7px 12px', border: '1px solid var(--border2)', borderRadius: 8, font: 'inherit', fontSize: 12.5, background: castMethod === method ? 'var(--surface2)' : 'transparent', color: 'var(--white)', cursor: yixueEntryBusy ? 'wait' : 'pointer' }}>
-                      {t(`xtell.yixue.method.${method}`)}
+                      {t(`xoracle.yixue.method.${method}`)}
                     </button>)}
                   </div>
                   {castMethod === 'manual'
@@ -1450,11 +1450,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             </>
           ) : temple === 'yuelao' || (temple === 'zhanxing' && astroMode === 'synastry') ? (
             <>
-              <BirthRow label={t('xtell.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} onFill={canFill ? fillBirth(setBirth, true) : undefined} />
-              {temple === 'zhanxing' && <PlacePicker label={t('xtell.person1')} value={place} onChange={setPlace} aria={fieldAria('place')} />}
+              <BirthRow label={t('xoracle.person1')} value={birth} onChange={setBirth} sel={sel} aria={fieldAria('birth')} onFill={canFill ? fillBirth(setBirth, true) : undefined} />
+              {temple === 'zhanxing' && <PlacePicker label={t('xoracle.person1')} value={place} onChange={setPlace} aria={fieldAria('place')} />}
               <div style={{ height: 12 }} />
-              <BirthRow label={t('xtell.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
-              {temple === 'zhanxing' && <PlacePicker label={t('xtell.person2')} value={place2} onChange={setPlace2} aria={fieldAria('place2')} />}
+              <BirthRow label={t('xoracle.person2')} value={birth2} onChange={setBirth2} sel={sel} aria={fieldAria('birth2')} />
+              {temple === 'zhanxing' && <PlacePicker label={t('xoracle.person2')} value={place2} onChange={setPlace2} aria={fieldAria('place2')} />}
               {temple === 'yuelao' && <PersonalityAttach saved={savedType} on={withType} setOn={setWithType} partner={partnerType} setPartner={setPartnerType} />}
             </>
           ) : (
@@ -1464,16 +1464,16 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           {temple === 'simianfo' && <WishForm wishes={wishes} setWishes={setWishes} aria={fieldAria('wishes')} />}
           {temple === 'sukuyo' && (
             <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <label htmlFor="xtell-sk-partner" style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xtell.sk.partner')}</label>
-              <input id="xtell-sk-partner" type="date" value={partnerDate} min="1900-01-01" max={kyToday} onChange={e => setPartnerDate(e.target.value)} style={sel} />
-              {partnerDate && <button type="button" onClick={() => setPartnerDate('')} style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>{t('xtell.sk.partnerClear')}</button>}
-              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: '1 1 100%' }}>{t('xtell.sk.partnerNote')}</span>
+              <label htmlFor="xoracle-sk-partner" style={{ fontSize: 12.5, fontWeight: 700 }}>{t('xoracle.sk.partner')}</label>
+              <input id="xoracle-sk-partner" type="date" value={partnerDate} min="1900-01-01" max={kyToday} onChange={e => setPartnerDate(e.target.value)} style={sel} />
+              {partnerDate && <button type="button" onClick={() => setPartnerDate('')} style={{ border: 'none', background: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline', padding: 0 }}>{t('xoracle.sk.partnerClear')}</button>}
+              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: '1 1 100%' }}>{t('xoracle.sk.partnerNote')}</span>
             </div>
           )}
           {temple === 'navagraha' && (
             <div style={{ marginTop: 12 }}>
               <PlacePicker value={place} onChange={setPlace} aria={fieldAria('place')} />
-              <span style={{ display: 'block', marginTop: 6, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.place.note')}</span>
+              <span style={{ display: 'block', marginTop: 6, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.place.note')}</span>
             </div>
           )}
           {temple === 'zhanxing' && astroMode !== 'synastry' && (
@@ -1481,39 +1481,39 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               <div style={{ flexBasis: '100%' }}><PlacePicker value={place} onChange={setPlace} aria={fieldAria('place')} /></div>
               {astroMode === 'year' && (
                 <>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }} aria-hidden="true">{t('xtell.astro.year.pick')}</span>
-                  <select aria-label={t('xtell.astro.year.label')} style={sel} value={srYear} onChange={e => setSrYear(+e.target.value)}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, marginLeft: 8 }} aria-hidden="true">{t('xoracle.astro.year.pick')}</span>
+                  <select aria-label={t('xoracle.astro.year.label')} style={sel} value={srYear} onChange={e => setSrYear(+e.target.value)}>
                     {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 3 + i).map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </>
               )}
-              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xtell.place.note')}</span>
+              <span style={{ fontSize: 11, color: 'var(--muted2)', flex: 1, minWidth: 220 }}>{t('xoracle.place.note')}</span>
             </div>
           )}
           {!isQian(temple) && temple !== 'tarot' && !(temple === 'yixue' && yixueMode !== 'ask') && (
-            <div className={temple === 'guanxiang' ? 'xtell-xiang-footer' : undefined} style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
+            <div className={temple === 'guanxiang' ? 'xoracle-xiang-footer' : undefined} style={{ display: 'flex', alignItems: 'center', marginTop: 12 }}>
               {entering
                 // The two entries that wait on a quick model say how long
                 // (Sep 29); the others are computed here in a moment.
                 ? temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' || temple === 'guanxiang'
-                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : temple === 'sunzi' ? WAIT_SECONDS.sunzi : temple === 'guanxiang' ? (xiangPair ? WAIT_SECONDS.xiangPair : WAIT_SECONDS.xiang) : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xtell.jiemeng.looking' : temple === 'sunzi' ? 'xtell.sunzi.looking' : temple === 'guanxiang' ? 'xtell.xiang.looking' : 'xtell.cookie.cracking')} /></div>
-                  : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.entering.note')}</div>
+                  ? <div style={{ flex: 1, minWidth: 0, marginRight: 14 }}><WaitBar seconds={temple === 'cookie' ? WAIT_SECONDS.cookie : temple === 'sunzi' ? WAIT_SECONDS.sunzi : temple === 'guanxiang' ? (xiangPair ? WAIT_SECONDS.xiangPair : WAIT_SECONDS.xiang) : WAIT_SECONDS.dream} label={t(temple === 'jiemeng' ? 'xoracle.jiemeng.looking' : temple === 'sunzi' ? 'xoracle.sunzi.looking' : temple === 'guanxiang' ? 'xoracle.xiang.looking' : 'xoracle.cookie.cracking')} /></div>
+                  : <div role="status" aria-live="polite" style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xoracle.entering.note')}</div>
                 // 相學館: the privacy line sits beside its button (Oct 8).
                 : temple === 'guanxiang' ? <XiangPrivacy />
-                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' ? '' : t('xtell.solar.note')}</div>}
+                : <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{temple === 'xingming' || temple === 'cezi' || temple === 'yixue' || temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' ? '' : t('xoracle.solar.note')}</div>}
               {/* The wait bar takes the whole row beside the button. */}
               {!(entering && (temple === 'jiemeng' || temple === 'sunzi' || temple === 'cookie' || temple === 'guanxiang')) && <span style={{ flex: 1 }} />}
               <button onClick={() => void enter()} disabled={entering || (temple === 'yixue' && (yixueEntryBusy || !input.trim()))} aria-busy={entering || undefined} style={{
                 padding: '10px 26px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', minWidth: 112,
                 fontWeight: 700, fontSize: 13.5, cursor: entering ? 'wait' : questionRequired && (!input.trim() || yixueEntryBusy) ? 'not-allowed' : 'pointer', opacity: !entering && questionRequired && (!input.trim() || yixueEntryBusy) ? 0.5 : 1,
               }}>{entering
-                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="xtell-think is-light" aria-hidden="true"><i /><i /><i /></span>{t('xtell.entering')}</span>
-                : t(temple === 'yixue' ? 'xtell.yixue.enter' : temple === 'cookie' ? 'xtell.cookie.crack' : temple === 'guanxiang' ? 'xtell.xiang.enter' : 'xtell.enter')}</button>
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span className="xoracle-think is-light" aria-hidden="true"><i /><i /><i /></span>{t('xoracle.entering')}</span>
+                : t(temple === 'yixue' ? 'xoracle.yixue.enter' : temple === 'cookie' ? 'xoracle.cookie.crack' : temple === 'guanxiang' ? 'xoracle.xiang.enter' : 'xoracle.enter')}</button>
             </div>
           )}
           {/* The price, and how a meal is told apart (a tester, Sep 29: the
               hours mealOf uses), under the button at full width. */}
-          {temple === 'cookie' && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.7 }}>{t('xtell.cookie.price')}<br />{t('xtell.cookie.sameMeal')}</p>}
+          {temple === 'cookie' && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.7 }}>{t('xoracle.cookie.price')}<br />{t('xoracle.cookie.sameMeal')}</p>}
           {errShown && <div id={errId} role="alert" style={{ marginTop: 10, color: 'var(--red)', fontSize: 12.5 }}>⚠ {errShown}</div>}
         </div>
         {/* This temple's saved visits (owner, Sep 24: history in each
@@ -1526,11 +1526,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           {/* The way back to the form, first thing in the room, with what
               this visit was cast from (owner, Sep 27: "how do I go back?";
               it used to sit in the composer at the foot of the page). */}
-          <div className="xtell-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
+          <div className="xoracle-subject" style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--muted)', paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
             {daily
-              ? <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.dy.back')}</button>
+              ? <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xoracle.dy.back')}</button>
               // 「返回」, not 「修改資料」 (owner, Sep 28): it goes back to the form.
-              : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xtell.goBack')}</button>}
+              : <button type="button" onClick={editDetails} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--red)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← {t('xoracle.goBack')}</button>}
             {!daily && temple !== 'yixue' && (() => {
               const summary = subjectSummary(t, temple, subject(), lang)
               return summary ? <span style={{ minWidth: 0 }}>{summary}</span> : null
@@ -1551,37 +1551,37 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               // 大師席位 (owner, Oct 3: two rows of master cards, the seats and
               // the answer tabs, read alike): a label at the left that stays
               // put while the seats scroll sideways on a phone.
-              <div className="xtell-row-labelled">
-              <span className="xtell-row-label xtell-row-label-seats">{t('xtell.row.seats')}</span>
+              <div className="xoracle-row-labelled">
+              <span className="xoracle-row-label xoracle-row-label-seats">{t('xoracle.row.seats')}</span>
               <div style={{ overflowX: 'auto', paddingBottom: 2, flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, flexShrink: 0 }}>
                   {masters.map((m, i) => {
                     const color = SLOT_COLORS[i]
                     return (
-                      <div key={m.id} className="xtell-seat" data-open={optsOpen || undefined}
+                      <div key={m.id} className="xoracle-seat" data-open={optsOpen || undefined}
                         style={optsOpen ? { borderColor: color + '80', boxShadow: `inset 3px 0 0 ${color}, 0 1px 2px rgba(60, 40, 20, .05)` } : undefined}>
                         {/* 記憶 (owner, Oct 3: "an icon to fill the circle"): once the
                             master has answered here, its logo sits in a ring
-                            that fills with its memory, up to the most XTell
+                            that fills with its memory, up to the most XOracle
                             lets it read (its limit, or its price jump); the
                             numbers are in the dialog it opens. */}
                         {typeof memUse[m.id] === 'number'
-                          ? <ContextMeter className="xtell-seat-logo xtell-seat-ring" used={memUse[m.id]} max={maxInputOf(m)} point={summaryPointOf(m)} size={30}
-                              ariaLabel={t('xtell.mem.title').replace('{name}', m.display_name)} onClick={() => setMemoFor(m)}>
+                          ? <ContextMeter className="xoracle-seat-logo xoracle-seat-ring" used={memUse[m.id]} max={maxInputOf(m)} point={summaryPointOf(m)} size={30}
+                              ariaLabel={t('xoracle.mem.title').replace('{name}', m.display_name)} onClick={() => setMemoFor(m)}>
                               <ProviderLogo provider={m.provider} size={15} />
                             </ContextMeter>
-                          : <span className="xtell-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>}
-                        <button type="button" className="xtell-seat-main" title={t('xtell.changemaster')} aria-label={`${t('xtell.changemaster')}: ${m.display_name}`} disabled={answering} onClick={() => setPicker({ replace: m.id })}>
-                          <span className="xtell-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
+                          : <span className="xoracle-seat-logo" aria-hidden="true"><ProviderLogo provider={m.provider} size={18} /></span>}
+                        <button type="button" className="xoracle-seat-main" title={t('xoracle.changemaster')} aria-label={`${t('xoracle.changemaster')}: ${m.display_name}`} disabled={answering} onClick={() => setPicker({ replace: m.id })}>
+                          <span className="xoracle-seat-name"><span>{m.display_name}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg></span>
                         </button>
-                        <span className="xtell-seat-acts">
-                        <button type="button" className="xtell-seat-act" title={t('xtell.opts.title')} aria-label={`${t('xtell.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
+                        <span className="xoracle-seat-acts">
+                        <button type="button" className="xoracle-seat-act" title={t('xoracle.opts.title')} aria-label={`${t('xoracle.opts.title')}: ${m.display_name}`} aria-expanded={optsOpen} onClick={() => setOptsOpen(v => !v)}
                           style={optsOpen ? { color, background: color + '14' } : undefined}>
                           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M2.5 4.5h11M2.5 11.5h11" /><circle cx="6" cy="4.5" r="1.7" fill="#fff" /><circle cx="10.5" cy="11.5" r="1.7" fill="#fff" /></svg>
                         </button>
                         {masters.length > 1 && (
-                          <button type="button" className="xtell-seat-act" title={t('xtell.site.remove')} aria-label={`${t('xtell.site.remove')} ${m.display_name}`} disabled={answering} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}>
+                          <button type="button" className="xoracle-seat-act" title={t('xoracle.site.remove')} aria-label={`${t('xoracle.site.remove')} ${m.display_name}`} disabled={answering} onClick={() => setMasters(ms => ms.filter(x => x.id !== m.id))}>
                             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 3l6 6M9 3l-6 6" /></svg>
                           </button>
                         )}
@@ -1591,8 +1591,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   })}
                 </div>
                 {masters.length < MAX_SEATS && (
-                  <button type="button" className="xtell-seat-add" disabled={answering} aria-describedby={answering ? 'xtell-seat-wait' : undefined} onClick={() => setPicker({ replace: null })}>
-                    <span className="xtell-seat-plus" aria-hidden="true">＋</span>{t('xtell.addmaster')}
+                  <button type="button" className="xoracle-seat-add" disabled={answering} aria-describedby={answering ? 'xoracle-seat-wait' : undefined} onClick={() => setPicker({ replace: null })}>
+                    <span className="xoracle-seat-plus" aria-hidden="true">＋</span>{t('xoracle.addmaster')}
                   </button>
                 )}
                 <span style={{ flex: 1 }} />
@@ -1602,7 +1602,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                       <button key={l} type="button" onClick={() => chooseLayout(l)} style={{
                         border: 'none', padding: '5px 11px', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: layout === l ? 700 : 500,
                         background: layout === l ? 'var(--surface2)' : 'transparent', color: layout === l ? 'var(--white)' : 'var(--muted)',
-                      }}>{t(`xtell.layout.${l}`)}</button>
+                      }}>{t(`xoracle.layout.${l}`)}</button>
                     ))}
                   </span>
                 )}
@@ -1614,12 +1614,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 {optsOpen && (
                   <div style={{ marginTop: 8, border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '10px 12px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                      <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.opts.title')}</span>
+                      <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xoracle.opts.title')}</span>
                       <span style={{ flex: 1 }} />
                       <button type="button" onClick={() => setOptsOpen(false)} style={{
                         padding: '5px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: '#ffffff',
                         color: 'var(--white)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                      }}>{t('xtell.opts.done')} ▴</button>
+                      }}>{t('xoracle.opts.done')} ▴</button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'start' }}>
                       {masters.map((m, i) => {
@@ -1658,10 +1658,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                               // what this question is expected to read.
                               const read = memUse[m.id] ?? estimateInputTokens({ search: o.search && searchable(m) }, seatChars, temple === 'yixue' ? EST_YIXUE_PROMPT_TOKENS : EST_PROMPT_TOKENS)
                               return (
-                                <dl className="xtell-seat-stats">
-                                  {usd != null && <div><dt>{t('xtell.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
-                                  {secs && <div title={t('xtell.seat.ttft.tip')}><dt>{t('xtell.seat.ttftLabel')}</dt><dd>~{secs} {t('xtell.seat.sec')}</dd></div>}
-                                  <div title={t('xtell.mem.tip')}><dt>{t('xtell.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(maxInputOf(m))}</dd></div>
+                                <dl className="xoracle-seat-stats">
+                                  {usd != null && <div><dt>{t('xoracle.seat.priceLabel')}</dt><dd>~{fmtUsdFor(usd, lang)}</dd></div>}
+                                  {secs && <div title={t('xoracle.seat.ttft.tip')}><dt>{t('xoracle.seat.ttftLabel')}</dt><dd>~{secs} {t('xoracle.seat.sec')}</dd></div>}
+                                  <div title={t('xoracle.mem.tip')}><dt>{t('xoracle.mem.label')}</dt><dd>{memUse[m.id] == null ? '~' : ''}{formatTokens(read)} / {formatTokens(maxInputOf(m))}</dd></div>
                                 </dl>
                               )
                             })()}
@@ -1677,22 +1677,22 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           })()}
           {/* Under the seats, not beside them: on a phone the seat row
               scrolls sideways and a note at its end is off screen. */}
-          {answering && <p id="xtell-seat-wait" className="xtell-seat-wait">{t('xtell.addmaster.wait')}</p>}
+          {answering && <p id="xoracle-seat-wait" className="xoracle-seat-wait">{t('xoracle.addmaster.wait')}</p>}
 
           {savedProblem && (
             <div role="alert" style={{ ...card, padding: '12px 14px', borderColor: 'var(--red)', display: 'grid', gap: 10 }}>
-              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t('xtell.saved.invalid').replace('{reason}', errorText(t, savedProblem, savedProblem))}</div>
-              <div><button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.edit')}</button></div>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t('xoracle.saved.invalid').replace('{reason}', errorText(t, savedProblem, savedProblem))}</div>
+              <div><button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xoracle.edit')}</button></div>
             </div>
           )}
 
           {unverified && !savedProblem && (
             <div role={check === 'failed' ? 'alert' : 'status'} style={{ ...card, padding: '12px 14px', display: 'grid', gap: 10, ...(check === 'failed' ? { borderColor: 'var(--red)' } : {}) }}>
-              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t(check === 'failed' ? 'xtell.saved.checkFailed' : 'xtell.saved.checking')}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.7 }}>{t(check === 'failed' ? 'xoracle.saved.checkFailed' : 'xoracle.saved.checking')}</div>
               {check === 'failed' && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={refreshSaved} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.site.retry')}</button>
-                  <button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--white)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xtell.edit')}</button>
+                  <button type="button" onClick={refreshSaved} style={{ padding: '7px 16px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xoracle.site.retry')}</button>
+                  <button type="button" onClick={editDetails} style={{ padding: '7px 16px', borderRadius: 999, border: '1px solid var(--border2)', background: 'transparent', color: 'var(--white)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{t('xoracle.edit')}</button>
                 </div>
               )}
             </div>
@@ -1705,17 +1705,17 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
 
           {/* 今日運勢 continued here: the day's reading in place of a chart. */}
           {daily && (
-            <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
+            <div className={standalone ? "xoracle-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               <DailyBoard row={daily} />
             </div>
           )}
 
           {/* The chart, always shown (owner, Sep 27: no 收起命盤). */}
           {chart && !savedProblem && (!unverified || isQian(temple)) && (
-            <div className={standalone ? "xtell-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
+            <div className={standalone ? "xoracle-chart" : undefined} style={{ ...card, padding: '14px 16px' }}>
               {/* Where a beginner starts, from the chart itself (日主, 命宮
                   and its stars, 上升 and the Moon's 宿). */}
-              {(() => { const fact = chartFact(t, temple, chart, lang); return fact ? <p className="xtell-chart-fact">{fact}</p> : null })()}
+              {(() => { const fact = chartFact(t, temple, chart, lang); return fact ? <p className="xoracle-chart-fact">{fact}</p> : null })()}
               {temple === 'bazi' ? <><BaziBoard chart={chart} hourUnknown={!!birth.hourUnknown} />{/* 称骨 is unknown in Japan (a reviewer, Sep 29): no card on Japanese pages. */}{chenggu && lang !== 'ja' && <ChengguCard data={chenggu} disabled={busy} onAsk={question => {
                   setInput(question)
                   composerRef.current?.focus()
@@ -1739,8 +1739,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 : temple === 'yixue' ? <YixueBoard chart={chart} onExample={q => setInput(q)} />
                 : (
                   <div style={{ display: 'grid', gap: 14 }}>
-                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><BaziBoard chart={chart.a} hourUnknown={!!birth.hourUnknown} /></div>
-                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><BaziBoard chart={chart.b} hourUnknown={!!birth2.hourUnknown} /></div>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.person1')}</div><BaziBoard chart={chart.a} hourUnknown={!!birth.hourUnknown} /></div>
+                    <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.person2')}</div><BaziBoard chart={chart.b} hourUnknown={!!birth2.hourUnknown} /></div>
                   </div>
                 )}
             </div>
@@ -1751,12 +1751,12 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: turns.length === 0 && (temple === 'jiemeng' || temple === 'sunzi' || daily) ? 0 : 120 }}>
             {turns.length === 0 && !savedProblem && !unverified && temple !== 'jiemeng' && temple !== 'sunzi' && !daily && (
               <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-                {t(temple === 'yixue' ? `xtell.yixue.intro.${chart?.mode ?? 'ask'}`
-                  : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xtell.zhanxing.intro.unknown' : `xtell.${temple}.intro`)}
+                {t(temple === 'yixue' ? `xoracle.yixue.intro.${chart?.mode ?? 'ask'}`
+                  : temple === 'zhanxing' && chart?.natal?.hourUnknown ? 'xoracle.zhanxing.intro.unknown' : `xoracle.${temple}.intro`)}
               </div>
             )}
             {initial && turns.length > 0 && (
-              <div style={{ padding: '10px 18px', fontSize: 12.5, color: 'var(--muted2)' }}>{t('xtell.saved.resumed')}</div>
+              <div style={{ padding: '10px 18px', fontSize: 12.5, color: 'var(--muted2)' }}>{t('xoracle.saved.resumed')}</div>
             )}
             {/* Rounds: a user bubble, then every seated master's reply — side
                 by side (scrolling past two) or one at a time behind the tabs.
@@ -1764,9 +1764,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                 keeps its own thread; 只留這位老師 is there for whoever wants to
                 stop paying for the rest. Past rounds keep their replies. */}
             {layout === 'tabs' && replyModels.length > 1 && (
-              <div className="xtell-row-labelled" style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
-              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.row.answers')}</span>
-              <div role="tablist" aria-label={t('xtell.row.answers')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+              <div className="xoracle-row-labelled" style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--bg)', padding: '6px 0' }}>
+              <span className="xoracle-row-label xoracle-row-label-tabs">{t('xoracle.row.answers')}</span>
+              <div role="tablist" aria-label={t('xoracle.row.answers')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
                 {replyModels.map(m => (
                   <button key={m.id} role="tab" aria-selected={activeTab === m.id} onClick={() => setTab(m.id)} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, cursor: 'pointer',
@@ -1793,7 +1793,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               <div key={ri} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {round.user && (
                   <div style={{ alignSelf: 'flex-end', maxWidth: '82%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    {only && <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.ask.toLabel').replace('{names}', only)}</span>}
+                    {only && <span style={{ ...mono, fontSize: 11, color: 'var(--muted2)' }}>{t('xoracle.ask.toLabel').replace('{names}', only)}</span>}
                     <div style={{ background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 12, padding: '10px 14px', fontSize: 13.5, whiteSpace: 'pre-wrap' }}>
                       {round.user.content}
                     </div>
@@ -1806,7 +1806,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   if (shown.length === 0) return null
                   return (
                   <div style={{ overflowX: layout === 'columns' ? 'auto' : 'visible', paddingBottom: layout === 'columns' && shown.length > 2 ? 6 : 0 }}>
-                  <div className={standalone ? "xtell-replies" : undefined} style={{ display: 'grid', gridTemplateColumns: layout === 'columns' ? `repeat(${shown.length}, minmax(${shown.length > 1 ? 360 : 0}px, 1fr))` : 'minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
+                  <div className={standalone ? "xoracle-replies" : undefined} style={{ display: 'grid', gridTemplateColumns: layout === 'columns' ? `repeat(${shown.length}, minmax(${shown.length > 1 ? 360 : 0}px, 1fr))` : 'minmax(0, 1fr)', gap: 10, alignItems: 'start' }}>
                     {shown.map((tn: any, j: number) => (
                       <div key={j} style={{ background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 12, padding: '12px 16px', fontSize: 14, lineHeight: 1.85, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -1816,29 +1816,29 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                             // Credits are debited in whole cents (Math.round in the
                             // reading route, as on every surface), so a reply under
                             // half a cent shows its list cost but deducted nothing.
-                            <span title={Math.round(tn.cost * 100) === 0 ? t('xtell.cost.subcent') : undefined}
+                            <span title={Math.round(tn.cost * 100) === 0 ? t('xoracle.cost.subcent') : undefined}
                               style={{ ...mono, color: 'var(--muted2)', cursor: Math.round(tn.cost * 100) === 0 ? 'help' : undefined }}>· {fmtUsdFor(tn.cost, lang)}</span>
                           )}
                           <span style={{ flex: 1 }} />
                           {/* 分享 (owner, Sep 28): a picture of this reply's
                               opening, never the question or the birth. */}
                           {tn.content && !busy && (
-                            <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
-                              kicker: t('xtell.share.by').replace('{name}', tn.name), body: shareExcerpt(tn.content), style: 'prose', name: `xtell-${temple}`,
+                            <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xoracle.site.focus.${temple}.name`),
+                              kicker: t('xoracle.share.by').replace('{name}', tn.name), body: shareExcerpt(tn.content), style: 'prose', name: `xoracle-${temple}`,
                               log: { kind: 'answer', temple, modelId: tn.modelId } })} />
                           )}
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
                             <button type="button" onClick={() => askOnly(tn.modelId)} disabled={busy}
-                              aria-label={`${t('xtell.ask.one')}: ${tn.name}`}
+                              aria-label={`${t('xoracle.ask.one')}: ${tn.name}`}
                               style={{ border: '1px solid var(--border2)', background: 'none', color: 'var(--muted)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
-                              {t('xtell.ask.one')}
+                              {t('xoracle.ask.one')}
                             </button>
                           )}
                           {masters.length > 1 && masters.some(m => m.id === tn.modelId) && (
                             <button onClick={() => !busy && setMasters(ms => ms.filter(x => x.id === tn.modelId))}
                               disabled={busy}
                               style={{ border: '1px solid var(--red)', background: 'none', color: 'var(--red)', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, cursor: busy ? 'default' : 'pointer' }}>
-                              {t('xtell.keep')}
+                              {t('xoracle.keep')}
                             </button>
                           )}
                         </div>
@@ -1869,15 +1869,15 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   const waiting = masters.filter(m => !answeredLast.has(m.id))
                   if (waiting.length === 0 && masters.length >= MAX_SEATS) return null
                   return (
-                    <div className="xtell-join" role="group" aria-label={t('xtell.join.label')}>
+                    <div className="xoracle-join" role="group" aria-label={t('xoracle.join.label')}>
                       {waiting.map(m => {
                         const usd = usdOf(m)
-                        return <button key={m.id} type="button" className="xtell-join-btn" disabled={joining.includes(m.id)} onClick={() => void join(m)}>
-                          {t('xtell.join.one').replace('{name}', m.display_name)}{usd != null && <small>{fmtUsdFor(usd, lang)}</small>}
+                        return <button key={m.id} type="button" className="xoracle-join-btn" disabled={joining.includes(m.id)} onClick={() => void join(m)}>
+                          {t('xoracle.join.one').replace('{name}', m.display_name)}{usd != null && <small>{fmtUsdFor(usd, lang)}</small>}
                         </button>
                       })}
-                      {masters.length < MAX_SEATS && <button type="button" className="xtell-join-btn is-add" onClick={() => setPicker({ replace: null, join: true })}>{t('xtell.join.add')}</button>}
-                      <span>{t('xtell.join.note')}</span>
+                      {masters.length < MAX_SEATS && <button type="button" className="xoracle-join-btn is-add" onClick={() => setPicker({ replace: null, join: true })}>{t('xoracle.join.add')}</button>}
+                      <span>{t('xoracle.join.note')}</span>
                     </div>
                   )
                 })()}
@@ -1892,7 +1892,7 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
           {/* Composer — same shape as XDirect's. On the standalone site the
               block is sticky at the bottom, so the estimate line lives INSIDE
               it; placed after it, the line sat below the fold. */}
-          {!savedProblem && !unverified && <div className={standalone ? "xtell-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {!savedProblem && !unverified && <div className={standalone ? "xoracle-composer" : undefined} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {/* Example questions, right where one is written, until the first
               is sent (owner, Sep 27: they were in a 「怎麼讀」 panel that
               mostly repeated the chart). A click fills the box; nothing is
@@ -1902,10 +1902,10 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             // 問： in the same label style and place as 大師席位 and 大師的回答
             // (owner, Oct 3: its size was off); chips that wrap line up
             // under the first chip.
-            <div role="group" aria-label={t('xtell.ask.to')} className="xtell-ask-to xtell-row-labelled">
-              <span className="xtell-row-label xtell-row-label-tabs">{t('xtell.ask.to')}</span>
+            <div role="group" aria-label={t('xoracle.ask.to')} className="xoracle-ask-to xoracle-row-labelled">
+              <span className="xoracle-row-label xoracle-row-label-tabs">{t('xoracle.ask.to')}</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: 12, minWidth: 0 }}>
-              <button type="button" aria-pressed={askingAll} onClick={() => setAskTo(null)} disabled={busy} style={chip(askingAll)}>{t('xtell.ask.all')}</button>
+              <button type="button" aria-pressed={askingAll} onClick={() => setAskTo(null)} disabled={busy} style={chip(askingAll)}>{t('xoracle.ask.all')}</button>
               {masters.map(m => {
                 const on = !askingAll && recipients.some(r => r.id === m.id)
                 return <button key={m.id} type="button" aria-pressed={on} onClick={() => askingAll ? setAskTo([m.id]) : toggleAsk(m.id)} disabled={busy} style={chip(on)}>
@@ -1915,18 +1915,18 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               </div>
             </div>
           )}
-          <div className="xtell-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          <div className="xoracle-composer-row" style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <textarea
               ref={composerRef}
               value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send() } }}
-              aria-label={t(questionRequired ? 'xtell.yixue.question.label' : 'xtell.question.ph')}
-              placeholder={daily ? t('xtell.dy.askPh') : questionRequired ? t('xtell.yixue.question.ph') : temple === 'yixue' || t(`xtell.q.${temple}.1`).startsWith('xtell.q.') ? t('xtell.question.ph') : `${t('xtell.q.example')}${t(`xtell.q.${temple}.1`)}`}
+              aria-label={t(questionRequired ? 'xoracle.yixue.question.label' : 'xoracle.question.ph')}
+              placeholder={daily ? t('xoracle.dy.askPh') : questionRequired ? t('xoracle.yixue.question.ph') : temple === 'yixue' || t(`xoracle.q.${temple}.1`).startsWith('xoracle.q.') ? t('xoracle.question.ph') : `${t('xoracle.q.example')}${t(`xoracle.q.${temple}.1`)}`}
               maxLength={temple === 'yixue' ? 2000 : undefined}
               rows={4}
               style={{ flex: 1, background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '12px 16px', color: 'var(--white)', fontSize: 14, resize: 'vertical' }}
             />
-            <button aria-label={t('xtell.site.send')} onClick={() => void send(true)} disabled={busy || joining.length > 0 || (questionRequired && !input.trim())} style={{
+            <button aria-label={t('xoracle.site.send')} onClick={() => void send(true)} disabled={busy || joining.length > 0 || (questionRequired && !input.trim())} style={{
               padding: '12px 20px', borderRadius: 10, border: 'none', background: 'var(--red)', color: 'var(--white)',
               fontWeight: 700, fontSize: 14, cursor: busy ? 'wait' : 'pointer',
               opacity: busy || (questionRequired && !input.trim()) ? 0.5 : 1,
@@ -1941,18 +1941,18 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             if (known.length === 0) return null
             const total = known.reduce((s, p) => s + p.usd, 0)
             return <div style={{ ...mono, fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>
-              {t('xtell.estimate').replace('{amount}', fmtUsdFor(total, lang))}
+              {t('xoracle.estimate').replace('{amount}', fmtUsdFor(total, lang))}
               {known.length > 1 && <> · {known.map(p => `${p.m.display_name} ${fmtUsdFor(p.usd, lang)}`).join(' · ')}</>}
             </div>
           })()}
-          {questionRequired && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.yixue.question.privacy')}</p>}
+          {questionRequired && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.yixue.question.privacy')}</p>}
           </div>}
         </div>
       )}
 
       {memoFor && (() => {
         // 「立即摘要」 costs about one answer: what the master last read in,
-        // an answer's length out (lib/xtell-presets.ts's estimate).
+        // an answer's length out (lib/xoracle-presets.ts's estimate).
         const usd = estimateReadingUsd(memoFor, { thinking: optsOf(memoFor).thinking, search: false }, 0, memUse[memoFor.id] ?? EST_PROMPT_TOKENS)
         const answers = turns.filter(tn => tn.role === 'assistant' && tn.modelId === memoFor.id).length
         const key = `${readingId}:${memoFor.id}`
@@ -1993,22 +1993,22 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
 const GAN_ELEMENT: Record<string, string> = { 甲: '木', 乙: '木', 丙: '火', 丁: '火', 戊: '土', 己: '土', 庚: '金', 辛: '金', 壬: '水', 癸: '水' }
 function chartFact(t: (k: string) => string, temple: Temple, chart: any, lang: string): string {
   try {
-    if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xtell.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xtell.el.${GAN_ELEMENT[chart.dayMaster]}`))
+    if (temple === 'bazi' && GAN_ELEMENT[chart?.dayMaster]) return t('xoracle.sum.bazi.fact').replace('{dm}', chart.dayMaster).replace('{el}', t(`xoracle.el.${GAN_ELEMENT[chart.dayMaster]}`))
     if (temple === 'ziwei') {
       const p = chart?.palaces?.find((x: any) => x.name === '命宮')
-      if (p) return t('xtell.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
+      if (p) return t('xoracle.sum.ziwei.fact').replace('{gz}', p.ganZhi).replace('{stars}', p.majorStars.map((x: string) => x.replace(/\[.*?\]/g, '')).join('、') || '—')
     }
     if (temple === 'sukuyo' && chart?.own) {
       const w = skWords(lang)
-      return t('xtell.sum.sukuyo.fact').replace('{own}', w.shuku[chart.own.index]).replace('{day}', w.shuku[chart.day.index]).replace('{rel}', w.rel[chart.day.relation as keyof typeof w.rel])
+      return t('xoracle.sum.sukuyo.fact').replace('{own}', w.shuku[chart.own.index]).replace('{day}', w.shuku[chart.day.index]).replace('{rel}', w.rel[chart.day.relation as keyof typeof w.rel])
     }
     if (temple === 'kyusei' && chart?.honmei) {
       const w = kyWords(lang)
-      return t('xtell.sum.kyusei.fact').replace('{h}', w.star[chart.honmei]).replace('{g}', w.star[chart.getsumei])
+      return t('xoracle.sum.kyusei.fact').replace('{h}', w.star[chart.honmei]).replace('{g}', w.star[chart.getsumei])
     }
     if (temple === 'navagraha' && chart?.lagna) {
       const moon = chart.grahas?.find((g: any) => g.graha === 'Moon')
-      return t('xtell.sum.navagraha.fact').replace('{lagna}', rasiName(t, lang, chart.lagna.rasi)).replace('{nak}', moon ? nakName(lang, moon.nakshatra) : '—')
+      return t('xoracle.sum.navagraha.fact').replace('{lagna}', rasiName(t, lang, chart.lagna.rasi)).replace('{nak}', moon ? nakName(lang, moon.nakshatra) : '—')
     }
   } catch { /* an older saved chart shape simply has no fact line */ }
   return ''
@@ -2016,20 +2016,20 @@ function chartFact(t: (k: string) => string, temple: Temple, chart: any, lang: s
 function ExampleQuestions({ temple, onExample }: { temple: Temple; onExample: (q: string) => void }) {
   const t = useT()
   // Three per temple; 八字廟 has a fourth, the way into its 稱骨 card.
-  const questions = [1, 2, 3, 4].map(i => t(`xtell.q.${temple}.${i}`)).filter(q => !q.startsWith('xtell.q.'))
+  const questions = [1, 2, 3, 4].map(i => t(`xoracle.q.${temple}.${i}`)).filter(q => !q.startsWith('xoracle.q.'))
   if (questions.length === 0) return null
   return (
-    <div className="xtell-examples" role="group" aria-label={t('xtell.guide.ask')}>
-      <span>{t('xtell.guide.ask')}</span>
+    <div className="xoracle-examples" role="group" aria-label={t('xoracle.guide.ask')}>
+      <span>{t('xoracle.guide.ask')}</span>
       {questions.map(q => (
-        <button key={q} type="button" onClick={() => onExample(q)} aria-label={`${t('xtell.guide.fill')}: ${q}`}>{q}</button>
+        <button key={q} type="button" onClick={() => onExample(q)} aria-label={`${t('xoracle.guide.fill')}: ${q}`}>{q}</button>
       ))}
     </div>
   )
 }
 
 // ── 合盤 ────────────────────────────────────────────────────────────────────
-// Every number here came out of lib/xtell.ts, and every row says which two
+// Every number here came out of lib/xoracle.ts, and every row says which two
 // 干支 it read and what relation it found — the same contract as the chart
 // below it. Nothing on this card is the model's opinion.
 function HeCard({ match }: { match: any }) {
@@ -2050,22 +2050,22 @@ function HeCard({ match }: { match: any }) {
   return (
     <div style={{ ...card, padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
-        <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.he.title')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xoracle.he.title')}</div>
         <span style={{ flex: 1 }} />
         <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 30, fontWeight: 800, color: colour, lineHeight: 1 }}>
           {match.range ? `${match.range[0]}–${match.range[1]}` : match.overall}
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t(`xtell.he.band.${match.band}`)}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{t(`xoracle.he.band.${match.band}`)}</div>
       </div>
       {/* What the number is, beside the number (audit: the weights explained
           only at the bottom read like a verdict on the couple). */}
-      <p style={{ margin: '-4px 0 12px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.he.what')}</p>
-      {match.range && <p role="note" style={{ margin: '0 0 12px', fontSize: 11.5, color: 'var(--red)', lineHeight: 1.6 }}>{t('xtell.he.rangeNote')}</p>}
+      <p style={{ margin: '-4px 0 12px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xoracle.he.what')}</p>
+      {match.range && <p role="note" style={{ margin: '0 0 12px', fontSize: 11.5, color: 'var(--red)', lineHeight: 1.6 }}>{t('xoracle.he.rangeNote')}</p>}
 
       <div style={{ display: 'grid', gap: 8 }}>
         {match.dimensions.map((d: any) => (
           <div key={d.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, auto) 1fr minmax(72px, auto)', gap: 10, alignItems: 'center' }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{tOr(t, `xtell.he.dim.${d.key}`, d.label)}{d.undecided ? <span style={{ color: 'var(--red)', fontWeight: 500, fontSize: 11 }}> · {t('xtell.bazi.undecided')}</span> : null}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{tOr(t, `xoracle.he.dim.${d.key}`, d.label)}{d.undecided ? <span style={{ color: 'var(--red)', fontWeight: 500, fontSize: 11 }}> · {t('xoracle.bazi.undecided')}</span> : null}</div>
             <div style={{ height: 6, borderRadius: 999, background: 'var(--surface2)', overflow: 'hidden' }}>
               <div style={{ width: `${d.score}%`, height: '100%', background: rowColour(d.score), opacity: 0.8 }} />
             </div>
@@ -2081,9 +2081,9 @@ function HeCard({ match }: { match: any }) {
       {/* The years ahead. Only years whose 流年地支 actually 合 or 沖 a 日支 are
           listed; a year with nothing to say is left out rather than padded. */}
       <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.he.years')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xoracle.he.years')}</div>
         {match.years.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xtell.he.noyears')}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted2)' }}>{t('xoracle.he.noyears')}</div>
         ) : (
           <div style={{ display: 'grid', gap: 6 }}>
             {match.years.map((y: any) => (
@@ -2091,14 +2091,14 @@ function HeCard({ match }: { match: any }) {
                 <span style={{ fontFamily: 'var(--font-mono), monospace', fontWeight: 700, minWidth: 62 }}>{y.year}</span>
                 <span style={{ ...mono, color: 'var(--muted2)', minWidth: 34 }}>{y.ganZhi}</span>
                 <span style={{ color: y.good ? 'var(--green)' : 'var(--red)', fontWeight: 600, minWidth: 56 }}>{relText(lang, y.kind)}</span>
-                <span style={{ color: 'var(--muted)' }}>{t(y.good ? 'xtell.he.year.good' : 'xtell.he.year.bad')}</span>
+                <span style={{ color: 'var(--muted)' }}>{t(y.good ? 'xoracle.he.year.good' : 'xoracle.he.year.bad')}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.he.note')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.he.note')}</div>
     </div>
   )
 }
@@ -2117,48 +2117,48 @@ function BaziBoard({ chart, hourUnknown = false }: { chart: any; hourUnknown?: b
   const unknown = hourUnknown || chart.hourUnknown === true || !chart.pillars?.time
   const d = chart.doubt
   const cols = [
-    { key: 'year', label: t('xtell.p.year') }, { key: 'month', label: t('xtell.p.month') },
-    { key: 'day', label: t('xtell.p.day') }, { key: 'time', label: t('xtell.p.time') },
+    { key: 'year', label: t('xoracle.p.year') }, { key: 'month', label: t('xoracle.p.month') },
+    { key: 'day', label: t('xoracle.p.day') }, { key: 'time', label: t('xoracle.p.time') },
   ]
-  const side = (i: 0 | 1) => [d?.year ? `${t('xtell.p.year')} ${d.year[i].ganZhi}` : '', d?.month ? `${t('xtell.p.month')} ${d.month[i].ganZhi}` : ''].filter(Boolean).join(t('xtell.list.sep'))
+  const side = (i: 0 | 1) => [d?.year ? `${t('xoracle.p.year')} ${d.year[i].ganZhi}` : '', d?.month ? `${t('xoracle.p.month')} ${d.month[i].ganZhi}` : ''].filter(Boolean).join(t('xoracle.list.sep'))
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {unknown ? `${String(chart.solar).slice(0, 10)} · ${t('xtell.hourunknown')}` : chart.solar} · {lunarLocal(lang, chart.lunar)}
+        {unknown ? `${String(chart.solar).slice(0, 10)} · ${t('xoracle.hourunknown')}` : chart.solar} · {lunarLocal(lang, chart.lunar)}
       </div>
-      <div className="xtell-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, maxWidth: 560 }}>
+      <div className="xoracle-pillars" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8, maxWidth: 560 }}>
         {cols.map(c => {
           if (c.key === 'time' && unknown) return (
             <div key="time" style={{ border: '1px dashed var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', color: 'var(--muted2)' }}>
               <div style={{ fontSize: 10.5, marginBottom: 6 }}>{c.label}</div>
-              <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 700 }}>{t('xtell.p.timeUnknown')}</div>
+              <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 700 }}>{t('xoracle.p.timeUnknown')}</div>
             </div>
           )
           const p = chart.pillars[c.key]
           const both = d?.[c.key] as Array<{ ganZhi: string; naYin: string }> | undefined
           return (
             <div key={c.key} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 8px', textAlign: 'center', background: c.key === 'day' ? 'var(--surface2)' : 'transparent', minWidth: 0 }}>
-              <div style={{ fontSize: 10.5, color: both ? 'var(--red)' : 'var(--muted2)', marginBottom: 6 }}>{c.label} · {both ? t('xtell.bazi.undecided') : p.shiShen}</div>
+              <div style={{ fontSize: 10.5, color: both ? 'var(--red)' : 'var(--muted2)', marginBottom: 6 }}>{c.label} · {both ? t('xoracle.bazi.undecided') : p.shiShen}</div>
               <div style={{ fontFamily: 'var(--font-display), serif', fontSize: both ? 18 : 26, fontWeight: 800, letterSpacing: both ? 1 : 4 }}>{both ? `${both[0].ganZhi}／${both[1].ganZhi}` : p.ganZhi}</div>
               <div style={{ fontSize: 10.5, color: 'var(--muted2)', marginTop: 6 }}>{both ? `${naYinLocal(lang, both[0].naYin)}／${naYinLocal(lang, both[1].naYin)}` : naYinLocal(lang, p.naYin)}</div>
-              {!both && <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{t('xtell.p.hidden')} {p.hideGan.join(' ')}</div>}
+              {!both && <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{t('xoracle.p.hidden')} {p.hideGan.join(' ')}</div>}
             </div>
           )
         })}
       </div>
-      {unknown && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>{t('xtell.bazi.hourNote')}</div>}
+      {unknown && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>{t('xoracle.bazi.hourNote')}</div>}
       {d && (
         <div role="note" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.7, padding: '8px 10px', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }}>
-          {t('xtell.bazi.doubt').replace('{term}', d.term.name).replace('{time}', d.term.time).replace('{before}', side(0)).replace('{after}', side(1)).split('{box}').join(t('xtell.hourunknown'))}
+          {t('xoracle.bazi.doubt').replace('{term}', d.term.name).replace('{time}', d.term.time).replace('{before}', side(0)).replace('{after}', side(1)).split('{box}').join(t('xoracle.hourunknown'))}
         </div>
       )}
       {chart.daYun?.length > 0 ? (
         <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 10, lineHeight: 1.7 }}>
-          {t('xtell.dayun')}：{chart.daYun.map((x: any) => t(unknown ? 'xtell.dayun.stepApprox' : 'xtell.dayun.step').replace('{n}', String(x.startAge)).replace('{gz}', x.ganZhi)).join('　')}
-          {unknown && <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xtell.dayun.approx')}</div>}
+          {t('xoracle.dayun')}：{chart.daYun.map((x: any) => t(unknown ? 'xoracle.dayun.stepApprox' : 'xoracle.dayun.step').replace('{n}', String(x.startAge)).replace('{gz}', x.ganZhi)).join('　')}
+          {unknown && <div style={{ fontSize: 11, color: 'var(--muted2)' }}>{t('xoracle.dayun.approx')}</div>}
         </div>
-      ) : d ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 10 }}>{t('xtell.dayun.hidden')}</div> : null}
-      {t('xtell.bazi.glossary') && <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.bazi.glossary')}</p>}
+      ) : d ? <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 10 }}>{t('xoracle.dayun.hidden')}</div> : null}
+      {t('xoracle.bazi.glossary') && <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.bazi.glossary')}</p>}
     </div>
   )
 }
@@ -2175,64 +2175,64 @@ function ChengguCard({ data, onAsk, disabled }: { data: Chenggu; onAsk: (questio
   const monthOf = (l: ChengguLunar) => zh ? `${l.leap ? (lang === 'zh-Hans' ? '闰' : '閏') : ''}${monthZh(l.month, lang)}`
     : lang === 'ja' ? `${l.leap ? '閏' : ''}${l.month}月` : lang === 'ko' ? `${l.leap ? '윤' : ''}${l.month}월` : `${l.leap ? 'leap ' : ''}${l.month}`
   const dayOf = (d: number) => zh ? dayZh(d) : lang === 'ja' ? `${d}日` : lang === 'ko' ? `${d}일` : String(d)
-  const hourOf = (z: keyof typeof ZHI_SPAN) => fill(t('xtell.cg.val.hour'), { zhi: z, span: ZHI_SPAN[z] })
-  const dateOf = (l: ChengguLunar) => fill(t('xtell.cg.date'), { gz: l.yearGanZhi, m: monthOf(l), d: dayOf(l.day) })
+  const hourOf = (z: keyof typeof ZHI_SPAN) => fill(t('xoracle.cg.val.hour'), { zhi: z, span: ZHI_SPAN[z] })
+  const dateOf = (l: ChengguLunar) => fill(t('xoracle.cg.date'), { gz: l.yearGanZhi, m: monthOf(l), d: dayOf(l.day) })
   const L = data.lunar
   const known = data.total !== null && data.zhi !== null
   const totals = known ? [data.total as number] : (data.options ?? []).map(o => o.total)
   const markers = totals.filter(q => chengguTheme(q) !== null)
   const theme = known ? chengguTheme(data.total as number, lang) : null
-  const values = totals.map(w).join(t('xtell.list.sep'))
+  const values = totals.map(w).join(t('xoracle.list.sep'))
   const rows = [
-    { key: 'year', label: t('xtell.cg.row.year'), value: L.yearGanZhi, qian: data.weights.year },
-    { key: 'month', label: t('xtell.cg.row.month'), value: `${monthOf(L)}${L.leap ? fill(t('xtell.cg.leapAs'), { cn: monthZh(L.month, lang), n: String(L.month) }) : ''}`, qian: data.weights.month },
-    { key: 'day', label: t('xtell.cg.row.day'), value: dayOf(L.day), qian: data.weights.day },
-    { key: 'hour', label: t('xtell.cg.row.hour'), value: data.zhi ? hourOf(data.zhi) : t('xtell.hourunknown'), qian: data.weights.hour },
+    { key: 'year', label: t('xoracle.cg.row.year'), value: L.yearGanZhi, qian: data.weights.year },
+    { key: 'month', label: t('xoracle.cg.row.month'), value: `${monthOf(L)}${L.leap ? fill(t('xoracle.cg.leapAs'), { cn: monthZh(L.month, lang), n: String(L.month) }) : ''}`, qian: data.weights.month },
+    { key: 'day', label: t('xoracle.cg.row.day'), value: dayOf(L.day), qian: data.weights.day },
+    { key: 'hour', label: t('xoracle.cg.row.hour'), value: data.zhi ? hourOf(data.zhi) : t('xoracle.hourunknown'), qian: data.weights.hour },
   ]
   const note = { fontSize: 12, marginTop: 8, lineHeight: 1.7, padding: '8px 10px', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--surface2)' }
   return (
-    <section aria-labelledby={titleId} className="xtell-chenggu" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-      <h3 id={titleId} style={{ ...mono, color: 'var(--muted2)', margin: 0, fontWeight: 600 }}>{t('xtell.cg.title')}</h3>
+    <section aria-labelledby={titleId} className="xoracle-chenggu" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+      <h3 id={titleId} style={{ ...mono, color: 'var(--muted2)', margin: 0, fontWeight: 600 }}>{t('xoracle.cg.title')}</h3>
       {known ? (
         <p style={{ margin: '6px 0 0', fontFamily: 'var(--font-display), serif', fontSize: 26, fontWeight: 800, letterSpacing: 1 }}>{w(data.total as number)}</p>
       ) : (
         <div style={{ marginTop: 6 }}>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t('xtell.cg.unknown.total')}</p>
-          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.cg.unknown.lead')}</p>
+          <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{t('xoracle.cg.unknown.total')}</p>
+          <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xoracle.cg.unknown.lead')}</p>
           <ul style={{ margin: '4px 0 0', paddingLeft: 18, fontSize: 12.5, lineHeight: 1.8 }}>
             {(data.options ?? []).map(o => (
               <li key={o.total}>
-                <b>{w(o.total)}</b>{t('xtell.cg.option.sep')}{o.zhi.map(hourOf).join(t('xtell.list.sep'))}
-                {chengguTheme(o.total, lang) && <div style={{ color: 'var(--muted)', fontSize: 12 }}>{fill(t('xtell.cg.theme'), { theme: chengguTheme(o.total, lang)! })}</div>}
+                <b>{w(o.total)}</b>{t('xoracle.cg.option.sep')}{o.zhi.map(hourOf).join(t('xoracle.list.sep'))}
+                {chengguTheme(o.total, lang) && <div style={{ color: 'var(--muted)', fontSize: 12 }}>{fill(t('xoracle.cg.theme'), { theme: chengguTheme(o.total, lang)! })}</div>}
               </li>
             ))}
           </ul>
         </div>
       )}
       {markers.length > 0 && <div style={{ marginTop: 14 }}>
-        <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.cg.position')}</div>
-        <div role="img" aria-label={fill(t('xtell.cg.scaleLabel'), { min: w(CHENGGU_MIN), max: w(CHENGGU_MAX), values })} style={{ padding: '0 6px' }}>
+        <div style={{ fontSize: 12, color: 'var(--muted2)', marginBottom: 8 }}>{t('xoracle.cg.position')}</div>
+        <div role="img" aria-label={fill(t('xoracle.cg.scaleLabel'), { min: w(CHENGGU_MIN), max: w(CHENGGU_MAX), values })} style={{ padding: '0 6px' }}>
           <div style={{ position: 'relative', height: 6, borderRadius: 3, background: 'var(--border2)' }}>
             {markers.map(q => <span key={q} aria-hidden="true" style={{ position: 'absolute', left: `${(q - CHENGGU_MIN) / (CHENGGU_MAX - CHENGGU_MIN) * 100}%`, top: -3, width: 12, height: 12, transform: 'translateX(-50%)', borderRadius: '50%', background: 'var(--red)', border: '2px solid var(--surface)', boxSizing: 'border-box' }} />)}
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
-          <div style={{ flex: 1 }}>{fill(t('xtell.cg.light'), { w: w(CHENGGU_MIN) })}<div>{t('xtell.cg.lightMeaning')}</div></div>
-          <div style={{ flex: 1, textAlign: 'right' }}>{fill(t('xtell.cg.heavy'), { w: w(CHENGGU_MAX) })}<div>{t('xtell.cg.heavyMeaning')}</div></div>
+          <div style={{ flex: 1 }}>{fill(t('xoracle.cg.light'), { w: w(CHENGGU_MIN) })}<div>{t('xoracle.cg.lightMeaning')}</div></div>
+          <div style={{ flex: 1, textAlign: 'right' }}>{fill(t('xoracle.cg.heavy'), { w: w(CHENGGU_MAX) })}<div>{t('xoracle.cg.heavyMeaning')}</div></div>
         </div>
       </div>}
       {theme && <div style={{ marginTop: 12, lineHeight: 1.7, fontSize: 13 }}>
-        <strong>{t('xtell.cg.meaning')}</strong>
-        <p style={{ margin: '4px 0 0' }}>{fill(t('xtell.cg.theme'), { theme })}</p>
+        <strong>{t('xoracle.cg.meaning')}</strong>
+        <p style={{ margin: '4px 0 0' }}>{fill(t('xoracle.cg.theme'), { theme })}</p>
       </div>}
-      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0', lineHeight: 1.6 }}>{t('xtell.cg.reflection')}</p>
-      <button type="button" aria-label={`${t('xtell.guide.fill')}: ${t('xtell.cg.ask')}`} disabled={disabled || totals.length === 0} onClick={() => onAsk(known
-        ? fill(t('xtell.cg.askPrompt'), { w: w(data.total as number) })
-        : fill(t('xtell.cg.askUnknown'), { values }))} style={{ padding: '8px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--red)', fontSize: 12, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
-        {t('xtell.cg.ask')}
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '10px 0', lineHeight: 1.6 }}>{t('xoracle.cg.reflection')}</p>
+      <button type="button" aria-label={`${t('xoracle.guide.fill')}: ${t('xoracle.cg.ask')}`} disabled={disabled || totals.length === 0} onClick={() => onAsk(known
+        ? fill(t('xoracle.cg.askPrompt'), { w: w(data.total as number) })
+        : fill(t('xoracle.cg.askUnknown'), { values }))} style={{ padding: '8px 14px', borderRadius: 999, border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--red)', fontSize: 12, fontWeight: 600, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+        {t('xoracle.cg.ask')}
       </button>
       <details open style={{ marginTop: 8 }}>
-        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.cg.parts')}</summary>
+        <summary style={{ fontSize: 12, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.cg.parts')}</summary>
         <table style={{ marginTop: 6, borderCollapse: 'collapse', fontSize: 12.5, width: '100%', maxWidth: 440 }}>
           <tbody>
             {rows.map(r => (
@@ -2243,16 +2243,16 @@ function ChengguCard({ data, onAsk, disabled }: { data: Chenggu; onAsk: (questio
               </tr>
             ))}
             <tr>
-              <th scope="row" colSpan={2} style={{ textAlign: 'left', padding: '6px 10px 0 0' }}>{t(known ? 'xtell.cg.total' : 'xtell.cg.fixed')}</th>
+              <th scope="row" colSpan={2} style={{ textAlign: 'left', padding: '6px 10px 0 0' }}>{t(known ? 'xoracle.cg.total' : 'xoracle.cg.fixed')}</th>
               <td style={{ padding: '6px 0 0', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700 }}>{w(known ? data.total as number : data.fixed)}</td>
             </tr>
           </tbody>
         </table>
       </details>
-      {data.lateZi && <div role="note" style={note}>{fill(t('xtell.cg.lateZi'), { date: dateOf(data.lateZi.lunar), w: w(data.lateZi.total) })}</div>}
+      {data.lateZi && <div role="note" style={note}>{fill(t('xoracle.cg.lateZi'), { date: dateOf(data.lateZi.lunar), w: w(data.lateZi.total) })}</div>}
       {(data.variants ?? []).map(v => (
         <div key={v.entry} role="note" style={note}>
-          {fill(t(`xtell.cg.variant.${v.entry}`), { other: w(v.other), v1: w(v.v1), alt: v.total === null ? '' : fill(t('xtell.cg.variant.alt'), { other: w(v.other), w: w(v.total) }) })}
+          {fill(t(`xoracle.cg.variant.${v.entry}`), { other: w(v.other), v1: w(v.v1), alt: v.total === null ? '' : fill(t('xoracle.cg.variant.alt'), { other: w(v.other), w: w(v.total) }) })}
         </div>
       ))}
     </section>
@@ -2273,15 +2273,15 @@ function LiuNianLine({ year }: { year: any }) {
     return taiSui === '值太歲' && kind === '無特殊關係' ? ts : `${relText(lang, kind)}${ts ? `（${ts}）` : ''}`
   }
   const vsYear = Array.isArray(year.yearChoices)
-    ? t('xtell.liunian.yearUndecided').replace('{list}', year.yearChoices.map((c: any) => t('xtell.liunian.ifYear').replace('{gz}', c.ganZhi).replace('{rel}', rel(c.yearBranch?.kind, c.taiSui))).join(t('xtell.list.sep')))
+    ? t('xoracle.liunian.yearUndecided').replace('{list}', year.yearChoices.map((c: any) => t('xoracle.liunian.ifYear').replace('{gz}', c.ganZhi).replace('{rel}', rel(c.yearBranch?.kind, c.taiSui))).join(t('xoracle.list.sep')))
     : rel(year.yearBranch?.kind, year.taiSui)
   return (
     <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-      <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.liunian')}</span>
-      {year.year} {year.ganZhi}　{t('xtell.liunian.vsDay')} <b>{year.shiShen}</b>　{t('xtell.liunian.vsDayBranch')} <b>{relText(lang, year.dayBranch?.kind)}</b>　{t('xtell.liunian.vsYear')} <b>{vsYear}</b>
+      <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.liunian')}</span>
+      {year.year} {year.ganZhi}　{t('xoracle.liunian.vsDay')} <b>{year.shiShen}</b>　{t('xoracle.liunian.vsDayBranch')} <b>{relText(lang, year.dayBranch?.kind)}</b>　{t('xoracle.liunian.vsYear')} <b>{vsYear}</b>
       {Array.isArray(year.daYunChoices)
-        ? <>　{t('xtell.dayun')} <b>{year.daYunChoices.join('／')}</b> <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span></>
-        : year.daYun ? <>　{t('xtell.dayun')} <b>{year.daYun}</b>{year.daYunApprox ? <span style={{ fontSize: 11 }}>（{t('xtell.dayun.approx')}）</span> : null}</> : null}
+        ? <>　{t('xoracle.dayun')} <b>{year.daYunChoices.join('／')}</b> <span style={{ fontSize: 11 }}>（{t('xoracle.dayun.approx')}）</span></>
+        : year.daYun ? <>　{t('xoracle.dayun')} <b>{year.daYun}</b>{year.daYunApprox ? <span style={{ fontSize: 11 }}>（{t('xoracle.dayun.approx')}）</span> : null}</> : null}
     </div>
   )
 }
@@ -2292,7 +2292,7 @@ function ZiweiBoard({ chart }: { chart: any }) {
   return (
     <div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {chart.solar} · {lunarLocal(lang, chart.lunar)} {chart.time} · {chart.fiveElementsClass} · {t('xtell.ziwei.soul')} {chart.soul} · {t('xtell.ziwei.body')} {chart.body}
+        {chart.solar} · {lunarLocal(lang, chart.lunar)} {chart.time} · {chart.fiveElementsClass} · {t('xoracle.ziwei.soul')} {chart.soul} · {t('xoracle.ziwei.body')} {chart.body}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
         {chart.palaces.map((p: any) => (
@@ -2311,12 +2311,12 @@ function ZiweiBoard({ chart }: { chart: any }) {
       </div>
       {chart.horoscope && (
         <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 12.5, lineHeight: 1.8, color: 'var(--muted)' }}>
-          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.ziwei.periods')}</div>
+          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.ziwei.periods')}</div>
           {[chart.horoscope.decadal, ...chart.horoscope.years, chart.horoscope.month].map((p: any, k: number) => (
             <div key={k}>
               <b style={{ color: 'var(--white)' }}>{p.name}{p.year ? ` ${p.year}` : ''}{p.label ? ` ${p.label}` : ''}</b>
               <span style={{ fontFamily: 'var(--font-mono), monospace', margin: '0 8px' }}>{p.ganZhi}{p.range ? ` · ${p.range[0]}–${p.range[1]}${lang === 'ja' ? '歳' : lang === 'zh-Hans' ? '岁' : lang === 'ko' ? '세' : lang === 'en' ? '' : '歲'}` : ''}</span>
-              {t('xtell.ziwei.lands')} <b style={{ color: 'var(--white)' }}>{p.palace}</b>　
+              {t('xoracle.ziwei.lands')} <b style={{ color: 'var(--white)' }}>{p.palace}</b>　
               <span style={{ color: 'var(--muted2)' }}>祿{p.mutagen[0]} 權{p.mutagen[1]} 科{p.mutagen[2]} 忌{p.mutagen[3]}</span>
             </div>
           ))}
@@ -2343,7 +2343,7 @@ function useMyBirth(enabled: boolean): MyBirth | null {
     if (!enabled) return
     let live = true
     try { localStorage.removeItem(REMEMBER_KEY) } catch { /* nothing to clear */ }
-    fetch('/api/xtell/profile').then(async r => {
+    fetch('/api/xoracle/profile').then(async r => {
       if (!live) return
       if (!r.ok) { setV({ status: 'out', birth: null, place: null }); return }
       const d = await r.json().catch(() => null)
@@ -2388,49 +2388,49 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
       {label && <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 52 }}>{label}</span>}
       {onFill && (
-        <button type="button" onClick={() => setNoneSaved(!onFill())} className="xtell-fill-mine">{t('xtell.fillMine')}</button>
+        <button type="button" onClick={() => setNoneSaved(!onFill())} className="xoracle-fill-mine">{t('xoracle.fillMine')}</button>
       )}
       {noneSaved && (
-        <span role="status" className="xtell-fill-note">{t('xtell.fillMine.none')} <a href="/profile#xtell-daily-settings">{t('xtell.fillMine.set')}</a></span>
+        <span role="status" className="xoracle-fill-note">{t('xoracle.fillMine.none')} <a href="/profile#xoracle-daily-settings">{t('xoracle.fillMine.set')}</a></span>
       )}
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
+      <label className="xoracle-birth-field"><select aria-label={`${label ?? ""} ${t("xoracle.site.birth.year")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.y} onChange={e => onChange({ ...value, y: +e.target.value })}>
         {!years.includes(value.y) && <option value={value.y} disabled>{value.y}</option>}
         {years.map(y => <option key={y} value={y}>{y}</option>)}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.year')}</span></label>
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.month")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xoracle.year')}</span></label>
+      <label className="xoracle-birth-field"><select aria-label={`${label ?? ""} ${t("xoracle.site.birth.month")}`} aria-invalid={bad || undefined} aria-describedby={bad ? described : undefined} style={dateSel(bad)} value={value.m} onChange={e => onChange({ ...value, m: +e.target.value })}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}</option>)}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.month')}</span></label>
-      <label className="xtell-birth-field"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.day")}`} aria-invalid={dayBad || bad || undefined} aria-describedby={described}
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xoracle.month')}</span></label>
+      <label className="xoracle-birth-field"><select aria-label={`${label ?? ""} ${t("xoracle.site.birth.day")}`} aria-invalid={dayBad || bad || undefined} aria-describedby={described}
         style={dateSel(dayBad || bad)} value={value.d} onChange={e => onChange({ ...value, d: +e.target.value })}>
         {Array.from({ length: maxDay }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
         {dayBad && <option value={value.d} disabled>{value.d} ✕</option>}
       </select>
-      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xtell.day')}</span></label>
-      <span className="xtell-birth-time"><select aria-label={`${label ?? ""} ${t("xtell.site.birth.hour")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
+      <span style={{ color: 'var(--muted2)', fontSize: 12 }}>{t('xoracle.day')}</span></label>
+      <span className="xoracle-birth-time"><select aria-label={`${label ?? ""} ${t("xoracle.site.birth.hour")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.h} onChange={e => onChange({ ...value, h: +e.target.value })}>
         {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}</option>)}
       </select>
       :
-      <select aria-label={`${label ?? ""} ${t("xtell.site.birth.minute")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
+      <select aria-label={`${label ?? ""} ${t("xoracle.site.birth.minute")}`} style={{ ...sel, opacity: value.hourUnknown ? 0.4 : 1 }} disabled={!!value.hourUnknown} value={value.mi} onChange={e => onChange({ ...value, mi: +e.target.value })}>
         {MINUTES.map(mi => <option key={mi} value={mi}>{String(mi).padStart(2, '0')}</option>)}
       </select>
       <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 10.5, letterSpacing: '0.12em', color: 'var(--muted2)' }}>{value.hourUnknown ? '—' : shichenOf(value.h)}</span></span>
       {allowUnknown && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', color: 'var(--muted)' }}>
           <input type="checkbox" checked={!!value.hourUnknown} onChange={e => onChange({ ...value, hourUnknown: e.target.checked })} />
-          {t('xtell.hourunknown')}
+          {t('xoracle.hourunknown')}
         </label>
       )}
       {(['male', 'female'] as const).map(g => (
         <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
           <input type="radio" checked={value.gender === g} onChange={() => onChange({ ...value, gender: g })} />
-          {t(`xtell.${g}`)}
+          {t(`xoracle.${g}`)}
         </label>
       ))}
       {dayBad && (
         <span id={dayMsg} role="alert" style={{ flexBasis: '100%', color: 'var(--red)', fontSize: 12, lineHeight: 1.6 }}>
-          {t('xtell.birth.dayInvalid').replace('{y}', String(value.y)).replace('{m}', String(value.m)).replace('{d}', String(value.d))}
+          {t('xoracle.birth.dayInvalid').replace('{y}', String(value.y)).replace('{m}', String(value.m)).replace('{d}', String(value.d))}
         </span>
       )}
     </div>
@@ -2465,8 +2465,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   return (
     <div style={{ display: 'grid', gap: 14 }}>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.qian.ask')}</div>
-        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.qian.ask.ph')} aria-label={t('xtell.qian.ask')}
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.qian.ask')}</div>
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.qian.ask.ph')} aria-label={t('xoracle.qian.ask')}
           disabled={ritual === 'confirmed'}
           style={{ width: '100%', background: '#ffffff', border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', color: 'var(--white)', fontSize: 14 }} />
       </div>
@@ -2477,18 +2477,18 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
       <div style={{ border: '1px dashed var(--border2)', borderRadius: 10, padding: bingOpen ? '10px 14px 12px' : '8px 14px' }}>
         <button type="button" onClick={() => setBingOpen(v => !v)} disabled={locked}
           style={{ border: 'none', background: 'none', padding: 0, cursor: locked ? 'default' : 'pointer', color: 'var(--muted)', fontSize: 12.5, fontWeight: 600 }}>
-          {bingOpen ? '▾' : '▸'} {t('xtell.qian.bing')}
+          {bingOpen ? '▾' : '▸'} {t('xoracle.qian.bing')}
         </button>
         {bingOpen && (
           <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-            <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.qian.bing.note')}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.qian.bing.note')}</div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input value={bing.name} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, name: e.target.value })} placeholder={t('xtell.qian.bing.name')} aria-label={t('xtell.qian.bing.name')} style={{ ...sel, flex: 1, minWidth: 160 }} />
-              <input value={bing.city} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, city: e.target.value })} placeholder={t('xtell.qian.bing.city')} aria-label={t('xtell.qian.bing.city')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+              <input value={bing.name} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, name: e.target.value })} placeholder={t('xoracle.qian.bing.name')} aria-label={t('xoracle.qian.bing.name')} style={{ ...sel, flex: 1, minWidth: 160 }} />
+              <input value={bing.city} maxLength={20} disabled={locked} onChange={e => setBing({ ...bing, city: e.target.value })} placeholder={t('xoracle.qian.bing.city')} aria-label={t('xoracle.qian.bing.city')} style={{ ...sel, flex: 1, minWidth: 160 }} />
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}>
               <input type="checkbox" checked={bing.withBirth} disabled={locked} onChange={e => setBing({ ...bing, withBirth: e.target.checked })} />
-              {t('xtell.qian.bing.birth')}
+              {t('xoracle.qian.bing.birth')}
             </label>
             {bing.withBirth && <BirthRow value={birth} onChange={setBirth} sel={sel} onFill={onFillBirth} />}
           </div>
@@ -2498,15 +2498,15 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', minHeight: 56 }}>
         {stick ? (
           <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800, letterSpacing: 2 }}>
-            {t('xtell.qian.stick')} {stick.n} {t('xtell.qian.stickunit')}
+            {t('xoracle.qian.stick')} {stick.n} {t('xoracle.qian.stickunit')}
           </div>
-        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t(jiao ? 'xtell.qian.rule' : 'xtell.qian.rule.omikuji')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t(jiao ? 'xtell.qian.random' : 'xtell.qian.random.omikuji')}</div></div>}
+        ) : <div style={{ fontSize: 13, color: 'var(--muted)' }}>{t(jiao ? 'xoracle.qian.rule' : 'xoracle.qian.rule.omikuji')}<div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 4, lineHeight: 1.6 }}>{t(jiao ? 'xoracle.qian.random' : 'xoracle.qian.random.omikuji')}</div></div>}
         {stick && jiao && (
           <div style={{ display: 'flex', gap: 6 }}>
             {Array.from({ length: CONFIRM_THROWS }, (_, i) => {
               const j = stick.throws[i]
               return (
-                <span key={i} title={j ? t('xtell.qian.jiao.' + jiaoKey[j]) : undefined} style={{
+                <span key={i} title={j ? t('xoracle.qian.jiao.' + jiaoKey[j]) : undefined} style={{
                   minWidth: 44, textAlign: 'center', padding: '5px 10px', borderRadius: 999, fontSize: 12.5, fontWeight: 700,
                   border: '1px solid ' + (j ? jiaoColour[j] : 'var(--border2)'), color: j ? jiaoColour[j] : 'var(--muted2)',
                   background: j === '聖筊' ? 'var(--green-dim)' : 'transparent',
@@ -2516,14 +2516,14 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
           </div>
         )}
         <span style={{ flex: 1 }} />
-        {ritual === 'idle' && <button onClick={onDraw} disabled={!!birthBad} style={{ ...pill('var(--red)'), opacity: birthBad ? 0.5 : 1, cursor: birthBad ? 'not-allowed' : 'pointer' }}>{t('xtell.qian.draw')}</button>}
-        {ritual === 'drawn' && <button onClick={onThrow} style={pill('var(--white)')}>{t('xtell.qian.throw')} {stick?.throws.length ?? 0}/{CONFIRM_THROWS}</button>}
-        {ritual === 'rejected' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xtell.qian.redraw')}</button>}
-        {ritual === 'confirmed' && jiao && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xtell.qian.confirmed')}</span>}
+        {ritual === 'idle' && <button onClick={onDraw} disabled={!!birthBad} style={{ ...pill('var(--red)'), opacity: birthBad ? 0.5 : 1, cursor: birthBad ? 'not-allowed' : 'pointer' }}>{t('xoracle.qian.draw')}</button>}
+        {ritual === 'drawn' && <button onClick={onThrow} style={pill('var(--white)')}>{t('xoracle.qian.throw')} {stick?.throws.length ?? 0}/{CONFIRM_THROWS}</button>}
+        {ritual === 'rejected' && <button onClick={onDraw} style={pill('var(--red)')}>{t('xoracle.qian.redraw')}</button>}
+        {ritual === 'confirmed' && jiao && <span style={{ fontSize: 13, color: 'var(--green)', fontWeight: 700 }}>{t('xoracle.qian.confirmed')}</span>}
       </div>
       {ritual === 'idle' && birthBad && <div role="alert" style={{ fontSize: 12.5, color: 'var(--red)' }}>{errorText(t, `birth_${birthBad}`, birthBad)}</div>}
-      {ritual === 'rejected' && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{t('xtell.qian.rejected')}</div>}
-      {stick && jiao && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.qian.rule')}</div>}
+      {ritual === 'rejected' && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>{t('xoracle.qian.rejected')}</div>}
+      {stick && jiao && ritual !== 'rejected' && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xoracle.qian.rule')}</div>}
     </div>
   )
 }
@@ -2541,13 +2541,13 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{t('xtell.history.stick').replace('{n}', String(qian.n))}　{qian.ganZhi}</div>
+        <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{t('xoracle.history.stick').replace('{n}', String(qian.n))}　{qian.ganZhi}</div>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: graded ? 18 : 14, fontWeight: graded ? 800 : 600, color: luckColour }}>{mazuLuck(t, lang, qian.luck)}</div>
         {qian.story && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{qian.story}</div>}
         <span style={{ flex: 1 }} />
-        <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xtell.site.focus.${temple}.name`),
-          kicker: [t('xtell.history.stick').replace('{n}', String(qian.n)), qian.ganZhi, qian.luck].filter(Boolean).join('　'),
-          body: qian.poem, style: 'poem', name: `xtell-${temple}-${qian.n}`, log: { kind: 'qian', temple } })} />
+        <ShareButton spec={() => ({ icon: temple, link: temple, title: t(`xoracle.site.focus.${temple}.name`),
+          kicker: [t('xoracle.history.stick').replace('{n}', String(qian.n)), qian.ganZhi, qian.luck].filter(Boolean).join('　'),
+          body: qian.poem, style: 'poem', name: `xoracle-${temple}-${qian.n}`, log: { kind: 'qian', temple } })} />
       </div>
       <div style={{ padding: '18px 16px', background: 'var(--surface2)', borderRadius: 10, textAlign: 'center' }}>
         {qian.poem.map((l: string, i: number) => (
@@ -2559,16 +2559,16 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
       {lang === 'ja' && qian.ja && Array.isArray(qian.ja.kundoku) && (
         <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
           <div>
-            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.qian.kundoku')}</div>
+            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.qian.kundoku')}</div>
             {qian.ja.kundoku.map((l: string, i: number) => <div key={i} style={{ fontSize: 14.5, lineHeight: 1.85 }}>{l}</div>)}
           </div>
           <div>
-            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.qian.modern')}</div>
+            <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.qian.modern')}</div>
             <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8, color: 'var(--muted)' }}>{qian.ja.modern}</p>
           </div>
         </div>
       )}
-      {Object.keys(qian.sections ?? {}).length > 0 && <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xtell.qian.notes.mazu' : 'xtell.qian.notes')}</div>}
+      {Object.keys(qian.sections ?? {}).length > 0 && <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 8px' }}>{t(temple === 'mazu' ? 'xoracle.qian.notes.mazu' : 'xoracle.qian.notes')}</div>}
       <div style={{ display: 'grid', gap: 10 }}>
         {Object.entries(qian.sections as Record<string, string>).map(([name, text]) => (
           // 媽祖's one section is its heading (「卦頭故事」 was printed twice).
@@ -2580,12 +2580,12 @@ function QianCard({ qian, temple, bazi, year, hourUnknown = false }: { qian: any
       </div>
       {bazi && (
         <div style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.qian.bing.head')}</div>
+          <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xoracle.qian.bing.head')}</div>
           <BaziBoard chart={bazi} hourUnknown={hourUnknown} />
           {year && <div style={{ marginTop: 8 }}><LiuNianLine year={year} /></div>}
         </div>
       )}
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xtell.qian.source.mazu' : temple === 'guanyin' ? `xtell.qian.source.guanyin.${asQianEdition(qian.edition)}` : 'xtell.qian.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(temple === 'mazu' ? 'xoracle.qian.source.mazu' : temple === 'guanyin' ? `xoracle.qian.source.guanyin.${asQianEdition(qian.edition)}` : 'xoracle.qian.source')}</div>
     </div>
   )
 }
@@ -2601,21 +2601,21 @@ function WishForm({ wishes, setWishes, aria }: { wishes: Wishes; setWishes: (w: 
   // each field is named by its face, not by a shared placeholder (F07).
   return (
     <div style={{ marginTop: 14, display: 'grid', gap: 10 }}>
-      <div id={`${id}-note`} style={{ fontSize: 12, color: bad ? 'var(--red)' : 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.face.note')}</div>
+      <div id={`${id}-note`} style={{ fontSize: 12, color: bad ? 'var(--red)' : 'var(--muted)', lineHeight: 1.6 }}>{t('xoracle.face.note')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
         {FACE_KEYS.map(k => (
           <div key={k}>
-            <div id={`${id}-${k}`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t(`xtell.face.${k}`)}</div>
+            <div id={`${id}-${k}`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t(`xoracle.face.${k}`)}</div>
             <textarea rows={2} value={wishes[k] ?? ''} onChange={e => setWishes({ ...wishes, [k]: e.target.value.slice(0, 400) })}
               aria-labelledby={`${id}-${k}`} aria-describedby={[`${id}-note`, bad ? aria?.describedBy : ''].filter(Boolean).join(' ')} aria-invalid={bad || undefined}
-              placeholder={t('xtell.wish.ph')} style={area} />
+              placeholder={t('xoracle.wish.ph')} style={area} />
           </div>
         ))}
       </div>
       <div>
-        <div id={`${id}-pledge`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t('xtell.pledge')}</div>
+        <div id={`${id}-pledge`} style={{ ...mono, color: 'var(--muted2)', marginBottom: 5 }}>{t('xoracle.pledge')}</div>
         <textarea rows={2} value={wishes.pledge ?? ''} onChange={e => setWishes({ ...wishes, pledge: e.target.value.slice(0, 400) })}
-          aria-labelledby={`${id}-pledge`} placeholder={t('xtell.pledge.ph')} style={{ ...area, border: '1px solid var(--border2)' }} />
+          aria-labelledby={`${id}-pledge`} placeholder={t('xoracle.pledge.ph')} style={{ ...area, border: '1px solid var(--border2)' }} />
       </div>
     </div>
   )
@@ -2630,16 +2630,16 @@ function WishBoard({ chart, wishes, year, hourUnknown = false }: { chart: any; w
       <BaziBoard chart={chart} hourUnknown={hourUnknown} />
       {year && <LiuNianLine year={year} />}
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.wishes.title')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.wishes.title')}</div>
         <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
           {FACE_KEYS.map(k => (
             <div key={k} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10 }}>
-              <span style={{ color: 'var(--muted)' }}>{t(`xtell.face.${k}`)}</span>
+              <span style={{ color: 'var(--muted)' }}>{t(`xoracle.face.${k}`)}</span>
               <span style={{ whiteSpace: 'pre-wrap' }}>{(wishes[k] ?? '').trim() || <span style={{ color: 'var(--muted2)' }}>—</span>}</span>
             </div>
           ))}
           <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10 }}>
-            <span style={{ color: 'var(--muted)' }}>{t('xtell.pledge')}</span>
+            <span style={{ color: 'var(--muted)' }}>{t('xoracle.pledge')}</span>
             <span style={{ whiteSpace: 'pre-wrap' }}>{(wishes.pledge ?? '').trim() || <span style={{ color: 'var(--muted2)' }}>—</span>}</span>
           </div>
         </div>
@@ -2669,43 +2669,43 @@ function SukuyoBoard({ chart }: { chart: any }) {
   const one = SHUKU_ONE[lang] ?? SHUKU_ONE.ja
   const rel = (r: string) => w.rel[r as keyof typeof w.rel] ?? r
   const tone = (r: string) => GOOD_DAY.has(r) ? 'is-good' : HARD_DAY.has(r) ? 'is-hard' : 'is-plain'
-  const lunar = (x: any) => t('xtell.sk.lunar').replace('{leap}', x.leap ? t('xtell.sk.leapMark') : '').replace('{m}', String(x.month)).replace('{d}', String(x.day))
+  const lunar = (x: any) => t('xoracle.sk.lunar').replace('{leap}', x.leap ? t('xoracle.sk.leapMark') : '').replace('{m}', String(x.month)).replace('{d}', String(x.day))
   // The 三九 table: from one's own 宿, three rows of nine (一九, 二九, 三九).
   const rows = [0, 1, 2].map(r => Array.from({ length: 9 }, (_, i) => (chart.own.index + r * 9 + i) % 27))
   return (
     <div style={{ display: 'grid', gap: 14 }}>
-      <div className="xtell-sk-head">
-        <div><small>{t('xtell.sk.own')}</small><strong>{w.shuku[chart.own.index]}</strong><span>{lunar(chart.own.lunar)}</span></div>
-        <div><small>{t('xtell.sk.today').replace('{date}', chart.today)}</small><strong>{w.shuku[chart.day.index]}</strong>
-          <span className={`xtell-sk-rel ${tone(chart.day.relation)}`}>{t('xtell.sk.dayOf').replace('{rel}', rel(chart.day.relation))}</span></div>
+      <div className="xoracle-sk-head">
+        <div><small>{t('xoracle.sk.own')}</small><strong>{w.shuku[chart.own.index]}</strong><span>{lunar(chart.own.lunar)}</span></div>
+        <div><small>{t('xoracle.sk.today').replace('{date}', chart.today)}</small><strong>{w.shuku[chart.day.index]}</strong>
+          <span className={`xoracle-sk-rel ${tone(chart.day.relation)}`}>{t('xoracle.sk.dayOf').replace('{rel}', rel(chart.day.relation))}</span></div>
       </div>
-      <p className="xtell-sk-meaning">{t(`xtell.sk.day.${chart.day.relation}`)}</p>
-      {chart.own.lunar.leap && <p className="xtell-ky-note">{t('xtell.sk.leap')}</p>}
+      <p className="xoracle-sk-meaning">{t(`xoracle.sk.day.${chart.day.relation}`)}</p>
+      {chart.own.lunar.leap && <p className="xoracle-ky-note">{t('xoracle.sk.leap')}</p>}
       {chart.partner && (
-        <div className="xtell-sk-partner">
-          <div><small>{t('xtell.sk.partnerOwn')}</small><strong>{w.shuku[chart.partner.index]}</strong><span>{chart.partner.date}</span></div>
-          <div><small>{t('xtell.sk.pair')}</small><strong>{w.pair[chart.partner.pair] ?? chart.partner.pair}</strong>
-            <span>{t('xtell.sk.fromMe').replace('{rel}', rel(chart.partner.fromMe))} · {t('xtell.sk.fromThem').replace('{rel}', rel(chart.partner.fromThem))}</span></div>
+        <div className="xoracle-sk-partner">
+          <div><small>{t('xoracle.sk.partnerOwn')}</small><strong>{w.shuku[chart.partner.index]}</strong><span>{chart.partner.date}</span></div>
+          <div><small>{t('xoracle.sk.pair')}</small><strong>{w.pair[chart.partner.pair] ?? chart.partner.pair}</strong>
+            <span>{t('xoracle.sk.fromMe').replace('{rel}', rel(chart.partner.fromMe))} · {t('xoracle.sk.fromThem').replace('{rel}', rel(chart.partner.fromThem))}</span></div>
         </div>
       )}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>{t('xtell.sk.ring')}</div>
-        <div className="xtell-sk-table" role="table" aria-label={t('xtell.sk.ring')}>
+        <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 6 }}>{t('xoracle.sk.ring')}</div>
+        <div className="xoracle-sk-table" role="table" aria-label={t('xoracle.sk.ring')}>
           {rows.map((row, r) => (
-            <div key={r} role="row" className="xtell-sk-row">
+            <div key={r} role="row" className="xoracle-sk-row">
               {row.map(i => (
-                <div key={i} role="cell" className={['xtell-sk-cell', tone(chart.ring[i]), i === chart.own.index ? 'is-own' : '', i === chart.day.index ? 'is-today' : '', chart.partner?.index === i ? 'is-partner' : ''].filter(Boolean).join(' ')}
+                <div key={i} role="cell" className={['xoracle-sk-cell', tone(chart.ring[i]), i === chart.own.index ? 'is-own' : '', i === chart.day.index ? 'is-today' : '', chart.partner?.index === i ? 'is-partner' : ''].filter(Boolean).join(' ')}
                   title={`${w.shuku[i]} · ${rel(chart.ring[i])}`}>
-                  <span className="xtell-sk-shuku">{one[i]}</span>
-                  <span className="xtell-sk-r">{rel(chart.ring[i])}</span>
+                  <span className="xoracle-sk-shuku">{one[i]}</span>
+                  <span className="xoracle-sk-r">{rel(chart.ring[i])}</span>
                 </div>
               ))}
             </div>
           ))}
         </div>
-        <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sk.legend')}</p>
+        <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.sk.legend')}</p>
       </div>
-      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sk.note')}</p>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.sk.note')}</p>
     </div>
   )
 }
@@ -2720,7 +2720,7 @@ function KyuseiBoard({ chart }: { chart: any }) {
   const w = kyWords(lang)
   const d = chart[which]
   const disc = (n: number, size: number) => (
-    <span className="xtell-ky-disc" style={{ width: size, height: size, background: STAR_COLOR[n], color: STAR_LIGHT[n] || n === 5 ? '#2b2622' : '#faf6ed', border: STAR_LIGHT[n] ? '1.5px solid #2b2622' : 'none', fontSize: size * 0.42 }}>{w.short[n].slice(0, lang === 'en' ? 1 : 1)}</span>
+    <span className="xoracle-ky-disc" style={{ width: size, height: size, background: STAR_COLOR[n], color: STAR_LIGHT[n] || n === 5 ? '#2b2622' : '#faf6ed', border: STAR_LIGHT[n] ? '1.5px solid #2b2622' : 'none', fontSize: size * 0.42 }}>{w.short[n].slice(0, lang === 'en' ? 1 : 1)}</span>
   )
   const tags = (dir: string): Array<{ k: string; bad: boolean }> => {
     const out: Array<{ k: string; bad: boolean }> = []
@@ -2729,44 +2729,44 @@ function KyuseiBoard({ chart }: { chart: any }) {
     else if (!out.length && d.good?.includes(dir)) out.push({ k: 'good', bad: false })
     return out
   }
-  const list = (dirs: string[]) => dirs.length ? dirs.map(x => w.dir[x as keyof typeof w.dir]).join(lang === 'en' ? ', ' : '・') : t('xtell.ky.none')
+  const list = (dirs: string[]) => dirs.length ? dirs.map(x => w.dir[x as keyof typeof w.dir]).join(lang === 'en' ? ', ' : '・') : t('xoracle.ky.none')
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div className="xtell-ky-stars">
-        <div>{disc(chart.honmei, 34)}<span><small>{t('xtell.ky.honmei')}</small>{w.star[chart.honmei]}</span></div>
-        <div>{disc(chart.getsumei, 34)}<span><small>{t('xtell.ky.getsumei')}</small>{w.star[chart.getsumei]}</span></div>
+      <div className="xoracle-ky-stars">
+        <div>{disc(chart.honmei, 34)}<span><small>{t('xoracle.ky.honmei')}</small>{w.star[chart.honmei]}</span></div>
+        <div>{disc(chart.getsumei, 34)}<span><small>{t('xoracle.ky.getsumei')}</small>{w.star[chart.getsumei]}</span></div>
       </div>
-      {chart.boundary?.year ? <p className="xtell-ky-note">{t('xtell.ky.boundaryYear').replace('{alt}', w.star[chart.boundary.year])}</p> : null}
-      {chart.boundary?.month ? <p className="xtell-ky-note">{t('xtell.ky.boundaryMonth').replace('{alt}', w.star[chart.boundary.month])}</p> : null}
-      <div className="xtell-ky-tabs" role="tablist">
+      {chart.boundary?.year ? <p className="xoracle-ky-note">{t('xoracle.ky.boundaryYear').replace('{alt}', w.star[chart.boundary.year])}</p> : null}
+      {chart.boundary?.month ? <p className="xoracle-ky-note">{t('xoracle.ky.boundaryMonth').replace('{alt}', w.star[chart.boundary.month])}</p> : null}
+      <div className="xoracle-ky-tabs" role="tablist">
         {(['year', 'month'] as const).map(k => (
-          <button key={k} type="button" role="tab" aria-selected={which === k} onClick={() => setWhich(k)}>{t(`xtell.ky.${k}`)}</button>
+          <button key={k} type="button" role="tab" aria-selected={which === k} onClick={() => setWhich(k)}>{t(`xoracle.ky.${k}`)}</button>
         ))}
-        <span className="xtell-ky-asof">{t('xtell.ky.asOf').replace('{date}', chart.today)}</span>
+        <span className="xoracle-ky-asof">{t('xoracle.ky.asOf').replace('{date}', chart.today)}</span>
       </div>
-      <div className="xtell-ky-board" role="table" aria-label={t(`xtell.ky.${which}`)}>
+      <div className="xoracle-ky-board" role="table" aria-label={t(`xoracle.ky.${which}`)}>
         {BOARD_LAYOUT.map((row, i) => (
-          <div key={i} role="row" className="xtell-ky-row">
+          <div key={i} role="row" className="xoracle-ky-row">
             {row.map(dir => {
               const n = d.board[dir]
               const tg = dir === 'C' ? [] : tags(dir)
               return (
-                <div key={dir} role="cell" className={['xtell-ky-cell', dir === 'C' ? 'is-center' : '', tg.some(x => x.bad) ? 'is-bad' : tg.length ? 'is-good' : '', n === chart.honmei ? 'is-own' : ''].filter(Boolean).join(' ')}>
-                  <span className="xtell-ky-dir">{w.dir[dir]}</span>
+                <div key={dir} role="cell" className={['xoracle-ky-cell', dir === 'C' ? 'is-center' : '', tg.some(x => x.bad) ? 'is-bad' : tg.length ? 'is-good' : '', n === chart.honmei ? 'is-own' : ''].filter(Boolean).join(' ')}>
+                  <span className="xoracle-ky-dir">{w.dir[dir]}</span>
                   {disc(n, 30)}
-                  <span className="xtell-ky-name">{w.short[n]}</span>
-                  {tg.map(x => <span key={x.k} className={x.bad ? 'xtell-ky-tag is-bad' : 'xtell-ky-tag is-good'}>{w.tag[x.k as keyof typeof w.tag]}</span>)}
+                  <span className="xoracle-ky-name">{w.short[n]}</span>
+                  {tg.map(x => <span key={x.k} className={x.bad ? 'xoracle-ky-tag is-bad' : 'xoracle-ky-tag is-good'}>{w.tag[x.k as keyof typeof w.tag]}</span>)}
                 </div>
               )
             })}
           </div>
         ))}
       </div>
-      <dl className="xtell-ky-sum">
-        <div><dt>{t('xtell.ky.bad')}</dt><dd>{list(d.bad ?? [])}</dd></div>
-        <div><dt>{t('xtell.ky.good')}</dt><dd>{d.blocked ? t('xtell.ky.blocked') : list(d.good ?? [])}</dd></div>
+      <dl className="xoracle-ky-sum">
+        <div><dt>{t('xoracle.ky.bad')}</dt><dd>{list(d.bad ?? [])}</dd></div>
+        <div><dt>{t('xoracle.ky.good')}</dt><dd>{d.blocked ? t('xoracle.ky.blocked') : list(d.good ?? [])}</dd></div>
       </dl>
-      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.ky.note')}</p>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.ky.note')}</p>
     </div>
   )
 }
@@ -2785,16 +2785,16 @@ function NavagrahaBoard({ chart }: { chart: any }) {
         {String(chart.utc).replace('T', ' ').slice(0, 16)} UTC · {chart.place} · Lahiri {Number(chart.ayanamsa).toFixed(2)}°
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.lagna')}</span>
+        <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xoracle.lagna')}</span>
         <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 22, fontWeight: 800 }}>{rasi(chart.lagna.rasi)} {dms(chart.lagna.deg)}</span>
         <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{nak(chart.lagna.nakshatra, chart.lagna.pada)}</span>
       </div>
-      <p className="xtell-scroll-hint" aria-hidden="true">{t('xtell.scrollHint')}</p>
+      <p className="xoracle-scroll-hint" aria-hidden="true">{t('xoracle.scrollHint')}</p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: 560 }}>
           <thead>
             <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
-              {[t('xtell.nav.col.graha'), t('xtell.nav.col.sign'), t('xtell.nav.col.deg'), t('xtell.nav.col.house'), 'Nakshatra · pada', 'D9'].map(h => <th key={h} style={{ padding: '4px 10px 6px 0', fontWeight: 500 }}>{h}</th>)}
+              {[t('xoracle.nav.col.graha'), t('xoracle.nav.col.sign'), t('xoracle.nav.col.deg'), t('xoracle.nav.col.house'), 'Nakshatra · pada', 'D9'].map(h => <th key={h} style={{ padding: '4px 10px 6px 0', fontWeight: 500 }}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -2811,7 +2811,7 @@ function NavagrahaBoard({ chart }: { chart: any }) {
           </tbody>
         </table>
       </div>
-      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 6px' }}>{t('xtell.dasha')}</div>
+      <div style={{ ...mono, color: 'var(--muted2)', margin: '14px 0 6px' }}>{t('xoracle.dasha')}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {chart.dasha.maha.map((p: any) => {
           const now = `${p.lord}${p.from}` === nowId
@@ -2819,16 +2819,16 @@ function NavagrahaBoard({ chart }: { chart: any }) {
             <span key={p.from} style={{
               padding: '4px 10px', borderRadius: 999, fontSize: 12,
               border: '1px solid ' + (now ? 'var(--red)' : 'var(--border2)'), color: now ? 'var(--red)' : 'var(--muted)', fontWeight: now ? 700 : 400,
-            }}>{grahaName(t, p.lord)} {ymd(p.from).slice(0, 4)}–{ymd(p.to).slice(0, 4)}{now ? ` · ${t('xtell.dasha.now')}` : ''}</span>
+            }}>{grahaName(t, p.lord)} {ymd(p.from).slice(0, 4)}–{ymd(p.to).slice(0, 4)}{now ? ` · ${t('xoracle.dasha.now')}` : ''}</span>
           )
         })}
       </div>
       {chart.dasha.currentAntar && (
         <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 8 }}>
-          {t('xtell.dasha.now')}：{grahaName(t, chart.dasha.current.lord)} / {grahaName(t, chart.dasha.currentAntar.lord)}　{ymd(chart.dasha.currentAntar.from)} – {ymd(chart.dasha.currentAntar.to)}
+          {t('xoracle.dasha.now')}：{grahaName(t, chart.dasha.current.lord)} / {grahaName(t, chart.dasha.currentAntar.lord)}　{ymd(chart.dasha.currentAntar.from)} – {ymd(chart.dasha.currentAntar.to)}
         </div>
       )}
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.nav.note')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.nav.note')}</div>
     </div>
   )
 }
@@ -2847,28 +2847,28 @@ function PlacePicker({ label, value, onChange, aria }: { label?: string; value: 
   const [q, setQ] = useState('')
   const inputId = useId()
   const chosen = placeOf(value)
-  const caption = `${label ? `${label} · ` : ''}${t('xtell.place')}`
+  const caption = `${label ? `${label} · ` : ''}${t('xoracle.place')}`
   if (chosen) return (
-    <div className="xtell-place-pick">
-      <span className="xtell-place-label">{caption}</span>
-      <span className="xtell-place-chosen">{placeLabel(chosen, lang)}</span>
-      <button type="button" className="xtell-place-change" onClick={() => { onChange(''); setQ('') }}>{t('xtell.place.change')}</button>
+    <div className="xoracle-place-pick">
+      <span className="xoracle-place-label">{caption}</span>
+      <span className="xoracle-place-chosen">{placeLabel(chosen, lang)}</span>
+      <button type="button" className="xoracle-place-change" onClick={() => { onChange(''); setQ('') }}>{t('xoracle.place.change')}</button>
     </div>
   )
   const typed = q.trim()
   const offered = typed ? searchPlaces(typed, lang, country) : placesFor(lang, country).slice(0, 6)
   return (
-    <div className="xtell-place-pick">
-      <label htmlFor={inputId} className="xtell-place-label">{caption}</label>
-      <input id={inputId} type="text" className="xtell-place-input" value={q} onChange={e => setQ(e.target.value.slice(0, 40))}
-        placeholder={t('xtell.place.search')} autoComplete="off" enterKeyHint="search"
+    <div className="xoracle-place-pick">
+      <label htmlFor={inputId} className="xoracle-place-label">{caption}</label>
+      <input id={inputId} type="text" className="xoracle-place-input" value={q} onChange={e => setQ(e.target.value.slice(0, 40))}
+        placeholder={t('xoracle.place.search')} autoComplete="off" enterKeyHint="search"
         aria-invalid={aria?.invalid || undefined} aria-describedby={aria?.invalid ? aria.describedBy : undefined} />
       {offered.length > 0 && (
-        <div className="xtell-place-options" role="group" aria-label={typed ? t('xtell.place.matches') : t('xtell.place.nearby')}>
+        <div className="xoracle-place-options" role="group" aria-label={typed ? t('xoracle.place.matches') : t('xoracle.place.nearby')}>
           {offered.map(p => <button key={p.key} type="button" onClick={() => { onChange(p.key); setQ('') }}>{placeLabel(p, lang)}</button>)}
         </div>
       )}
-      {typed && offered.length === 0 && <span className="xtell-place-none">{t('xtell.place.none')}</span>}
+      {typed && offered.length === 0 && <span className="xoracle-place-none">{t('xoracle.place.none')}</span>}
     </div>
   )
 }
@@ -2877,7 +2877,7 @@ function PlacePicker({ label, value, onChange, aria }: { label?: string; value: 
 // 「處女座」「巨蟹座」「月亮」 on a Japanese page). The engine keeps its Chinese
 // names for the teacher's facts; the board reads the string table.
 type Tr = (k: string) => string
-const sign = (t: Tr, i: number) => t(`xtell.sign.${i}`)
+const sign = (t: Tr, i: number) => t(`xoracle.sign.${i}`)
 // Relation words the engine writes in 繁體 for the teacher's facts (合盤
 // rows, 流年), shown in the page's language (a Japanese tester, Sep 29:
 // 「無特殊關係」「兩盤合看涵蓋」 on a Japanese page).
@@ -2932,13 +2932,13 @@ function mazuLuck(t: Tr, lang: string, luck: unknown): string {
   const raw = String(luck ?? '')
   if (lang === 'zh-Hant') return raw
   const m = raw.match(/^屬(.)利(.)\s+宜其(.+)$/)
-  return m ? t('xtell.qian.mazu.luck').replace('{el}', t(`xtell.el.${m[1]}`)).replace('{season}', t(`xtell.qian.mazu.season.${m[2]}`)).replace('{dir}', t(`xtell.qian.mazu.dir.${m[3]}`)) : raw
+  return m ? t('xoracle.qian.mazu.luck').replace('{el}', t(`xoracle.el.${m[1]}`)).replace('{season}', t(`xoracle.qian.mazu.season.${m[2]}`)).replace('{dir}', t(`xoracle.qian.mazu.dir.${m[3]}`)) : raw
 }
-const plName = (t: Tr, k: string) => (k in PLANET_ZH || k in POINT_ZH ? t(`xtell.pl.${k}`) : k)
+const plName = (t: Tr, k: string) => (k in PLANET_ZH || k in POINT_ZH ? t(`xoracle.pl.${k}`) : k)
 // 九曜: the rasi keep their Chinese names on 繁體 pages (白羊, not 牡羊座),
 // elsewhere the page's own sign names; the grahas and the mansions likewise.
-const rasiName = (t: Tr, lang: string, i: number) => (lang === 'zh-Hant' ? RASI[i][1] : t(`xtell.sign.${i}`))
-const grahaName = (t: Tr, g: string) => t(`xtell.pl.${g}`)
+const rasiName = (t: Tr, lang: string, i: number) => (lang === 'zh-Hant' ? RASI[i][1] : t(`xoracle.sign.${i}`))
+const grahaName = (t: Tr, g: string) => t(`xoracle.pl.${g}`)
 const nakName = (lang: string, i: number) => { const n = `${NAKSHATRA[i][1]}宿`; return lang === 'ja' ? n.replace('參', '参').replace('虛', '虚') : n }
 /** One sign, or both of a transition day's when the hour is unknown. Reads
  *  the engine's daySigns; `moonSigns` is the short-lived earlier shape of the
@@ -3013,17 +3013,17 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
   // sign; the Ascendant, which used to lead the board, was being read as the
   // answer (Codex QA, Sep 25).
   const big: Array<[string, string, string]> = [
-    ['sun', signLabelC(t, c, 'Sun'), t('xtell.astro.sun.meaning')],
-    ['moon', signLabelC(t, c, 'Moon'), t('xtell.astro.moon.meaning')],
-    ['asc', unknown ? t('xtell.astro.needstime') : sign(t, Math.floor(c.angles.asc / 30)), t('xtell.astro.asc.meaning')],
+    ['sun', signLabelC(t, c, 'Sun'), t('xoracle.astro.sun.meaning')],
+    ['moon', signLabelC(t, c, 'Moon'), t('xoracle.astro.moon.meaning')],
+    ['asc', unknown ? t('xoracle.astro.needstime') : sign(t, Math.floor(c.angles.asc / 30)), t('xoracle.astro.asc.meaning')],
   ]
   const planetTable = (<>
-    <p className="xtell-scroll-hint" aria-hidden="true">{t('xtell.scrollHint')}</p>
+    <p className="xoracle-scroll-hint" aria-hidden="true">{t('xoracle.scrollHint')}</p>
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', fontSize: 12.5, minWidth: unknown ? 340 : 420 }}>
         <thead>
           <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
-            {[t('xtell.astro.body'), t('xtell.astro.sign'), t('xtell.astro.deg'), ...(unknown ? [] : [t('xtell.astro.house')])].map(h =>
+            {[t('xoracle.astro.body'), t('xoracle.astro.sign'), t('xoracle.astro.deg'), ...(unknown ? [] : [t('xoracle.astro.house')])].map(h =>
               <th key={h} style={{ padding: '4px 14px 6px 0', fontWeight: 500 }}>{h}</th>)}
           </tr>
         </thead>
@@ -3050,14 +3050,14 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
     <div>
       <div style={{ fontFamily: 'var(--font-display), serif', fontSize: compact ? 16 : 21, fontWeight: 800, lineHeight: 1.3 }}>
         {sunSigns.length > 1
-          ? t('xtell.astro.sunsign.either').replace('{a}', sign(t, sunSigns[0])).replace('{b}', sign(t, sunSigns[1]))
-          : t('xtell.astro.sunsign.is').replace('{sign}', sign(t, sunSigns[0]))}
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted2)', marginLeft: 8, fontFamily: 'var(--font-body), sans-serif' }}>{t('xtell.astro.sunsign.note')}</span>
+          ? t('xoracle.astro.sunsign.either').replace('{a}', sign(t, sunSigns[0])).replace('{b}', sign(t, sunSigns[1]))
+          : t('xoracle.astro.sunsign.is').replace('{sign}', sign(t, sunSigns[0]))}
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted2)', marginLeft: 8, fontFamily: 'var(--font-body), sans-serif' }}>{t('xoracle.astro.sunsign.note')}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: compact ? 'repeat(3, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '10px 0' }}>
         {big.map(([k, v, m]) => (
           <div key={k} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '8px 12px', minWidth: 0 }}>
-            <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.astro.big.' + k)}</div>
+            <div style={{ ...mono, color: 'var(--muted2)' }}>{t('xoracle.astro.big.' + k)}</div>
             <div style={{ fontFamily: 'var(--font-display), serif', fontSize: compact ? 15 : 18, fontWeight: 800 }}>{v}</div>
             {!compact && <div style={{ fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.5, marginTop: 2 }}>{m}</div>}
           </div>
@@ -3065,22 +3065,22 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
       </div>
       {twoBodies.length > 0 && (
         <div style={{ fontSize: 12, color: 'var(--white)', lineHeight: 1.6, margin: '-2px 0 8px' }}>
-          {t('xtell.astro.daysigns.note').replace('{bodies}', twoBodies.join('、'))}
+          {t('xoracle.astro.daysigns.note').replace('{bodies}', twoBodies.join('、'))}
         </div>
       )}
       {/* The birth as entered: local wall time and place. UTC, which is what
           the ephemeris was read at, sits inside the full chart below. */}
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-        {local.stamp} · {c.place}（{local.offset}）{unknown ? ` · ${t('xtell.astro.unknown.short')}` : ''}
+        {local.stamp} · {c.place}（{local.offset}）{unknown ? ` · ${t('xoracle.astro.unknown.short')}` : ''}
       </div>
 
       {compact ? planetTable : (
         <>
           <details>
-            <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.full')}</summary>
+            <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.astro.full')}</summary>
             <div style={{ marginTop: 10 }}>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-                {String(c.utc).replace('T', ' ').slice(0, 16)} UTC · {c.system === 'placidus' ? 'Placidus' : t('xtell.astro.equal')}
+                {String(c.utc).replace('T', ' ').slice(0, 16)} UTC · {c.system === 'placidus' ? 'Placidus' : t('xoracle.astro.equal')}
               </div>
               {!unknown && (
                 <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'baseline', marginBottom: 12 }}>
@@ -3092,14 +3092,14 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
                     </span>
                   ))}
                   <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    {t('xtell.astro.ruler')} {c.chartRuler ? plName(t, c.chartRuler) : '—'} · {t(`xtell.astro.sect.${c.sect}`)}
+                    {t('xoracle.astro.ruler')} {c.chartRuler ? plName(t, c.chartRuler) : '—'} · {t(`xoracle.astro.sect.${c.sect}`)}
                   </span>
                 </div>
               )}
               {planetTable}
               {!unknown && (
                 <>
-                  <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.cusps')}</div>
+                  <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xoracle.astro.cusps')}</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {c.cusps.map((x: number, i: number) => (
                       <span key={i} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
@@ -3111,10 +3111,10 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
                 </>
               )}
               <div style={{ display: 'flex', gap: 34, flexWrap: 'wrap', margin: '18px 0 4px' }}>
-                <Bars title={t('xtell.astro.elements')} data={c.balance.elements} keys={ELEMENTS} label={k => t(`xtell.astro.el.${ELEMENTS.indexOf(k as any)}`)} />
-                <Bars title={t('xtell.astro.modalities')} data={c.balance.modalities} keys={MODALITIES} label={k => t(`xtell.astro.mod.${MODALITIES.indexOf(k as any)}`)} />
+                <Bars title={t('xoracle.astro.elements')} data={c.balance.elements} keys={ELEMENTS} label={k => t(`xoracle.astro.el.${ELEMENTS.indexOf(k as any)}`)} />
+                <Bars title={t('xoracle.astro.modalities')} data={c.balance.modalities} keys={MODALITIES} label={k => t(`xoracle.astro.mod.${MODALITIES.indexOf(k as any)}`)} />
               </div>
-              <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xtell.astro.aspects')}</div>
+              <div style={{ ...mono, color: 'var(--muted2)', margin: '16px 0 6px' }}>{t('xoracle.astro.aspects')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {/* The engine no longer emits angle or Moon aspects for an
                     unknown hour; the filter covers charts saved before it did. */}
@@ -3123,9 +3123,9 @@ function NatalTable({ c, compact }: { c: any; compact?: boolean }) {
             </div>
           </details>
           <details style={{ marginTop: 8 }}>
-            <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.glossary')}</summary>
+            <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.astro.glossary')}</summary>
             <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
-              {['house', 'placidus', 'ruler', 'sect', 'retro', 'aspects'].map(k => <li key={k}>{t('xtell.astro.gloss.' + k)}</li>)}
+              {['house', 'placidus', 'ruler', 'sect', 'retro', 'aspects'].map(k => <li key={k}>{t('xoracle.astro.gloss.' + k)}</li>)}
             </ul>
           </details>
         </>
@@ -3149,14 +3149,14 @@ function ZhanxingBoard({ chart }: { chart: any }) {
     return (
       <div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 22 }}>
-          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person1')}</div><NatalTable c={c} compact /></div>
-          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.person2')}</div><NatalTable c={chart.natal2} compact /></div>
+          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.person1')}</div><NatalTable c={c} compact /></div>
+          <div><div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.person2')}</div><NatalTable c={chart.natal2} compact /></div>
         </div>
-        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.inter')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xoracle.astro.inter')}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {s.inter.slice(0, 30).map((a: any, i: number) => <AspectChip key={i} a={a} prefix={['①', '②']} />)}
         </div>
-        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.composite')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xoracle.astro.composite')}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {s.composite.planets.slice(0, 10).map((p: any) => (
             <span key={p.body} style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 11.5, color: 'var(--muted)' }}>
@@ -3164,7 +3164,7 @@ function ZhanxingBoard({ chart }: { chart: any }) {
             </span>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.synastry.note')}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.astro.synastry.note')}</div>
       </div>
     )
   }
@@ -3175,22 +3175,22 @@ function ZhanxingBoard({ chart }: { chart: any }) {
       <div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', marginBottom: 10 }}>
           <span style={{ ...mono, color: 'var(--muted2)' }}>{d.date}</span>
-          <span style={{ fontSize: 13 }}>{t('xtell.astro.moontoday')} <b>{sign(t, d.moonSign)}</b></span>
+          <span style={{ fontSize: 13 }}>{t('xoracle.astro.moontoday')} <b>{sign(t, d.moonSign)}</b></span>
           <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>
             {d.retro.length
-              ? `${t('xtell.astro.retro')}：${d.retro.map((p: string) => plName(t, p)).join('、')}`
-              : t('xtell.astro.noretro')}
+              ? `${t('xoracle.astro.retro')}：${d.retro.map((p: string) => plName(t, p)).join('、')}`
+              : t('xoracle.astro.noretro')}
           </span>
         </div>
         {/* An empty list is a real answer, and saying so is the difference
             between a transit reading and a horoscope column. */}
         {d.list.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--muted)', padding: '14px 0' }}>{t('xtell.astro.notransits')}</div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', padding: '14px 0' }}>{t('xoracle.astro.notransits')}</div>
         ) : (
           <table style={{ borderCollapse: 'collapse', fontSize: 12.5, width: '100%' }}>
             <thead>
               <tr style={{ ...mono, color: 'var(--muted2)', textAlign: 'left' }}>
-                {[t('xtell.astro.transit'), t('xtell.astro.natalpt'), t('xtell.astro.orb'), t('xtell.astro.exact')].map(h =>
+                {[t('xoracle.astro.transit'), t('xoracle.astro.natalpt'), t('xoracle.astro.orb'), t('xoracle.astro.exact')].map(h =>
                   <th key={h} style={{ padding: '4px 12px 6px 0', fontWeight: 500 }}>{h}</th>)}
               </tr>
             </thead>
@@ -3211,10 +3211,10 @@ function ZhanxingBoard({ chart }: { chart: any }) {
           </table>
         )}
         <details style={{ marginTop: 16 }}>
-          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.natalchart')}</summary>
+          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.astro.natalchart')}</summary>
           <div style={{ marginTop: 12 }}><NatalTable c={c} /></div>
         </details>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.astro.today.note')}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.astro.today.note')}</div>
       </div>
     )
   }
@@ -3224,12 +3224,12 @@ function ZhanxingBoard({ chart }: { chart: any }) {
     return (
       <div>
         <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
-          {year} · {c.hourUnknown ? `${String(ret.utc).slice(0, 10)}（${t('xtell.astro.needstime')}）` : `${String(ret.utc).replace('T', ' ').slice(0, 16)} UTC`}
+          {year} · {c.hourUnknown ? `${String(ret.utc).slice(0, 10)}（${t('xoracle.astro.needstime')}）` : `${String(ret.utc).replace('T', ' ').slice(0, 16)} UTC`}
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xtell.astro.srasc')}</span>
+          <span style={{ ...mono, color: 'var(--muted2)' }}>{t('xoracle.astro.srasc')}</span>
           {c.hourUnknown ? (
-            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xtell.astro.needstime')}</span>
+            <span style={{ fontSize: 13, color: 'var(--muted)' }}>{t('xoracle.astro.needstime')}</span>
           ) : (
             <>
               <span style={{ fontFamily: 'var(--font-display), serif', fontSize: 20, fontWeight: 800 }}>{sign(t, Math.floor(ret.asc / 30))}</span>
@@ -3245,13 +3245,13 @@ function ZhanxingBoard({ chart }: { chart: any }) {
             </span>
           ))}
         </div>
-        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xtell.astro.prog')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', margin: '18px 0 6px' }}>{t('xoracle.astro.prog')}</div>
         <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-          {t('xtell.astro.progsun')} <b>{sign(t, prog.sun.sign)} {c.hourUnknown ? `${Math.round(prog.sun.deg)}°` : `${prog.sun.deg.toFixed(1)}°`}</b>　·　
-          {t('xtell.astro.progmoon')} <b>{sign(t, prog.moon.sign)}{c.hourUnknown ? '' : ` ${prog.moon.deg.toFixed(1)}°`}</b>
+          {t('xoracle.astro.progsun')} <b>{sign(t, prog.sun.sign)} {c.hourUnknown ? `${Math.round(prog.sun.deg)}°` : `${prog.sun.deg.toFixed(1)}°`}</b>　·　
+          {t('xoracle.astro.progmoon')} <b>{sign(t, prog.moon.sign)}{c.hourUnknown ? '' : ` ${prog.moon.deg.toFixed(1)}°`}</b>
           {c.hourUnknown
-            ? <span style={{ color: 'var(--muted)' }}> (±6°, {t('xtell.astro.needstime')})</span>
-            : <span style={{ color: 'var(--muted)' }}> ({t('xtell.astro.house')} {prog.moon.house})</span>}
+            ? <span style={{ color: 'var(--muted)' }}> (±6°, {t('xoracle.astro.needstime')})</span>
+            : <span style={{ color: 'var(--muted)' }}> ({t('xoracle.astro.house')} {prog.moon.house})</span>}
         </div>
         {prog.aspects.length > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
@@ -3259,10 +3259,10 @@ function ZhanxingBoard({ chart }: { chart: any }) {
           </div>
         )}
         <details style={{ marginTop: 16 }}>
-          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.natalchart')}</summary>
+          <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.astro.natalchart')}</summary>
           <div style={{ marginTop: 12 }}><NatalTable c={c} /></div>
         </details>
-        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(c.hourUnknown ? 'xtell.astro.year.note.unknown' : 'xtell.astro.year.note')}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t(c.hourUnknown ? 'xoracle.astro.year.note.unknown' : 'xoracle.astro.year.note')}</div>
       </div>
     )
   }
@@ -3271,8 +3271,8 @@ function ZhanxingBoard({ chart }: { chart: any }) {
     <div>
       <NatalTable c={c} />
       <details style={{ marginTop: 8 }}>
-        <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xtell.astro.method')}</summary>
-        <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 6, lineHeight: 1.6 }}>{t('xtell.astro.natal.note')}</div>
+        <summary style={{ ...mono, color: 'var(--muted2)', cursor: 'pointer' }}>{t('xoracle.astro.method')}</summary>
+        <div style={{ fontSize: 11.5, color: 'var(--muted2)', marginTop: 6, lineHeight: 1.6 }}>{t('xoracle.astro.natal.note')}</div>
       </details>
     </div>
   )
@@ -3293,24 +3293,24 @@ function NameForm({ surname, given, gender, onSurname, onGiven, onGender, sel, s
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
-          {t('xtell.surname')}
+          {t('xoracle.surname')}
           {/* No length cap while typing: a Japanese or Korean IME holds the
               reading (さとう, 3 kana) before it becomes 佐藤, and cutting it at
               the limit broke the conversion. The length is checked on send. */}
           <input value={surname} onChange={e => onSurname(e.target.value)} {...mark(surnameAria)} />
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
-          {t('xtell.given')}
+          {t('xoracle.given')}
           <input value={given} onChange={e => onGiven(e.target.value)} {...mark(givenAria)} />
         </label>
         {(['male', 'female'] as const).map(g => (
           <label key={g} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
             <input type="radio" checked={gender === g} onChange={() => onGender(g)} />
-            {t(`xtell.${g}`)}
+            {t(`xoracle.${g}`)}
           </label>
         ))}
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.name.note')}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.name.note')}</div>
     </div>
   )
 }
@@ -3330,29 +3330,29 @@ function NameBoard({ chart }: { chart: any }) {
   const ge: any[] = Object.values(chart.ge)
   return (
     <div>
-      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.name.chars')}</div>
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xoracle.name.chars')}</div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
         {chars.map((c: any, i: number) => (
           <div key={i} style={{ border: '1px solid var(--border2)', borderRadius: 10, padding: '10px 14px', textAlign: 'center', minWidth: 72 }}>
             <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 30, fontWeight: 800 }}>{c.ch}</div>
             <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 13, fontWeight: 700 }}>{c.strokes}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.kana ? t('xtell.name.kana') : `${c.radical}部`}</div>
-            {showOld && c.old && <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{t('xtell.name.old').replace('{ch}', c.old.ch).replace('{n}', String(c.old.strokes))}</div>}
+            <div style={{ fontSize: 10.5, color: 'var(--muted2)' }}>{c.kana ? t('xoracle.name.kana') : `${c.radical}部`}</div>
+            {showOld && c.old && <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{t('xoracle.name.old').replace('{ch}', c.old.ch).replace('{n}', String(c.old.strokes))}</div>}
           </div>
         ))}
       </div>
-      {showOld && <p style={{ margin: '-6px 0 14px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xtell.name.oldNote')}</p>}
-      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xtell.name.grids')}</div>
+      {showOld && <p style={{ margin: '-6px 0 14px', fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.6 }}>{t('xoracle.name.oldNote')}</p>}
+      <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 8 }}>{t('xoracle.name.grids')}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 14 }}>
         {ge.map(g => (
           <div key={g.key} style={{ border: '1px solid ' + (g.key === 'ren' ? 'var(--red)' : 'var(--border2)'), borderRadius: 10, padding: '10px 12px', background: g.key === 'ren' ? 'var(--surface2)' : 'transparent' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <b style={{ fontSize: 12.5 }}>{tOr(t, `xtell.name.ge.${g.key}`, g.label)}</b>
+              <b style={{ fontSize: 12.5 }}>{tOr(t, `xoracle.name.ge.${g.key}`, g.label)}</b>
               <span style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 20, fontWeight: 800 }}>{g.n}</span>
             </div>
             <div style={{ fontSize: 12, marginTop: 4 }}>
-              <span style={{ color: 'var(--muted)' }}>{tOr(t, `xtell.el.${g.wuxing}`, g.wuxing)}　</span>
-              <span style={{ fontWeight: 700, color: luckColour[g.shuli.luck] ?? 'var(--muted)' }}>{tOr(t, `xtell.name.luck.${g.shuli.luck}`, g.shuli.luck)}</span>
+              <span style={{ color: 'var(--muted)' }}>{tOr(t, `xoracle.el.${g.wuxing}`, g.wuxing)}　</span>
+              <span style={{ fontWeight: 700, color: luckColour[g.shuli.luck] ?? 'var(--muted)' }}>{tOr(t, `xoracle.name.luck.${g.shuli.luck}`, g.shuli.luck)}</span>
               {/* The 81 數理 keyword is a Chinese idiom (「寶馬金鞍」): Chinese pages only. */}
               <span style={{ color: 'var(--muted)' }}>　{chinese ? g.shuli.name : ''}{g.n !== g.shuli.n ? `（${g.shuli.n}）` : ''}</span>
             </div>
@@ -3360,12 +3360,12 @@ function NameBoard({ chart }: { chart: any }) {
         ))}
       </div>
       <div style={{ fontSize: 13 }}>
-        <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.sancai')}</span>
-        <span style={{ color: 'var(--muted)' }}>{t('xtell.name.sancai.line')
-          .replace('{a}', tOr(t, `xtell.el.${chart.sancai.tian}`, chart.sancai.tian)).replace(/\{b\}/g, tOr(t, `xtell.el.${chart.sancai.ren}`, chart.sancai.ren)).replace('{c}', tOr(t, `xtell.el.${chart.sancai.di}`, chart.sancai.di))
-          .replace('{r1}', tOr(t, `xtell.name.rel.${chart.sancai.tianRen}`, chart.sancai.tianRen)).replace('{r2}', tOr(t, `xtell.name.rel.${chart.sancai.renDi}`, chart.sancai.renDi))}　{t(`xtell.name.sancai.${sancaiKey}`)}</span>
+        <span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.name.sancai')}</span>
+        <span style={{ color: 'var(--muted)' }}>{t('xoracle.name.sancai.line')
+          .replace('{a}', tOr(t, `xoracle.el.${chart.sancai.tian}`, chart.sancai.tian)).replace(/\{b\}/g, tOr(t, `xoracle.el.${chart.sancai.ren}`, chart.sancai.ren)).replace('{c}', tOr(t, `xoracle.el.${chart.sancai.di}`, chart.sancai.di))
+          .replace('{r1}', tOr(t, `xoracle.name.rel.${chart.sancai.tianRen}`, chart.sancai.tianRen)).replace('{r2}', tOr(t, `xoracle.name.rel.${chart.sancai.renDi}`, chart.sancai.renDi))}　{t(`xoracle.name.sancai.${sancaiKey}`)}</span>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.name.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.name.source')}</div>
     </div>
   )
 }
@@ -3378,15 +3378,15 @@ function CeziForm({ ch, setCh, ask, setAsk, sel, charAria }: { ch: string; setCh
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700 }}>
-          {t('xtell.cezi.char')}
-          <input value={ch} maxLength={1} onChange={e => setCh(e.target.value.replace(/\s/g, '').slice(0, 1))} placeholder={t('xtell.cezi.char.ph')}
+          {t('xoracle.cezi.char')}
+          <input value={ch} maxLength={1} onChange={e => setCh(e.target.value.replace(/\s/g, '').slice(0, 1))} placeholder={t('xoracle.cezi.char.ph')}
             aria-invalid={charAria?.invalid || undefined} aria-describedby={charAria?.invalid ? charAria.describedBy : undefined}
             style={{ ...sel, width: 72, fontSize: 28, fontFamily: 'var(--font-display), serif', textAlign: 'center', ...(charAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
         </label>
-        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.cezi.ask.ph')} aria-label={t('xtell.qian.ask')}
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.cezi.ask.ph')} aria-label={t('xoracle.qian.ask')}
           style={{ ...sel, flex: 1, minWidth: 240 }} />
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.cezi.note')}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.cezi.note')}</div>
     </div>
   )
 }
@@ -3399,13 +3399,13 @@ function CeziBoard({ info, ask }: { info: any; ask: string }) {
       <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ fontFamily: 'var(--font-display), serif', fontSize: 72, fontWeight: 800, lineHeight: 1, padding: '10px 18px', background: 'var(--surface2)', borderRadius: 12 }}>{info.ch}</div>
         <div style={{ fontSize: 13, lineHeight: 1.9 }}>
-          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.cezi.radical')}</span>{info.radical}部（{info.radicalStrokes}{lang === 'ja' ? '画' : lang === 'zh-Hans' ? '画' : lang === 'ko' ? '획' : lang === 'en' ? ' strokes' : '畫'}）</div>
-          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.name.chars')}</span>{info.strokes}</div>
-          {lang === 'ja' && info.old && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xtell.name.old').replace('{ch}', info.old.ch).replace('{n}', String(info.old.strokes))}</div>}
-          {ask && <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.qian.ask')}</span>{ask}</div>}
+          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.cezi.radical')}</span>{info.radical}部（{info.radicalStrokes}{lang === 'ja' ? '画' : lang === 'zh-Hans' ? '画' : lang === 'ko' ? '획' : lang === 'en' ? ' strokes' : '畫'}）</div>
+          <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.name.chars')}</span>{info.strokes}</div>
+          {lang === 'ja' && info.old && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{t('xoracle.name.old').replace('{ch}', info.old.ch).replace('{n}', String(info.old.strokes))}</div>}
+          {ask && <div><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.qian.ask')}</span>{ask}</div>}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xtell.cezi.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', marginTop: 12, lineHeight: 1.6 }}>{t('xoracle.cezi.source')}</div>
     </div>
   )
 }
@@ -3418,14 +3418,14 @@ function DreamForm({ dream, setDream, ask, setAsk, sel, dreamAria }: { dream: st
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
-        {t('xtell.jiemeng.dream')}
-        <textarea value={dream} rows={5} maxLength={DREAM_MAX} onChange={e => setDream(e.target.value.slice(0, DREAM_MAX))} placeholder={t('xtell.jiemeng.dream.ph')}
+        {t('xoracle.jiemeng.dream')}
+        <textarea value={dream} rows={5} maxLength={DREAM_MAX} onChange={e => setDream(e.target.value.slice(0, DREAM_MAX))} placeholder={t('xoracle.jiemeng.dream.ph')}
           aria-invalid={dreamAria?.invalid || undefined} aria-describedby={dreamAria?.invalid ? dreamAria.describedBy : undefined}
           style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.7, resize: 'vertical', ...(dreamAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
       </label>
-      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.jiemeng.ask.ph')} aria-label={t('xtell.jiemeng.ask')}
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.jiemeng.ask.ph')} aria-label={t('xoracle.jiemeng.ask')}
         style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
-      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.jiemeng.note')}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.jiemeng.note')}</div>
     </div>
   )
 }
@@ -3438,14 +3438,14 @@ function SunziForm({ situation, setSituation, ask, setAsk, sel, situationAria }:
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
-        {t('xtell.sunzi.situation')}
-        <textarea value={situation} rows={5} maxLength={SITUATION_MAX} onChange={e => setSituation(e.target.value.slice(0, SITUATION_MAX))} placeholder={t('xtell.sunzi.situation.ph')}
+        {t('xoracle.sunzi.situation')}
+        <textarea value={situation} rows={5} maxLength={SITUATION_MAX} onChange={e => setSituation(e.target.value.slice(0, SITUATION_MAX))} placeholder={t('xoracle.sunzi.situation.ph')}
           aria-invalid={situationAria?.invalid || undefined} aria-describedby={situationAria?.invalid ? situationAria.describedBy : undefined}
           style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.7, resize: 'vertical', ...(situationAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
       </label>
-      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.sunzi.ask.ph')} aria-label={t('xtell.sunzi.ask')}
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.sunzi.ask.ph')} aria-label={t('xoracle.sunzi.ask')}
         style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
-      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sunzi.note')}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.sunzi.note')}</div>
     </div>
   )
 }
@@ -3466,27 +3466,27 @@ function TarotPanel({ ask, setAsk, spread, setSpread, opts, setOpts, onDeal, ent
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
-        {t('xtell.tarot.ask')}
-        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xtell.tarot.ask.ph')} disabled={entering}
+        {t('xoracle.tarot.ask')}
+        <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.tarot.ask.ph')} disabled={entering}
           style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400 }} />
       </label>
-      <div role="radiogroup" aria-label={t('xtell.tarot.spread')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span style={{ fontSize: 12.5, fontWeight: 700, marginRight: 4 }}>{t('xtell.tarot.spread')}</span>
+      <div role="radiogroup" aria-label={t('xoracle.tarot.spread')} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, marginRight: 4 }}>{t('xoracle.tarot.spread')}</span>
         {SPREAD_KEYS.map(k => (
           <button key={k} type="button" role="radio" aria-checked={spread === k} disabled={entering} onClick={() => setSpread(k)}
-            className={'xtell-tarot-spread' + (spread === k ? ' is-on' : '')}>
-            {t(`xtell.tarot.spread.${k}`)}<small>{t(`xtell.tarot.spread.${k}.sub`)}</small>
+            className={'xoracle-tarot-spread' + (spread === k ? ' is-on' : '')}>
+            {t(`xoracle.tarot.spread.${k}`)}<small>{t(`xoracle.tarot.spread.${k}.sub`)}</small>
           </button>
         ))}
       </div>
       {/* 二擇一 (Oct 1): name the two roads, so the cards and the teacher
           can speak of them; both optional. */}
       {spread === 'choice' && (
-        <div className="xtell-tarot-opts">
+        <div className="xoracle-tarot-opts">
           {(['a', 'b'] as const).map(k => (
             <label key={k} style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
-              {t(`xtell.tarot.opt.${k}`)}
-              <input value={opts[k]} onChange={e => setOpts({ ...opts, [k]: e.target.value.slice(0, OPTION_MAX) })} placeholder={t(`xtell.tarot.opt.${k}.ph`)} disabled={entering}
+              {t(`xoracle.tarot.opt.${k}`)}
+              <input value={opts[k]} onChange={e => setOpts({ ...opts, [k]: e.target.value.slice(0, OPTION_MAX) })} placeholder={t(`xoracle.tarot.opt.${k}.ph`)} disabled={entering}
                 style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400 }} />
             </label>
           ))}
@@ -3494,9 +3494,9 @@ function TarotPanel({ ask, setAsk, spread, setSpread, opts, setOpts, onDeal, ent
       )}
       {extra}
       {/* A new spread starts the ritual again. */}
-      <TarotRitual key={spread} spread={spread} count={SPREADS[spread].length} keys={[...SPREADS[spread]]} positions={SPREADS[spread].map(p => t(`xtell.tarot.pos.${p}`))}
+      <TarotRitual key={spread} spread={spread} count={SPREADS[spread].length} keys={[...SPREADS[spread]]} positions={SPREADS[spread].map(p => t(`xoracle.tarot.pos.${p}`))}
         ask={ask} disabled={entering} rand={cryptoRand} onDone={onDeal} />
-      <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.note')}</span>
+      <span style={{ fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.tarot.note')}</span>
     </div>
   )
 }
@@ -3508,40 +3508,40 @@ function TarotBoard({ chart }: { chart: any }) {
   const laid = asSpread(chart?.spread)
   const options = laid === 'choice' && chart?.options ? chart.options as TarotOptions : null
   const name = (c: { names: Record<string, string> }) => c.names?.[lang] ?? c.names?.en ?? ''
-  const turn = (c: { reversed: boolean }) => t(c.reversed ? 'xtell.tarot.reversed' : 'xtell.tarot.upright')
+  const turn = (c: { reversed: boolean }) => t(c.reversed ? 'xoracle.tarot.reversed' : 'xoracle.tarot.upright')
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ ...mono, color: 'var(--muted2)' }}>{t(`xtell.tarot.spread.${laid}`)}</span>
+        <span style={{ ...mono, color: 'var(--muted2)' }}>{t(`xoracle.tarot.spread.${laid}`)}</span>
         {chart?.ask && <span style={{ fontSize: 13 }}>{chart.ask}</span>}
         <span style={{ flex: 1 }} />
-        {cards.length > 0 && <ShareButton spec={() => ({ icon: 'tarot', link: 'tarot', title: t('xtell.site.focus.tarot.name'),
-          kicker: t(`xtell.tarot.spread.${laid}`),
-          body: cards.map(c => `${t(`xtell.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xtell-tarot', log: { kind: 'tarot', temple: 'tarot' } })} />}
+        {cards.length > 0 && <ShareButton spec={() => ({ icon: 'tarot', link: 'tarot', title: t('xoracle.site.focus.tarot.name'),
+          kicker: t(`xoracle.tarot.spread.${laid}`),
+          body: cards.map(c => `${t(`xoracle.tarot.pos.${c.position}`)}　${name(c)}（${turn(c)}）`), style: 'prose', name: 'xoracle-tarot', log: { kind: 'tarot', temple: 'tarot' } })} />}
       </div>
       {options && (options.a || options.b) && (
-        <div className="xtell-tarot-options">
+        <div className="xoracle-tarot-options">
           <span><b>A</b>{options.a || '—'}</span><span><b>B</b>{options.b || '—'}</span>
         </div>
       )}
-      <div className={'xtell-tarot-cards' + (cards.length === 3 ? ' is-three' : cards.length > 3 ? ` is-five is-${laid}` : '')}>
+      <div className={'xoracle-tarot-cards' + (cards.length === 3 ? ' is-three' : cards.length > 3 ? ` is-five is-${laid}` : '')}>
         {cards.map(c => (
-          <figure key={c.id} className="xtell-tarot-card" style={cards.length > 3 ? { gridArea: c.position } : undefined}>
-            <figcaption>{t(`xtell.tarot.pos.${c.position}`)}</figcaption>
+          <figure key={c.id} className="xoracle-tarot-card" style={cards.length > 3 ? { gridArea: c.position } : undefined}>
+            <figcaption>{t(`xoracle.tarot.pos.${c.position}`)}</figcaption>
             <img src={c.image} alt={name(c)} className={c.reversed ? 'is-reversed' : undefined} loading="lazy" />
             <strong>{name(c)}</strong>
             <span className={c.reversed ? 'is-reversed' : undefined}>{turn(c)}</span>
             {/* Our own modern reading (Oct 2), in the visitor's language;
                 Waite's 1911 words stay one tap away. */}
-            {(c.modern?.[lang] ?? c.modern?.en) && <p className="xtell-tarot-modern">{c.modern?.[lang] ?? c.modern?.en}</p>}
+            {(c.modern?.[lang] ?? c.modern?.en) && <p className="xoracle-tarot-modern">{c.modern?.[lang] ?? c.modern?.en}</p>}
             <details>
-              <summary>{t('xtell.tarot.meaning')}</summary>
+              <summary>{t('xoracle.tarot.meaning')}</summary>
               <p lang="en">{c.meaning}</p>
             </details>
           </figure>
         ))}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.tarot.source')}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.tarot.source')}</div>
     </div>
   )
 }
@@ -3557,16 +3557,16 @@ function CookieForm({ food, setFood, mealAt, setMealAt, ask, setAsk, sel, foodAr
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <label style={{ display: 'grid', gap: 6, fontSize: 12.5, fontWeight: 700 }}>
-        {t('xtell.cookie.food')}
-        <textarea value={food} rows={2} maxLength={FOOD_MAX} onChange={e => setFood(e.target.value.slice(0, FOOD_MAX))} placeholder={t('xtell.cookie.food.ph')} {...bad(foodAria)}
+        {t('xoracle.cookie.food')}
+        <textarea value={food} rows={2} maxLength={FOOD_MAX} onChange={e => setFood(e.target.value.slice(0, FOOD_MAX))} placeholder={t('xoracle.cookie.food.ph')} {...bad(foodAria)}
           style={{ ...sel, width: '100%', boxSizing: 'border-box', fontWeight: 400, lineHeight: 1.6, resize: 'vertical', ...(foodAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
       </label>
       <label style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700 }}>
-        {t('xtell.cookie.when')}
+        {t('xoracle.cookie.when')}
         <input type="datetime-local" value={mealAt} onChange={e => setMealAt(e.target.value)} {...bad(mealAria)}
           style={{ ...sel, ...(mealAria?.invalid ? { borderColor: 'var(--red)' } : {}) }} />
       </label>
-      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, COOKIE_ASK_MAX))} placeholder={t('xtell.cookie.ask.ph')} aria-label={t('xtell.cookie.ask')}
+      <input value={ask} onChange={e => setAsk(e.target.value.slice(0, COOKIE_ASK_MAX))} placeholder={t('xoracle.cookie.ask.ph')} aria-label={t('xoracle.cookie.ask')}
         style={{ ...sel, width: '100%', boxSizing: 'border-box' }} />
     </div>
   )
@@ -3590,7 +3590,7 @@ function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: stri
       // then the route says so and the saved note is asked for again.
       for (let tries = 0; tries < 8 && alive; tries++) {
         try {
-          const res = await fetch('/api/xtell/cookie/note', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId }), signal: ctl.signal })
+          const res = await fetch('/api/xoracle/cookie/note', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ readingId }), signal: ctl.signal })
           if (!res.ok) return finish(null)
           if ((res.headers.get('content-type') ?? '').includes('ndjson')) {
             let raw = '', note: string | null = null
@@ -3616,29 +3616,29 @@ function CookieBoard({ chart, readingId, onNote }: { chart: any; readingId: stri
   const noteDraft = due ? String(partialFields(draft).note ?? '').trim() : ''
   // The slip in the page's language (all five are saved with the cookie).
   const fortune: string = chart.fortunes?.[lang] ?? chart.fortune
-  const facts = [t(`xtell.cookie.slot.${chart.meal?.slot ?? 'lunch'}`), chart.shichen, chart.dayGz ? `${chart.dayGz}日` : '', t('xtell.cookie.flavor').replace('{flavor}', chart.flavor).replace('{element}', chart.element)].filter(Boolean).join(' · ')
+  const facts = [t(`xoracle.cookie.slot.${chart.meal?.slot ?? 'lunch'}`), chart.shichen, chart.dayGz ? `${chart.dayGz}日` : '', t('xoracle.cookie.flavor').replace('{flavor}', chart.flavor).replace('{element}', chart.element)].filter(Boolean).join(' · ')
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 13 }}>{chart.food}</span>
         <span style={{ flex: 1 }} />
-        <ShareButton spec={() => ({ icon: 'cookie', link: 'cookie', title: t('xtell.site.focus.cookie.name'), kicker: facts,
-          body: [fortune, ...(chart.note ? [chart.note] : [])], style: 'prose', name: 'xtell-cookie', log: { kind: 'cookie', temple: 'cookie' } })} />
+        <ShareButton spec={() => ({ icon: 'cookie', link: 'cookie', title: t('xoracle.site.focus.cookie.name'), kicker: facts,
+          body: [fortune, ...(chart.note ? [chart.note] : [])], style: 'prose', name: 'xoracle-cookie', log: { kind: 'cookie', temple: 'cookie' } })} />
       </div>
-      <div className="xtell-cookie-slip">
+      <div className="xoracle-cookie-slip">
         <p>{fortune}</p>
-        {lang !== 'en' && chart.fortunes?.en && <p className="xtell-cookie-en" lang="en">{chart.fortunes.en}</p>}
+        {lang !== 'en' && chart.fortunes?.en && <p className="xoracle-cookie-en" lang="en">{chart.fortunes.en}</p>}
       </div>
       {/* The slip is a classic fortune; this meal's taste, element, hour and
           day are in the note under it (owner, Sep 28). */}
       {(chart.note || due) && <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.cookie.noteLabel')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.cookie.noteLabel')}</div>
         {chart.note ? <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{chart.note}</p>
-          : noteDraft ? <p className="xtell-caret" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{noteDraft}</p>
-          : <WaitBar seconds={WAIT_SECONDS.note} label={t('xtell.cookie.noteWriting')} />}
+          : noteDraft ? <p className="xoracle-caret" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.8 }}>{noteDraft}</p>
+          : <WaitBar seconds={WAIT_SECONDS.note} label={t('xoracle.cookie.noteWriting')} />}
       </div>}
       <div style={{ ...mono, color: 'var(--muted2)' }}>{facts}</div>
-      {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xtell.cookie.charged')}</div>}
+      {chart.charged > 0 && <div style={{ fontSize: 11.5, color: 'var(--muted2)' }}>{t('xoracle.cookie.charged')}</div>}
     </div>
   )
 }
@@ -3653,12 +3653,12 @@ function SunziBoard({ chart }: { chart: any }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.sunzi.yours')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.sunzi.yours')}</div>
         <div style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>{chart?.situation}</div>
-        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.sunzi.ask')}</span>{chart.ask}</div>}
+        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.sunzi.ask')}</span>{chart.ask}</div>}
       </div>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.sunzi.found')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.sunzi.found')}</div>
         {lines.length ? (
           <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
             {lines.map(l => (
@@ -3668,13 +3668,13 @@ function SunziBoard({ chart }: { chart: any }) {
                   <span style={{ ...mono, fontSize: 11, fontWeight: 400, letterSpacing: 0, color: 'var(--muted2)', marginLeft: 8, whiteSpace: 'nowrap' }}>〈{hans ? (l.chapterS ?? l.chapter).replace(/第.+$/, '') : l.short}〉</span>
                 </div>
                 {l.gloss && <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--muted)', marginTop: 3 }}>
-                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.sunzi.gloss')}</span>{l.gloss}
+                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xoracle.sunzi.gloss')}</span>{l.gloss}
                 </div>}
               </li>
             ))}
           </ol>
-        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.sunzi.none')}</p>}
-        <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.sunzi.caveat')}</p>
+        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xoracle.sunzi.none')}</p>}
+        <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.sunzi.caveat')}</p>
       </div>
     </div>
   )
@@ -3688,12 +3688,12 @@ function DreamBoard({ chart }: { chart: any }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xtell.jiemeng.yours')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 4 }}>{t('xoracle.jiemeng.yours')}</div>
         <div style={{ fontSize: 14, lineHeight: 1.8, whiteSpace: 'pre-wrap', background: 'var(--surface2)', borderRadius: 10, padding: '10px 14px' }}>{chart?.dream}</div>
-        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xtell.jiemeng.ask')}</span>{chart.ask}</div>}
+        {chart?.ask && <div style={{ fontSize: 13, marginTop: 6 }}><span style={{ ...mono, color: 'var(--muted2)', marginRight: 8 }}>{t('xoracle.jiemeng.ask')}</span>{chart.ask}</div>}
       </div>
       <div>
-        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xtell.jiemeng.found')}</div>
+        <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.jiemeng.found')}</div>
         {entries.length ? (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
             {entries.map(e => (
@@ -3704,13 +3704,13 @@ function DreamBoard({ chart }: { chart: any }) {
                 </div>
                 {/* The AI's translation of the line, on pages that are not Chinese. */}
                 {e.gloss && <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--muted)' }}>
-                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xtell.sunzi.gloss')}</span>{e.gloss}
+                  <span style={{ ...mono, fontSize: 10.5, color: 'var(--muted2)', marginRight: 6 }}>{t('xoracle.sunzi.gloss')}</span>{e.gloss}
                 </div>}
               </li>
             ))}
           </ul>
-        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xtell.jiemeng.none')}</p>}
-        <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xtell.jiemeng.caveat')}</p>
+        ) : <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.7 }}>{t('xoracle.jiemeng.none')}</p>}
+        <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--muted2)', lineHeight: 1.6 }}>{t('xoracle.jiemeng.caveat')}</p>
       </div>
     </div>
   )
@@ -3732,8 +3732,8 @@ function Thinking({ name }: { name?: string }) {
   }, [])
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }} role="status" aria-live="polite">
-      <span className="xtell-think" aria-hidden="true"><i /><i /><i /></span>
-      <span>{t('xtell.thinking')}{name ? `　${name}` : ''}{secs >= 4 ? `　${secs}s` : ''}</span>
+      <span className="xoracle-think" aria-hidden="true"><i /><i /><i /></span>
+      <span>{t('xoracle.thinking')}{name ? `　${name}` : ''}{secs >= 4 ? `　${secs}s` : ''}</span>
     </div>
   )
 }
@@ -3788,12 +3788,12 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
     return d.toLocaleString(lang, { ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }), month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   }
   return (
-    <section aria-labelledby="xtell-history-title" className="xtell-history" style={{ ...card, marginTop: 16, padding: '14px 18px 6px' }}>
-      <h2 id="xtell-history-title" style={{ ...mono, fontSize: 11, fontWeight: 600, color: 'var(--muted2)', margin: '0 0 4px' }}>{t('xtell.history.temple')}</h2>
+    <section aria-labelledby="xoracle-history-title" className="xoracle-history" style={{ ...card, marginTop: 16, padding: '14px 18px 6px' }}>
+      <h2 id="xoracle-history-title" style={{ ...mono, fontSize: 11, fontWeight: 600, color: 'var(--muted2)', margin: '0 0 4px' }}>{t('xoracle.history.temple')}</h2>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {rows.map((r, i) => {
           const title = r.temple === 'daily'
-            ? t('xtell.dy.visit').replace('{date}', String(r.subject?.date ?? '')).replace('{method}', t(`xtell.dy.${r.subject?.method === 'bazi' ? 'bazi' : 'western'}`))
+            ? t('xoracle.dy.visit').replace('{date}', String(r.subject?.date ?? '')).replace('{method}', t(`xoracle.dy.${r.subject?.method === 'bazi' ? 'bazi' : 'western'}`))
             : r.title || firstAsk(r.turns) || describeVisit(t, temple, r.subject) || t(notAskedKey(temple))
           if (renaming === r.id) return (
             <li key={r.id} style={{ padding: '10px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
@@ -3804,18 +3804,18 @@ function TempleHistory({ temple, onResume }: { temple: Temple; onResume: (r: Sav
             <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', fontSize: 13.5, borderTop: i ? '1px solid var(--border)' : 'none', flexWrap: confirming === r.id || failed === r.id ? 'wrap' : 'nowrap' }}>
               <span title={title} style={{ flex: 1, minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
               {confirming === r.id ? (
-                <span role="group" aria-label={t('xtell.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteConfirm')}</span>
-                  <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.deleteYes')}</button>
-                  <button type="button" onClick={() => setConfirming(null)} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.deleteNo')}</button>
+                <span role="group" aria-label={t('xoracle.saved.deleteConfirm')} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--red)' }}>{t('xoracle.saved.deleteConfirm')}</span>
+                  <button type="button" onClick={() => void remove(r.id)} style={{ padding: '5px 12px', borderRadius: 999, border: 'none', background: 'var(--red)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xoracle.saved.deleteYes')}</button>
+                  <button type="button" onClick={() => setConfirming(null)} style={{ border: 'none', background: 'none', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xoracle.saved.deleteNo')}</button>
                 </span>
               ) : (<>
                 <span style={{ ...mono, fontSize: 11.5, color: 'var(--muted2)', whiteSpace: 'nowrap' }}>{when(r.created_at)}</span>
-                <button type="button" onClick={() => onResume(r)} style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xtell.saved.continue')}</button>
-                {r.temple !== 'daily' && <button type="button" onClick={() => { setConfirming(null); setRenaming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.rename')}</button>}
-                <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xtell.saved.delete')}</button>
+                <button type="button" onClick={() => onResume(r)} style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 999, border: '1px solid var(--red)', background: 'none', color: 'var(--red)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{t('xoracle.saved.continue')}</button>
+                {r.temple !== 'daily' && <button type="button" onClick={() => { setConfirming(null); setRenaming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xoracle.saved.rename')}</button>}
+                <button type="button" onClick={() => { setFailed(null); setConfirming(r.id) }} style={{ flexShrink: 0, border: 'none', background: 'none', color: 'var(--muted2)', fontSize: 12, cursor: 'pointer', textDecoration: 'underline dotted' }}>{t('xoracle.saved.delete')}</button>
               </>)}
-              {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xtell.saved.deleteFailed')}</span>}
+              {failed === r.id && <span role="alert" style={{ flexBasis: '100%', fontSize: 12, color: 'var(--red)' }}>{t('xoracle.saved.deleteFailed')}</span>}
             </li>
           )
         })}
