@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240">
+  <!-- XGame bridge banner (Oct 22). Drawn in code like the other XGame
+       banners, after the approved 3NT icon: a cream table seen from above on
+       a warm tan surface, the 3NT contract in the middle, a trick on its four
+       sides (♠ north, ♥ east, ♦ south, ♣ west), the auction at a corner and
+       a hand held face down. Placed for the slideshow's crop: its shade
+       covers the left half on desktop, so the table sits right (x 306-602);
+       on a phone xgame.css crops bridge at 81% to show x ~354-554 (the
+       whole trick); desktop loses ~17 units top and bottom. -->
+  <defs>
+    <linearGradient id="brCloth" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6d6bb"/><stop offset="1" stop-color="#cfb994"/>
+    </linearGradient>
+    <radialGradient id="brFelt" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#eadfcb"/>
+    </radialGradient>
+    <filter id="brSh" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.22"/>
+    </filter>
+    <filter id="brTableSh" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#4a2e14" flood-opacity="0.35"/>
+    </filter>
+    <radialGradient id="brVig" cx="62%" cy="48%" r="80%">
+      <stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#4a2e14" stop-opacity="0.28"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="240" fill="url(#brCloth)"/>
+
+  <!-- everything on the table, 36 units right of where it was drawn: clear
+       of the slideshow's shade on desktop -->
+  <g transform="translate(36 0)">
+    <!-- the table from above: it runs off the top and bottom of the frame -->
+    <rect x="270" y="-34" width="296" height="308" rx="34" fill="url(#brFelt)" filter="url(#brTableSh)"/>
+    <rect x="270" y="-34" width="296" height="308" rx="34" fill="none" stroke="#d63b32" stroke-opacity="0.2" stroke-width="10"/>
+    <rect x="288" y="-16" width="260" height="272" rx="22" fill="none" stroke="#7a5530" stroke-opacity="0.18" stroke-width="1.5"/>
+
+    <!-- the trick: one card on each side, each a single big suit -->
+    <g filter="url(#brSh)" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+      <g transform="translate(397 24)">
+        <rect width="42" height="58" rx="6" fill="#fffdf7" stroke="#00000026"/>
+        <text x="21" y="41" font-size="30" fill="#1d1b19">♠</text>
+      </g>
+      <g transform="translate(465 91)">
+        <rect width="42" height="58" rx="6" fill="#fffdf7" stroke="#00000026"/>
+        <text x="21" y="41" font-size="30" fill="#d63b32">♥</text>
+      </g>
+      <g transform="translate(397 158)">
+        <rect width="42" height="58" rx="6" fill="#fffdf7" stroke="#00000026"/>
+        <text x="21" y="41" font-size="30" fill="#d63b32">♦</text>
+      </g>
+      <g transform="translate(329 91)">
+        <rect width="42" height="58" rx="6" fill="#fffdf7" stroke="#00000026"/>
+        <text x="21" y="41" font-size="30" fill="#1d1b19">♣</text>
+      </g>
+    </g>
+
+    <!-- the contract in the middle -->
+    <g filter="url(#brSh)">
+      <rect x="376" y="96" width="84" height="48" rx="8" fill="#fffdf7" stroke="#00000026"/>
+      <rect x="376" y="96" width="7" height="48" rx="3" fill="#d63b32"/>
+      <text x="422" y="131" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900" font-size="27" fill="#2b2622">3NT</text>
+    </g>
+
+    <!-- the auction, as bidding cards at the table's corner -->
+    <g filter="url(#brSh)" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle" font-size="12">
+      <g transform="translate(494 150) rotate(-3)">
+        <rect width="38" height="22" rx="4" fill="#fffdf7" stroke="#00000026"/>
+        <text x="19" y="15.5" fill="#1d1b19">1♣</text>
+      </g>
+      <g transform="translate(500 170) rotate(-1)">
+        <rect width="38" height="22" rx="4" fill="#fffdf7" stroke="#00000026"/>
+        <text x="19" y="15.5" fill="#1d1b19">1NT</text>
+      </g>
+      <g transform="translate(506 190) rotate(2)">
+        <rect width="38" height="22" rx="4" fill="#fffdf7" stroke="#d63b32" stroke-width="1.5"/>
+        <text x="19" y="15.5" fill="#d63b32">3NT</text>
+      </g>
+    </g>
+
+    <!-- a hand held face down at the near-left corner, as in poker's banner -->
+    <g filter="url(#brSh)">
+      <g transform="translate(304 170) rotate(-14)">
+        <rect width="30" height="42" rx="4" fill="#d63b32" stroke="#fff" stroke-width="2.5"/>
+        <rect x="5" y="5" width="20" height="32" rx="2" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.2"/>
+      </g>
+      <g transform="translate(320 166) rotate(-4)">
+        <rect width="30" height="42" rx="4" fill="#d63b32" stroke="#fff" stroke-width="2.5"/>
+        <rect x="5" y="5" width="20" height="32" rx="2" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.2"/>
+      </g>
+      <g transform="translate(337 166) rotate(7)">
+        <rect width="30" height="42" rx="4" fill="#d63b32" stroke="#fff" stroke-width="2.5"/>
+        <rect x="5" y="5" width="20" height="32" rx="2" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1.2"/>
+      </g>
+    </g>
+  </g>
+
+  <rect width="640" height="240" fill="url(#brVig)"/>
+</svg>

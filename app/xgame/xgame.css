@@ -30,6 +30,9 @@
 .xgame-hero-play { margin-left: 5px; }
 .xgame-hero-count { position: absolute; right: 28px; bottom: 28px; font-size: 12px; letter-spacing: .12em; }
 .xgame-hero-count span { opacity: .6; }
+/* Bridge's table sits right of centre in its banner (clear of the shade on
+   desktop); a phone's crop follows it so the whole trick stays in view. */
+.xgame-hero[data-game="bridge"] .xgame-hero-art img { object-position: 81% center; }
 .xgame-hero[data-game="werewolf"] { background: #12222b; color: #fff9ef; }
 .xgame-hero[data-game="werewolf"] .xgame-hero-shade { background: linear-gradient(90deg, rgba(9,22,30,.9), rgba(9,22,30,.67) 35%, rgba(9,22,30,.12) 72%); }
 .xgame-hero[data-game="werewolf"] .xgame-hero-description, .xgame-hero[data-game="werewolf"] .xgame-hero-kicker { color: #e1e2df; }
