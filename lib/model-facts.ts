@@ -6,7 +6,7 @@
 // estimate uses, so the picker and the estimate say the same number.
 
 export type FactsMode = 'text' | 'image' | 'video' | 'audio'
-export type PriceUnit = 'image' | 'second' | 'mtok' | 'mchar' | 'minute'
+export type PriceUnit = 'image' | 'second' | 'mtok' | 'mchar' | 'minute' | 'song'
 
 type FactsModel = { model_pricing?: any; output_config?: any; modes?: string[] | null; released_at?: string | null }
 
@@ -74,6 +74,12 @@ export function unitPrice(m: FactsModel, mode: FactsMode): { usd: number; unit: 
   if (mode === 'audio') {
     const chars = num(p.per_1m_characters)
     if (chars != null) return { usd: chars, unit: 'mchar' }
+    // Music (Oct 22, when 音樂 got its own tab): by the song (Lyria), or by
+    // the minute it lasts (ElevenLabs Music, billed by the second).
+    const song = num(p.per_song)
+    if (song != null) return { usd: song, unit: 'song' }
+    const sec = num(p.per_audio_second)
+    if (sec != null) return { usd: sec * 60, unit: 'minute' }
     const out = num(p.tokens?.audio_output)
     return out != null ? { usd: out, unit: 'mtok' } : null
   }

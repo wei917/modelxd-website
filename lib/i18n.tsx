@@ -1572,8 +1572,10 @@ export const STRINGS: Record<string, Entry> = {
   'xcs.unit.mtok': { en: "/M output tokens", 'zh-Hant': "/百萬詞元輸出", 'zh-Hans': "/百万词元输出", ja: "/100万トークン出力", ko: "/100만 토큰 출력" },
   'xcs.unit.minute': { en: "/min of audio", 'zh-Hant': "/分鐘音訊", 'zh-Hans': "/分钟音频", ja: "/音声1分", ko: "/오디오 1분" },
   'xcs.unit.mchar': { en: "/M characters", 'zh-Hant': "/百萬字", 'zh-Hans': "/百万字", ja: "/100万文字", ko: "/100만 자" },
+  'xcs.unit.song': { en: "/song", 'zh-Hant': "/首", 'zh-Hans': "/首", ja: "/曲", ko: "/곡" },
   'xcs.cap.text_to_speech': { en: "Text to speech", 'zh-Hant': "文字轉語音", 'zh-Hans': "文字转语音", ja: "テキスト読み上げ", ko: "텍스트 음성 변환" },
   'xcs.cap.voice_clone': { en: "Speaks in your own voice", 'zh-Hant': "用你的聲音說話", 'zh-Hans': "用你的声音说话", ja: "あなたの声で話す", ko: "내 목소리로 말하기" },
+  'xcs.cap.text_to_music': { en: "Text to music", 'zh-Hant': "文字轉音樂", 'zh-Hans': "文字转音乐", ja: "テキストから音楽", ko: "텍스트 음악 변환" },
   'xcs.cap.text_to_text': { en: "Writing and chat", 'zh-Hant': "寫作與對話", 'zh-Hans': "写作与对话", ja: "文章と会話", ko: "글쓰기와 대화" },
   'xcs.cap.text_to_image': { en: "Text to image", 'zh-Hant': "文字生圖", 'zh-Hans': "文字生图", ja: "テキストから画像", ko: "텍스트→이미지" },
   'xcs.cap.image_edit': { en: "Edit", 'zh-Hant': "修圖", 'zh-Hans': "修图", ja: "画像編集", ko: "편집" },
@@ -1854,6 +1856,8 @@ export const STRINGS: Record<string, Entry> = {
   'recipe.voice_clone': { en: 'My voice', 'zh-Hant': '我的聲音', 'zh-Hans': '我的声音', ja: '自分の声', ko: '내 목소리' },
   'recipefrom.text_to_speech': { en: 'Text', 'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
   'recipefrom.voice_clone': { en: 'My voice', 'zh-Hant': '我的聲音', 'zh-Hans': '我的声音', ja: '自分の声', ko: '내 목소리' },
+  'recipe.text_to_music': { en: 'Text to music', 'zh-Hant': '文字轉音樂', 'zh-Hans': '文字转音乐', ja: 'テキストから音楽', ko: '텍스트 음악 변환' },
+  'recipefrom.text_to_music': { en: 'Text', 'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
   // 我的聲音 (Oct 20): your own voice in X創作's 語音 (app/xcreate/MyVoices.tsx).
   'myvoice.title':   { en: 'My voices', 'zh-Hant': '我的聲音', 'zh-Hans': '我的声音', ja: '自分の声', ko: '내 목소리' },
   'myvoice.blurb':   { en: 'Voices you recorded in {app} to read scripts in your own voice.', 'zh-Hant': '你在 {app} 錄下的聲音，用來以你自己的聲音唸文字。', 'zh-Hans': '你在 {app} 录下的声音，用来以你自己的声音念文字。', ja: '{app} で録音した、文章をあなたの声で読み上げるための声です。', ko: '{app}에서 녹음한, 내 목소리로 글을 읽어 주는 목소리예요.' },
@@ -1898,6 +1902,7 @@ export const STRINGS: Record<string, Entry> = {
   'myvoice.err.bad_audio': { en: 'The recording could not be read. Record again.', 'zh-Hant': '讀不到這段錄音，請再錄一次。', 'zh-Hans': '读不到这段录音，请再录一次。', ja: '録音を読み込めませんでした。もう一度録音してください。', ko: '녹음을 읽지 못했어요. 다시 녹음해 주세요.' },
   'myvoice.err.other':     { en: 'The voice could not be made. Please try again.', 'zh-Hant': '沒能建立聲音，請再試一次。', 'zh-Hans': '没能创建声音，请再试一次。', ja: '声を作れませんでした。もう一度お試しください。', ko: '목소리를 만들지 못했어요. 다시 시도해 주세요.' },
   'xcreate.ph.audio': { en: 'Write the words you want spoken…', 'zh-Hant': '輸入你想朗讀的文字…', 'zh-Hans': '输入你想朗读的文字…', ja: '読み上げる文章を入力…', ko: '읽어 줄 내용을 입력하세요…' },
+  'xcreate.ph.music': { en: 'Describe the song you want: genre, mood, instruments or lyrics…', 'zh-Hant': '描述你想要的歌：曲風、氣氛、樂器或歌詞…', 'zh-Hans': '描述你想要的歌：曲风、氛围、乐器或歌词…', ja: '作りたい曲を説明してください：ジャンル、雰囲気、楽器、歌詞など…', ko: '원하는 노래를 설명하세요: 장르, 분위기, 악기, 가사…' },
   'recipefrom.text_to_text':     { en: 'Text',  'zh-Hant': '文字', 'zh-Hans': '文字', ja: 'テキスト', ko: '텍스트' },
   'recipefrom.image_to_text':    { en: 'Image', 'zh-Hant': '圖片', 'zh-Hans': '图片', ja: '画像',    ko: '이미지' },
   'recipefrom.pdf_to_text':      { en: 'PDF',   'zh-Hant': 'PDF', 'zh-Hans': 'PDF', ja: 'PDF',    ko: 'PDF' },
@@ -3203,6 +3208,9 @@ export const STRINGS: Record<string, Entry> = {
   // 語音 / 音声 / 음성 all mean voice specifically, and were right only
   // while the tab was TTS alone (owner, Oct 17).
   'mode.audio': { en: 'Audio', 'zh-Hant': '音訊', 'zh-Hans': '音频', ja: 'オーディオ', ko: '오디오' },
+  // 音訊 as two tabs in XDuel and X創作 (Oct 22): speech and music.
+  'mode.speech': { en: 'Speech', 'zh-Hant': '語音', 'zh-Hans': '语音', ja: '音声', ko: '음성' },
+  'mode.music': { en: 'Music', 'zh-Hant': '音樂', 'zh-Hans': '音乐', ja: '音楽', ko: '음악' },
   // XCreate's fifth type (Sep 29): Claude directs and edits a whole film.
   // 成片 is the word for this in Chinese video apps (剪映's 一鍵成片).
   'mode.film': { en: 'Film', 'zh-Hant': '成片', 'zh-Hans': '成片', ja: 'ムービー', ko: '필름' },

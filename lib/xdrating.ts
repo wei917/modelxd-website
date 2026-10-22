@@ -306,7 +306,12 @@ export async function computeLiveLeaderboard(sb: SupabaseClient, mode: string): 
   if (searchPool) {
     xcQ = xcQ.eq('mode', baseMode).eq('search_mode', 'all')
   } else {
-    if (mode !== 'all') xcQ = xcQ.eq('mode', mode)
+    // 'music' is audio runs whose first slot's recipe is text_to_music (X創作's
+    // 音樂 tab, Oct 22; the trigger's pool is migration 150's); 'audio' the
+    // rest. Two or() filters AND together (checked live Oct 22).
+    if (mode === 'music') xcQ = xcQ.eq('mode', 'audio').eq('slots->0->options->>mode', 'text_to_music')
+    else if (mode !== 'all') xcQ = xcQ.eq('mode', mode)
+    if (mode === 'audio') xcQ = xcQ.or('slots->0->options->>mode.is.null,slots->0->options->>mode.neq.text_to_music')
     xcQ = xcQ.or('search_mode.is.null,search_mode.eq.none')
   }
   const { data: xcreates } = await xcQ

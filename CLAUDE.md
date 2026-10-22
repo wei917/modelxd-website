@@ -332,8 +332,19 @@ so ElevenLabs gets `seconds: 60` (`MUSIC_SECONDS`). Priced per song (Lyria
 $0.08, ElevenLabs $0.15 for the minute; ~$0.23 a duel, house-paid, inside
 the same 10 a day). The vote feed follows the Mode row. Music rates in its
 own pool 'music' (`xd_pool`, migration 146) and XBoard has a Music tab
-($/song); XBoard's Audio tab is now labelled Speech. X創作's 語音 picks still
-feed 'audio' whatever the models (`xd_xcreate_pool` unchanged).
+($/song); XBoard's Audio tab is now labelled Speech.
+**語音 and 音樂 are two tabs since Oct 22** (owner: "in Audio tab, we can
+actually generate speech or music. should we split them into two tabs?",
+then "let's do it for both XDuel and XCreate"): XDuel's top bar is Text /
+Image / Video / 語音 (`?mode=audio`) / 音樂 (`?mode=music`) (`SPLIT_KINDS`
+in XDuelBar; the duel is still mode 'audio' + recipe, so nothing in the
+database changed), and the 語音 / 音樂 Mode row and in-box dropdown are
+gone; an old `?mode=audio&recipe=text_to_music` link opens 音樂. XBoard
+wears the same bar with its default four kinds: one 音訊 tab with both
+boards, headphones icon. New icons in the approved set's style (GPT Image
+with the set as the reference, cut out to the set's size): a microphone
+for 語音, a record with notes for 音樂 (`public/media-icons/speech.png`,
+`music.png`; MediaIcon kinds 'speech' / 'music').
 **No news ideas** (Oct 18-19): a button that turned the news into prompt
 ideas was built and removed (owner: "stop this feature. let's clean this
 up"). Why, for whoever tries again: Google Search grounding may not be
@@ -411,8 +422,8 @@ for its own door, `xcreate.modelxd.com` (Sep 26), which was never released;
 on Oct 13 the owner dropped it ("I will only keep dev.modelxd.com/xcreate or
 www.modelxd.com/xcreate"; "you can remove anything related to it"). /xcreate
 now shows that studio in www's shell (left nav, ModelXD logo), as /xtell
-does: `StudioTypeBar.tsx` (the door's types row: Text, Image, Video, Audio,
-Film) is pinned on top (under the phone's 60px header), and `.xcs-page`
+does: `StudioTypeBar.tsx` (the door's types row: Text, Image, Video, 語音,
+音樂, Film, 同款) is pinned on top (under the phone's 60px header), and `.xcs-page`
 (standalone.css) carries X創作's `--xc-*` colours around the studio and its
 dialogs; type is www's. The studio has no www/door switch any more: the
 old www studio's own pieces (the Generate/From row above the box, the
@@ -553,6 +564,17 @@ get a 語氣 / Delivery box in ⚙, sent as `style` (capped at 300 characters).
 MiniMax takes none. Taiwanese Mandarin comes from here: MiniMax has no such
 voice (all 332 checked), and Gemini told 「用台灣腔的國語說，溫暖親切。」 is
 the one the owner's ear picked. The film's speak tool routes the same way.
+
+**音樂, its own type (Oct 22; see XDuel's 語音 and 音樂 tabs).** The
+studio's 'audio' mode with a tab flag (`audioTab` in client.tsx; `recipesFor`
+/ `MUSIC_RECIPES` in recipes.tsx): 語音 offers the speech models (From: 文字 /
+我的聲音), 音樂 only the `text_to_music` rows (Lyria 3.5 $0.08/song,
+ElevenLabs Music 2.5 $0.15/min, priced in the picker by `lib/model-facts.ts`),
+with no From and no Attach slot. `?type=music`; a saved song reopens on
+音樂; your works and `/api/profile/xcreates?filter=music|audio` split by the
+first slot's recipe. Until then X創作's picker filtered the music models out.
+A song pick rates in 'music': `xd_xcreate_pool` (migration 150) and
+lib/xdrating.ts's fallback read the same recipe.
 
 **我的聲音 / My voice (Oct 20; owner: "clone voice and ask the ai to speak
 some text with cloned voice", then "go ahead to do it").** A second From pick

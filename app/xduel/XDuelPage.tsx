@@ -11,11 +11,11 @@ import { REMARK_PLUGINS } from '../../lib/markdown'
 import { commitAttachments, type Attachment } from '../components/AttachmentButton'
 import LabeledSlotsPicker from '../components/LabeledSlotsPicker'
 import MatchResult from '../components/MatchResult'
-import XDuelBar, { type DuelKind } from './XDuelBar'
+import XDuelBar, { SPLIT_KINDS, type DuelKind } from './XDuelBar'
 import VoteFeed from './VoteFeed'
 import RecipeBar, { ModeDropdown } from './RecipeBar'
 import { DUEL_MODELS } from '../../lib/duel-allowance'
-import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe, AUDIO_KINDS, DEFAULT_AUDIO_KIND, isAudioKind, audioMaxChars, type AudioKind } from '../../lib/xduel-recipes'
+import { DEFAULT_VIDEO_RECIPE, isVideoRecipe, recipeSpec, type VideoRecipe, DEFAULT_AUDIO_KIND, isAudioKind, audioMaxChars, type AudioKind } from '../../lib/xduel-recipes'
 import { computeMatchScores, duelVotePts } from '../../lib/matchScore'
 import { usePageTitle } from '../../lib/PageTitleContext'
 import { isSubmitEnter } from '../../lib/ime'
@@ -98,10 +98,6 @@ function formatCost(cost: number, isImage: boolean, isVideo: boolean): string {
  *  until its first vote. */
 /** A saved slot with no answer; shown in the reader's language (errText). */
 const DID_NOT_FINISH = 'This model did not finish.'
-
-/** 音訊's Mode row (Oct 21): 語音 and 音樂, not X創作's "From: 文字". */
-const AUDIO_NAMES = { text_to_speech: 'xduel.audio.speech', text_to_music: 'xduel.audio.music' }
-const AUDIO_ICONS = { text_to_speech: 'mic', text_to_music: 'audio' } as const
 
 /** The label under a judged input, by the port it fed (lib/xduel-recipes.ts). */
 const PORT_LABEL: Record<string, string> = {
@@ -204,12 +200,14 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       const m = url.searchParams.get('mode')
       // The top bar's links (XDuelBar) name the type alone, with no prompt.
       // An old ?mode=game link (game duels left XDuel Oct 19) opens image.
-      const mm: Mode = m === 'text' || m === 'video' || m === 'audio' ? m : 'image'
+      // ?mode=music is the 音樂 tab (Oct 22); an older ?mode=audio&recipe=
+      // text_to_music link opens it too.
+      const mm: Mode = m === 'text' || m === 'video' || m === 'audio' ? m : m === 'music' ? 'audio' : 'image'
       if (q) seed.current = { q: q.slice(0, 2000), m: mm }
       if (mm !== mode) setMode(mm)
       const r = url.searchParams.get('recipe')
       if (mm === 'video' && isVideoRecipe(r)) setRecipe(r)
-      if (mm === 'audio' && isAudioKind(r)) setAudioKind(r)
+      if (mm === 'audio') setAudioKind(m === 'music' || r === 'text_to_music' ? 'text_to_music' : 'text_to_speech')
     } catch { /* no window */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -338,9 +336,8 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
       const u = new URL(window.location.href)
       u.pathname = id ? `/xduel/${id}` : '/xduel'
       u.search = ''
-      if (!id) u.searchParams.set('mode', kind)
+      if (!id) u.searchParams.set('mode', kind === 'audio' && ak === 'text_to_music' ? 'music' : kind)
       if (!id && kind === 'video' && rec !== DEFAULT_VIDEO_RECIPE) u.searchParams.set('recipe', rec)
-      if (!id && kind === 'audio' && ak !== DEFAULT_AUDIO_KIND) u.searchParams.set('recipe', ak)
       window.history.replaceState(window.history.state, '', u)
     } catch { /* no window */ }
   }
@@ -667,11 +664,14 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
   // type, so a reload lands on it.
   const pickKind = (k: DuelKind) => {
     if (step !== 1) { clearState(); goStep(1) }
-    setMode(k)
-    // Text takes documents and speech takes nothing: a photo staged for an
-    // image or video duel must not ride along silently.
-    if (k === 'text' || k === 'audio') setAttachments([])
-    setAddress(null, k)
+    // 語音 and 音樂 are both audio duels; the tab picks the task.
+    const ak: AudioKind = k === 'music' ? 'text_to_music' : 'text_to_speech'
+    setMode(k === 'music' ? 'audio' : k)
+    if (k === 'audio' || k === 'music') setAudioKind(ak)
+    // Text takes documents and speech and music take nothing: a photo staged
+    // for an image or video duel must not ride along silently.
+    if (k === 'text' || k === 'audio' || k === 'music') setAttachments([])
+    setAddress(null, k === 'music' ? 'audio' : k, recipe, ak)
   }
   // A video kind picked from its chips: its own inputs, so the files staged
   // for another kind go.
@@ -680,12 +680,6 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
     setRecipe(r)
     setAttachments([])
     setAddress(null, 'video', r)
-  }
-  // 語音 / 音樂: the same box, a different task.
-  const pickAudioKind = (k: AudioKind) => {
-    if (k === audioKind) return
-    setAudioKind(k)
-    setAddress(null, 'audio', recipe, k)
   }
 
   // Prompt chars ≈ /3; attached .txt files count too (≈ bytes/4) —
@@ -837,7 +831,7 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
           The bar sits outside .xduel-page, whose overflow would swallow its
           sticky. */}
       <div className="xduel-xt">
-      <XDuelBar current={mode} onPick={pickKind} busy={step !== 1 && (loading || anyStreaming)} />
+      <XDuelBar current={mode === 'audio' && audioKind === 'text_to_music' ? 'music' : mode} onPick={pickKind} kinds={SPLIT_KINDS} busy={step !== 1 && (loading || anyStreaming)} />
       <div className="xduel-page">
         <div className="arena">
 
@@ -914,7 +908,6 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                   text into the prompt for the rest — keeping the duel fair. */}
               {/* 影片's kinds (owner, Oct 19): a Mode row above the box they shape. */}
               {mode === 'video' && <RecipeBar recipe={recipe} onPick={pickRecipe} t={t} />}
-              {mode === 'audio' && <RecipeBar recipe={audioKind} kinds={AUDIO_KINDS} names={AUDIO_NAMES} icons={AUDIO_ICONS} onPick={pickAudioKind} t={t} />}
               <div className="prompt-box framed">
                 {/* A video kind's own labelled inputs (none for 文字生成). */}
                 {mode === 'video' && spec.slots.length > 0 && <div className="prompt-slots" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' as const }}>
@@ -966,11 +959,6 @@ export default function XDuel({ resumeId }: { resumeId?: string } = {}) {
                 {mode === 'video' && (
                   <div className="xduel-prompt-tools">
                     <ModeDropdown recipe={recipe} onPick={pickRecipe} t={t} />
-                  </div>
-                )}
-                {mode === 'audio' && (
-                  <div className="xduel-prompt-tools">
-                    <ModeDropdown recipe={audioKind} kinds={AUDIO_KINDS} names={AUDIO_NAMES} icons={AUDIO_ICONS} onPick={pickAudioKind} t={t} />
                   </div>
                 )}
               </div>

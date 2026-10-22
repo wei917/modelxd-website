@@ -8,11 +8,12 @@
 
 import { useSyncExternalStore } from 'react'
 
-export type StudioType = 'text' | 'image' | 'video' | 'audio' | 'film' | 'remake'
+export type StudioType = 'text' | 'image' | 'video' | 'audio' | 'music' | 'film' | 'remake'
 
 /** The top bar's order (owner, Sep 28: "Text, Image, Video, Audio"; Sep 29:
- *  the film, made by Claude, fifth; Oct 10: 同款, remake a pasted video, sixth). */
-export const STUDIO_TYPES: StudioType[] = ['text', 'image', 'video', 'audio', 'film', 'remake']
+ *  the film, made by Claude, fifth; Oct 10: 同款, remake a pasted video, sixth;
+ *  Oct 22: 音訊 split into 語音 ('audio') and 音樂 ('music'), as XDuel's). */
+export const STUDIO_TYPES: StudioType[] = ['text', 'image', 'video', 'audio', 'music', 'film', 'remake']
 
 export const isStudioType = (value: unknown): value is StudioType =>
   typeof value === 'string' && (STUDIO_TYPES as string[]).includes(value)
