@@ -351,7 +351,8 @@ export async function runFan(sb: SupabaseClient, job: FanJob) {
     if (req.music.choice !== 'none' && !job.assets.music) {
       let buf: Buffer
       if (req.music.choice === 'mine' && req.music.track) {
-        const src = path.join(tmp, `mine${path.extname(req.music.track).slice(0, 6) || '.bin'}`), mp3 = path.join(tmp, 'mine.mp3')
+        // Never the same name as the output: an .mp3 upload was read and written in place, which ffmpeg refuses.
+        const src = path.join(tmp, `track${path.extname(req.music.track).slice(0, 6) || '.bin'}`), mp3 = path.join(tmp, 'mine.mp3')
         await fs.writeFile(src, await get(sb, B.userAudio, req.music.track))
         await run(ff, ['-v', 'error', '-y', '-i', src, '-vn', '-c:a', 'libmp3lame', '-b:a', '192k', mp3])
         buf = await fs.readFile(mp3)
