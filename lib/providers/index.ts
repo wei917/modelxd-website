@@ -482,6 +482,10 @@ export interface SpeechOptions {
   language?: string | null
   /** Music only: how long the song should be, in seconds. */
   seconds?:  number | null
+  /** Music only: no vocals (rows declaring output_config.audio.instrumental). */
+  instrumental?: boolean | null
+  /** Music only: sign the MP3 with Content Credentials (rows declaring c2pa). */
+  c2pa?:     boolean | null
 }
 
 export async function generateSpeech(
@@ -498,11 +502,12 @@ export async function generateSpeech(
     let result: SpeechResult
     // One audio entry point: the route, the bucket, the signing and the
     // logging are all shared, and only the provider call differs. A row that
-    // declares text_to_music is a song, not a voice — it takes no voice,
-    // format or style, so none are passed.
+    // declares text_to_music is a song, not a voice — it takes no voice or
+    // style, only the music settings (lib/music-options.ts).
     const isMusic = (model.modes ?? []).includes('text_to_music')
+    const music = { seconds: options?.seconds ?? null, instrumental: options?.instrumental ?? null, format: options?.format ?? null }
     if (model.provider === 'google' && isMusic) {
-      result = await google.generateMusic(model, text)
+      result = await google.generateMusic(model, text, music)
     } else if (model.provider === 'google') {
       result = await google.generateSpeech(model, text, options)
     } else if (model.provider === 'minimax') {
@@ -512,7 +517,7 @@ export async function generateSpeech(
     } else if (model.provider === 'openai') {
       result = await openai.generateSpeech(model, text, options)
     } else if (model.provider === 'elevenlabs' && isMusic) {
-      result = await elevenlabs.generateMusic(model, text, { seconds: options?.seconds ?? null })
+      result = await elevenlabs.generateMusic(model, text, { ...music, c2pa: options?.c2pa ?? null })
     } else {
       noImplementation(model, 'text', ['google', 'minimax', 'alibaba', 'openai', 'elevenlabs'])
     }

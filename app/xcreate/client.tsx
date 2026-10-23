@@ -50,6 +50,7 @@ import ProviderLogo from '../components/ProviderLogo'
 import ModelPickerDialog from '../components/ModelPickerDialog'
 import { XCREATE_TEMPLATES, PLATFORM_PRESETS, defaultFormat, type Template, type TemplateFormat } from './templates'
 import { perImageRate, perSecondRate } from '../../lib/model-facts'
+import { audioFormatLabel, isMp3Format, isWavFormat, wavFits } from '../../lib/music-options'
 import { isSubmitEnter } from '../../lib/ime'
 
 type Mode = 'text' | 'image' | 'video' | 'audio'
@@ -398,10 +399,13 @@ interface SlotOptions {
   voice?: string | null
   format?: string | null
   language?: string | null
-  /** Music: song length in seconds. Only rows declaring
-   *  output_config.audio.durations offer it — Lyria has no length
-   *  parameter, so its card shows no length control. */
+  /** Music: song length in seconds, one of output_config.audio.durations
+   *  (ElevenLabs sends it as a field, Lyria as words; lib/music-options.ts). */
   seconds?: number | null
+  /** Music: no vocals, on rows declaring output_config.audio.instrumental. */
+  instrumental?: boolean | null
+  /** Music: Content Credentials on the MP3, on rows declaring c2pa. */
+  c2pa?: boolean | null
   /** How to say it (accent, mood, pace), for the rows takesSpeechStyle()
    *  allows: Gemini TTS, OpenAI TTS and Alibaba's -instruct- models. */
   style?: string | null
@@ -546,7 +550,8 @@ function estimateSlotDollars(
   // Nothing to quote before there is a script.
   if (m === 'audio') {
     if (promptLen === 0) return null
-    const est = estimateCost(model as any, 'audio', { promptChars: promptLen })
+    // A song's length is a setting, and ElevenLabs bills by it.
+    const est = estimateCost(model as any, 'audio', { promptChars: promptLen, seconds: opts?.seconds ?? undefined })
     return est > 0 ? est : null
   }
   return null
@@ -578,7 +583,9 @@ function scriptLanguage(text: string): SpeechLang | null {
  *  Mandarin comes from here: MiniMax has no such voice (all 332 checked,
  *  Sep 29), and Gemini told 「用台灣腔的國語說」 passed the owner's ear. */
 const SPEECH_STYLE_MAX = 300
-function takesSpeechStyle(model: { provider: string; model_name: string }): boolean {
+function takesSpeechStyle(model: { provider: string; model_name: string; modes?: string[] | null }): boolean {
+  // Lyria is Google's too, but a song has no delivery: the box did nothing there.
+  if ((model.modes ?? []).includes('text_to_music')) return false
   return model.provider === 'google' || model.provider === 'openai' || /-instruct-/.test(model.model_name)
 }
 
@@ -1244,6 +1251,15 @@ function CreateStudio() {
       const formats  = (cfg.formats ?? []) as string[]
       const clamp = (want: unknown, allowed: string[]) =>
         typeof want === 'string' && allowed.includes(want) ? want : (allowed[0] ?? null)
+      // Music: the length is one the row lists (the first is the default),
+      // and a WAV has to fit the bucket, so a WAV pick snaps a longer song
+      // down to the longest that fits (the panel hides the rest).
+      const durations = (cfg.durations ?? []) as number[]
+      const format    = clamp(opts.format, formats)
+      let seconds = typeof opts.seconds === 'number' && durations.includes(opts.seconds) ? opts.seconds : (durations[0] ?? null)
+      if (seconds != null && isWavFormat(format) && !wavFits(seconds)) {
+        seconds = Math.max(...durations.filter(wavFits), 0) || seconds
+      }
       return {
         mode, quality: null, size: null, duration: null, aspect_ratio: null,
         watermark: null, count: null,
@@ -1251,12 +1267,11 @@ function CreateStudio() {
         // resolved where it shows and where it is sent.
         voice:    typeof opts.voice === 'string' && voiceIds.includes(opts.voice) ? opts.voice : null,
         language: clamp(opts.language, langIds),
-        format:   clamp(opts.format, formats),
+        format,
         style:    takesSpeechStyle(model as any) && typeof opts.style === 'string' ? opts.style.slice(0, SPEECH_STYLE_MAX) : null,
-        // Music length, clamped to what the row offers. Unset on a row with
-        // no durations (Lyria takes no length at all).
-        seconds:  typeof opts.seconds === 'number' && (cfg.durations ?? []).includes(opts.seconds)
-          ? opts.seconds : ((cfg.durations ?? [])[0] ?? null),
+        seconds,
+        instrumental: cfg.instrumental === true ? opts.instrumental === true : null,
+        c2pa:     cfg.c2pa === true && isMp3Format(format) ? opts.c2pa === true : null,
       }
     }
     // Text mode: no watermark concept. Thinking level clamps to the
@@ -2433,6 +2448,8 @@ function CreateStudio() {
         language:       opts.language ?? null,
         style:          mode === 'audio' && typeof opts.style === 'string' && opts.style.trim() ? opts.style.trim() : null,
         seconds:        opts.seconds ?? null,
+        instrumental:   opts.instrumental ?? null,
+        c2pa:           opts.c2pa ?? null,
         mode:         recipeMode,   // Layer-2 recipe applies to every slot
       } : { mode: recipeMode })
     }
@@ -4751,6 +4768,10 @@ function CreateStudio() {
                     const audVoices    = mode === 'audio' ? ((model.output_config as any)?.audio?.voices ?? []) : []
                     const audFormats   = mode === 'audio' ? ((model.output_config as any)?.audio?.formats ?? []) : []
                     const audLangs     = mode === 'audio' ? ((model.output_config as any)?.audio?.languages ?? []) : []
+                    // Music settings (lib/music-options.ts): length, no vocals, Content Credentials.
+                    const audDurations = mode === 'audio' ? (((model.output_config as any)?.audio?.durations ?? []) as number[]) : []
+                    const audInstrumental = mode === 'audio' && (model.output_config as any)?.audio?.instrumental === true
+                    const audC2pa      = mode === 'audio' && (model.output_config as any)?.audio?.c2pa === true
                     const vidSizes     = mode === 'video' ? (model.output_config?.video?.sizes ?? []) : []
                     const vidArs       = mode === 'video' ? (model.output_config?.video?.aspect_ratios ?? []) : []
                     // Durations now live in `durations_by_resolution`, keyed by resolutions like
@@ -4810,7 +4831,8 @@ function CreateStudio() {
                       // Not gated on the standalone door: the Audio tab is on www
                       // too, and gating it there left the ⚙ off every speech card,
                       // so voice/language/format were unreachable on the main site.
-                      audVoices.length > 0 || audLangs.length > 1 || audFormats.length > 1
+                      audVoices.length > 0 || audLangs.length > 1 || audFormats.length > 1 ||
+                      audDurations.length > 1 || audInstrumental || audC2pa
                     )
 
                     // Upfront USD estimate for this slot given its current
@@ -4884,9 +4906,9 @@ function CreateStudio() {
                           // REMOUNTED the panel and killed an in-progress
                           // slider drag (CC bug report, July 20). Local
                           // aliases bind the slot color.
-                          const Pill = ({ active, onClick, children, narrow }: {
-                            active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean
-                          }) => <OptPill color={color} active={active} onClick={onClick} narrow={narrow}>{children}</OptPill>
+                          const Pill = ({ active, onClick, children, narrow, nowrap }: {
+                            active: boolean; onClick: () => void; children: React.ReactNode; narrow?: boolean; nowrap?: boolean
+                          }) => <OptPill color={color} active={active} onClick={onClick} narrow={narrow} nowrap={nowrap}>{children}</OptPill>
                           const Group = OptGroup
 
                           // Decide which groups are visible so we can pass `last` to drop the bottom margin.
@@ -4916,9 +4938,14 @@ function CreateStudio() {
                           const showStyle = mode === 'audio' && takesSpeechStyle(model as any)
                           const showLang  = mode === 'audio' && audLangs.length > 1
                           const showFormat = mode === 'audio' && audFormats.length > 1
+                          const audFormat  = opts.format ?? audFormats[0] ?? null
+                          const showLength = mode === 'audio' && audDurations.length > 1
+                          const showVocals = audInstrumental
+                          // Content Credentials sign MP3 files only.
+                          const showC2pa   = audC2pa && isMp3Format(audFormat)
                           const showThink = mode === 'text' && thinkLevels.length > 0
                           const showSearch = mode === 'text' && canSearch
-                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'style' | 'lang' | 'format' | 'count' | 'wm'> = []
+                          const groupsInOrder: Array<'think' | 'search' | 'size_i' | 'size_v' | 'dur' | 'ar_i' | 'ar_v' | 'qual' | 'voice' | 'style' | 'lang' | 'len' | 'vocals' | 'format' | 'c2pa' | 'count' | 'wm'> = []
                           if (showThink)     groupsInOrder.push('think')
                           if (showSearch)    groupsInOrder.push('search')
                           if (showSizeV)     groupsInOrder.push('size_v')
@@ -4930,7 +4957,10 @@ function CreateStudio() {
                           if (showVoice)     groupsInOrder.push('voice')
                           if (showStyle)     groupsInOrder.push('style')
                           if (showLang)      groupsInOrder.push('lang')
+                          if (showLength)    groupsInOrder.push('len')
+                          if (showVocals)    groupsInOrder.push('vocals')
                           if (showFormat)    groupsInOrder.push('format')
+                          if (showC2pa)      groupsInOrder.push('c2pa')
                           if (showCount)     groupsInOrder.push('count')
                           if (showWatermark) groupsInOrder.push('wm')
                           const lastIdx = groupsInOrder.length - 1
@@ -4986,13 +5016,53 @@ function CreateStudio() {
                                   />
                                 </Group>
                               )}
+                              {/* Music: the song's length, shortest first (the
+                                  row's first entry is the default). A WAV has
+                                  to fit the audio bucket, so while WAV is
+                                  picked the lengths that would not are left out. */}
+                              {showLength && (
+                                <Group label={t('xcreate.length')} last={isLast('len')}>
+                                  {[...audDurations].sort((a, b) => a - b)
+                                    .filter(d => !isWavFormat(audFormat) || wavFits(d))
+                                    .map(d => (
+                                      <Pill key={d} nowrap active={opts.seconds === d} onClick={() => updateSlotOpts(i, { seconds: d })}>
+                                        {d < 60 ? `${d}s` : t('xcreate.minutes').replace('{n}', String(d / 60))}
+                                      </Pill>
+                                    ))}
+                                </Group>
+                              )}
+                              {/* Music: Auto sings or not as the description
+                                  says; Instrumental never sings. */}
+                              {showVocals && (
+                                <Group label={t('xcreate.vocals')} last={isLast('vocals')}>
+                                  <Pill active={opts.instrumental !== true} onClick={() => updateSlotOpts(i, { instrumental: false })}>
+                                    {t('xcreate.auto')}
+                                  </Pill>
+                                  <Pill active={opts.instrumental === true} onClick={() => updateSlotOpts(i, { instrumental: true })}>
+                                    {t('xcreate.instrumental')}
+                                  </Pill>
+                                </Group>
+                              )}
                               {showFormat && (
                                 <Group label={t('xcreate.format')} last={isLast('format')}>
                                   {audFormats.map((f: string) => (
-                                    <Pill key={f} active={(opts.format ?? audFormats[0]) === f} onClick={() => updateSlotOpts(i, { format: f })}>
-                                      {f.toUpperCase()}
+                                    <Pill key={f} active={audFormat === f} onClick={() => updateSlotOpts(i, { format: f })}>
+                                      {audioFormatLabel(f)}
                                     </Pill>
                                   ))}
+                                </Group>
+                              )}
+                              {/* Music: Content Credentials (C2PA) in the MP3, so
+                                  platforms that read them can label the song as
+                                  AI-made. Off by default, as the provider's. */}
+                              {showC2pa && (
+                                <Group label={t('xcreate.c2pa')} last={isLast('c2pa')}>
+                                  <Pill active={opts.c2pa !== true} onClick={() => updateSlotOpts(i, { c2pa: false })}>
+                                    {t('xcreate.off')}
+                                  </Pill>
+                                  <Pill active={opts.c2pa === true} onClick={() => updateSlotOpts(i, { c2pa: true })}>
+                                    {t('xcreate.on')}
+                                  </Pill>
                                 </Group>
                               )}
                               {/* Text: Thinking / reasoning level */}

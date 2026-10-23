@@ -3241,6 +3241,12 @@ export const STRINGS: Record<string, Entry> = {
   },
   'xcreate.voice': { en: 'Voice', 'zh-Hant': '聲音', 'zh-Hans': '声音', ja: 'ボイス', ko: '목소리' },
   'xcreate.format': { en: 'Format', 'zh-Hant': '格式', 'zh-Hans': '格式', ja: 'フォーマット', ko: '형식' },
+  // 音樂's settings (Oct 22): a song's length in minutes, no vocals, and
+  // Content Credentials in the MP3 (lib/music-options.ts).
+  'xcreate.minutes': { en: '{n} min', 'zh-Hant': '{n} 分鐘', 'zh-Hans': '{n} 分钟', ja: '{n}分', ko: '{n}분' },
+  'xcreate.vocals': { en: 'Vocals', 'zh-Hant': '人聲', 'zh-Hans': '人声', ja: 'ボーカル', ko: '보컬' },
+  'xcreate.instrumental': { en: 'Instrumental', 'zh-Hant': '純音樂', 'zh-Hans': '纯音乐', ja: 'インストのみ', ko: '연주곡' },
+  'xcreate.c2pa': { en: 'AI label (C2PA)', 'zh-Hant': 'AI 標記 (C2PA)', 'zh-Hans': 'AI 标记 (C2PA)', ja: 'AI表示 (C2PA)', ko: 'AI 표시 (C2PA)' },
   // The language the speech is READ in, not the site's language.
   'xcreate.length': { en: 'Length', 'zh-Hant': '長度', 'zh-Hans': '长度', ja: '長さ', ko: '길이' },
   'xcreate.language': { en: 'Spoken language', 'zh-Hant': '朗讀語言', 'zh-Hans': '朗读语言', ja: '読み上げ言語', ko: '낭독 언어' },

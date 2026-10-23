@@ -1288,24 +1288,41 @@ export async function generateSpeech(
 // $0.08, Clip $0.04 for its fixed 30 seconds), so nothing in the response
 // changes the price and `usage` is kept only for the log.
 //
-// Duration is not a parameter. Lyria 3 Clip always returns 30 seconds; for
-// 3.5 the length has to be asked for in the prompt, which means the UI can
-// offer no duration control and should not pretend to.
+// Duration is not a parameter. Lyria 3 Clip always returns 30 seconds; 3.5
+// takes the length from the prompt, and does keep it from 1 to 3 minutes
+// (measured Oct 22), so X創作's length setting is honest there as words.
 
 export async function generateMusic(
   model: ModelInfo,
   prompt: string,
+  options?: { seconds?: number | null; instrumental?: boolean | null; format?: string | null },
 ): Promise<SpeechResult> {
   const TAG = `[google/${model.model_name}]`
   const key = process.env.GOOGLE_AI_API_KEY
   if (!key) throw new Error('GOOGLE_AI_API_KEY is not set')
 
+  // Lyria takes no length or vocals field; it reads both from the words,
+  // as Google's guide says to ask (probed Oct 22: "Song length: 2 minutes."
+  // made 2:03, "3 minutes" 2:59, and "Instrumental only, no vocals." kept a
+  // K-pop prompt instrumental). Under a minute it makes about one anyway
+  // (30 s asked three ways, Oct 21: 62-63 s), so the row offers 1-3 minutes.
+  // The lines go after the person's own words; the saved prompt is theirs.
+  const cfg = model.output_config?.audio ?? {}
+  const lines: string[] = []
+  if (options?.instrumental && cfg.instrumental) lines.push('Instrumental only, no vocals.')
+  const s = options?.seconds
+  if (typeof s === 'number' && s > 0 && (cfg.durations ?? []).length > 0) {
+    lines.push(s % 60 === 0 ? `Song length: ${s / 60} minute${s === 60 ? '' : 's'}.` : `Song length: ${Math.round(s)} seconds.`)
+  }
+  const text = lines.length ? `${prompt}\n\n${lines.join('\n')}` : prompt
+  const wav = options?.format === 'wav' && (cfg.formats ?? []).includes('wav')
+
   const body = {
     model: model.model_name,
-    input: [{ type: 'user_input', content: [{ type: 'text', text: prompt }] }],
-    response_format: { type: 'audio' },
+    input: [{ type: 'user_input', content: [{ type: 'text', text }] }],
+    response_format: wav ? { type: 'audio', mime_type: 'audio/wav' } : { type: 'audio' },
   }
-  console.log(`${TAG} music chars=${prompt.length}`)
+  console.log(`${TAG} music chars=${prompt.length}${lines.length ? ` + ${JSON.stringify(lines)}` : ''}${wav ? ' wav' : ''}`)
 
   const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
     method: 'POST',

@@ -601,6 +601,22 @@ with no From and no Attach slot. `?type=music`; a saved song reopens on
 first slot's recipe. Until then X創作's picker filtered the music models out.
 A song pick rates in 'music': `xd_xcreate_pool` (migration 150) and
 lib/xdrating.ts's fallback read the same recipe.
+**音樂's settings (Oct 22; owner: "add all config options").** Each card's ⚙:
+長度, 人聲 (自動 / 純音樂), 格式, and on ElevenLabs AI 標記 (C2PA), all
+declared in `output_config.audio` (`durations` first = default, shown
+shortest first; `formats`; `instrumental`; `c2pa`) and shared through
+`lib/music-options.ts`. ElevenLabs takes them as fields: 15 s to 5 min
+(billed by the second), MP3 192k / 320k or WAV (its raw `pcm_48000`
+wrapped in a header), `force_instrumental`, `sign_with_c2pa` (MP3 only;
+the manifest names Eleven Labs Inc., nothing of ours). Lyria 3.5 has no
+such fields: it reads the length and "no vocals" from lines added after the
+person's words (1-3 min; probed: 2 min asked = 2:03, 3 min = 2:59), and WAV
+is `response_format.mime_type`. A WAV must fit the 50 MB bucket, so the
+panel drops 5 min while WAV is picked and the provider refuses one before
+calling. XDuel still asks both for a minute (`MUSIC_SECONDS`). Not built
+(inputs, not settings): Lyria's up to 10 reference pictures, ElevenLabs'
+song plan (sections with their own lengths, lyrics and styles, styles to
+avoid, seed) and its audio reference.
 
 **我的聲音 / My voice (Oct 20; owner: "clone voice and ask the ai to speak
 some text with cloned voice", then "go ahead to do it").** A second From pick

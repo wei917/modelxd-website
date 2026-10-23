@@ -10,6 +10,7 @@
 
 import type { ModelInfo, SpeechResult } from './types'
 import { calcSpeechCost } from './pricing'
+import { isMp3Format, isWavFormat, wavFits } from '@/lib/music-options'
 
 const BASE = 'https://api.elevenlabs.io/v1'
 
@@ -23,6 +24,21 @@ function key(): string {
   return k
 }
 
+/** `pcm_<rate>` is bare 16-bit little-endian samples with no header
+ *  (probed Oct 22: 5 s at pcm_48000 = 960,000 bytes = stereo), so a WAV is
+ *  the 44-byte header in front of them. The channel count comes from the
+ *  length we asked for, which v2.5 always keeps. */
+function wavFromPcm(pcm: Buffer, rate: number, seconds: number): Buffer {
+  const channels = Math.round(pcm.length / (seconds * rate * 2)) === 1 ? 1 : 2
+  const h = Buffer.alloc(44)
+  h.write('RIFF', 0, 'ascii'); h.writeUInt32LE(36 + pcm.length, 4); h.write('WAVE', 8, 'ascii')
+  h.write('fmt ', 12, 'ascii'); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20)
+  h.writeUInt16LE(channels, 22); h.writeUInt32LE(rate, 24)
+  h.writeUInt32LE(rate * channels * 2, 28); h.writeUInt16LE(channels * 2, 32); h.writeUInt16LE(16, 34)
+  h.write('data', 36, 'ascii'); h.writeUInt32LE(pcm.length, 40)
+  return Buffer.concat([h, pcm])
+}
+
 /**
  * Compose a song.
  *
@@ -31,17 +47,27 @@ function key(): string {
  * output and the response is raw bytes with no usage of any kind, so an
  * unasked length would mean billing a duration we never measured. Asking
  * for it makes the charge exact before the call.
+ *
+ * The rest are the ⚙ panel's settings (lib/music-options.ts): the format
+ * (one the row lists, else its first: XDuel's plain 'mp3' lands there),
+ * no vocals (`force_instrumental`, which guarantees it) and Content
+ * Credentials (`sign_with_c2pa`, MP3 only; the manifest names Eleven Labs
+ * Inc. as the maker and the file as AI-made, nothing of ours).
  */
 export async function generateMusic(
   model: ModelInfo,
   prompt: string,
-  options?: { seconds?: number | null; instrumental?: boolean | null },
+  options?: { seconds?: number | null; instrumental?: boolean | null; format?: string | null; c2pa?: boolean | null },
 ): Promise<SpeechResult> {
   const TAG = `[elevenlabs/${model.model_name}]`
   const cfg = model.output_config?.audio ?? {}
   const seconds = Math.min(MAX_SECONDS, Math.max(MIN_SECONDS,
     Math.round(options?.seconds ?? (cfg.durations ?? [])[0] ?? 60)))
-  const format = (cfg.formats ?? [])[0] ?? 'mp3_44100_128'
+  const formats: string[] = cfg.formats ?? []
+  const format = options?.format && formats.includes(options.format) ? options.format : (formats[0] ?? 'mp3_48000_192')
+  const wav = isWavFormat(format)
+  // Checked before the call: a song that cannot be stored would still be billed.
+  if (wav && !wavFits(seconds)) throw new Error('USERMSG: A WAV song can be at most 4 minutes. Pick MP3 for a longer one.')
 
   const body: Record<string, unknown> = {
     prompt,
@@ -49,7 +75,8 @@ export async function generateMusic(
     music_length_ms: seconds * 1000,
   }
   if (options?.instrumental != null) body.force_instrumental = !!options.instrumental
-  console.log(`${TAG} music chars=${prompt.length} seconds=${seconds} format=${format}`)
+  if (options?.c2pa && cfg.c2pa && isMp3Format(format)) body.sign_with_c2pa = true
+  console.log(`${TAG} music chars=${prompt.length} seconds=${seconds} format=${format}${body.force_instrumental ? ' instrumental' : ''}${body.sign_with_c2pa ? ' c2pa' : ''}`)
 
   const res = await fetch(`${BASE}/music?output_format=${encodeURIComponent(format)}`, {
     method: 'POST',
@@ -60,15 +87,16 @@ export async function generateMusic(
     const detail = await res.text().catch(() => '')
     throw new Error(`ElevenLabs Music ${res.status}: ${detail.slice(0, 300)}`)
   }
-  const buffer = Buffer.from(await res.arrayBuffer())
-  if (buffer.length === 0) throw new Error('ElevenLabs Music returned no audio.')
+  const raw = Buffer.from(await res.arrayBuffer())
+  if (raw.length === 0) throw new Error('ElevenLabs Music returned no audio.')
+  const buffer = wav ? wavFromPcm(raw, Number(format.split('_')[1]) || 48_000, seconds) : raw
 
   // Billed on the length we ASKED for, which is the length they charge for.
   const cost = calcSpeechCost(model, { durationSeconds: seconds })
   console.log(`${TAG} music ok bytes=${buffer.length} dur=${seconds}s cost=$${cost.toFixed(4)} song=${res.headers.get('song-id') ?? '?'}`)
   return {
     buffer,
-    mediaType: format.startsWith('mp3') ? 'audio/mpeg' : format.startsWith('opus') ? 'audio/opus' : 'audio/wav',
+    mediaType: isMp3Format(format) ? 'audio/mpeg' : format.startsWith('opus') ? 'audio/opus' : 'audio/wav',
     durationSeconds: seconds,
     cost,
     characters: null,
