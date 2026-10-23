@@ -63,6 +63,16 @@ function loadRoute(file: string, modules: Record<string, unknown>) {
   check('wall: a stick is its number, edition and grade', stick.n === 37 && stick.edition === 'gansan' && stick.luck === '凶' && stick.text === undefined)
 }
 
+// ── The date, in the reader's language ────────────────────────────────────
+{
+  const at = new Date(2026, 9, 22, 15, 0).toISOString(), jan = new Date(2027, 0, 5, 9, 0).toISOString()
+  check('date: en 2026/10/22 (zero-padded: 2027/01/05)', wall.wallDate(at, 'en') === '2026/10/22' && wall.wallDate(jan, 'en') === '2027/01/05')
+  check('date: zh-Hant, zh-Hans and ja 2026年10月22日', ['zh-Hant', 'zh-Hans', 'ja'].every(l => wall.wallDate(at, l) === '2026年10月22日'))
+  check('date: ko 2026년 10월 22일', wall.wallDate(at, 'ko') === '2026년 10월 22일')
+  check('date: a bad value is no date, not "Invalid Date"', wall.wallDate('nope', 'en') === '')
+  check('date: never month/day alone in the wall', !/month: 'numeric', day: 'numeric'/.test(read('app/components/xoracle/TempleWall.tsx')))
+}
+
 // ── Routes ─────────────────────────────────────────────────────────────────
 const UID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const VISIT = '00000000-0000-4000-8000-00000000abcd'
