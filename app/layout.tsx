@@ -6,6 +6,7 @@ import AuthModal from './components/AuthModal'
 import Nav from './components/Nav'
 import Omnibox from './components/Omnibox'
 import GlobalCursor from './components/GlobalCursor'
+import VideoVolume from './components/VideoVolume'
 import VisitTracker from './components/VisitTracker'
 import { Analytics } from '@vercel/analytics/next'
 import { PageTitleProvider } from '../lib/PageTitleContext'
@@ -134,6 +135,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 Ends the "new page ships with an invisible mouse" bug class
                 (CC, July 27). */}
             <GlobalCursor />
+            {/* Every video starts at half volume — see VideoVolume.tsx. */}
+            <VideoVolume />
             </PageTitleProvider>
           </AuthModalProvider>
         </LangProvider>

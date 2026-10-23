@@ -395,7 +395,8 @@ export default function XCutEditor({ project, onExit }: { project: XCutProject; 
         {/* Preview */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, alignItems: 'center', justifyContent: 'center', padding: 16, gap: 10 }}>
           <div style={{ position: 'relative', background: '#000', borderRadius: 8, overflow: 'hidden', aspectRatio: String(aspectNum), maxHeight: '100%', maxWidth: '100%', width: tl.aspect === '9:16' ? 'auto' : '100%', height: tl.aspect === '9:16' ? '100%' : 'auto' }}>
-            <video ref={videoRef} playsInline style={{ width: '100%', height: '100%', objectFit: 'contain', display: current?.clip.kind === 'video' ? 'block' : 'none', background: '#000' }} />
+            {/* data-own-volume: this preview sets each clip's gain itself, not the site's 50% (VideoVolume). */}
+            <video ref={videoRef} data-own-volume playsInline style={{ width: '100%', height: '100%', objectFit: 'contain', display: current?.clip.kind === 'video' ? 'block' : 'none', background: '#000' }} />
             {current?.clip.kind === 'image' && current.clip.src.url && <img src={current.clip.src.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />}
             {!current && <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: MUTED, fontSize: 13, padding: 24, textAlign: 'center' }}>{t('xcut.emptytl')}</div>}
             {cues.length > 0 && (
