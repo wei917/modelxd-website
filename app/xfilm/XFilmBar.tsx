@@ -1,8 +1,8 @@
 'use client'
 // XFilm's top bar (Oct 22): X先知's own bar on www (.xoracle-embedded-bar and
 // its temple row), as XDuel's, XGame's and /profile's, with XFilm's four
-// places as its rooms, icon over a label: 導演 (XDirect), 剪輯 (XCut),
-// 自動成片 (X創作's 成片) and 同款 (X創作's 同款). Each is its own page, so
+// places as its rooms, icon over a label: 同款 (X創作's 同款), 導演
+// (XDirect), 剪輯 (XCut) and 自動成片 (X創作's 成片). Each is its own page, so
 // the links are plain navigations; the story bible belongs to 導演.
 //
 // Icons: no approved set exists for these four yet, so they are line
@@ -13,7 +13,8 @@ import { usePathname } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 
 export type XFilmTab = 'direct' | 'edit' | 'auto' | 'remake'
-export const XFILM_TABS: XFilmTab[] = ['direct', 'edit', 'auto', 'remake']
+// 同款 first (owner, Oct 22: "Remake should be on the left most position").
+export const XFILM_TABS: XFilmTab[] = ['remake', 'direct', 'edit', 'auto']
 
 export function xfilmTabOf(pathname: string | null): XFilmTab | null {
   const part = pathname?.match(/^\/xfilm\/([a-z]+)/)?.[1]

@@ -799,6 +799,20 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
       </div>}
     </header>
 
+    {/* 熱門範本 first (owner, Oct 22: "Popular Templates should be on top"),
+        until a read is open or reading: then the read is the page. */}
+    {!busy && !d.result && <div className="xcs-remake-try xcs-fan-section xcs-fan-top">
+      <p className="xcs-remake-try-head">{fc.section}<span>{fc.sectionNote}</span></p>
+      <button type="button" className="xcs-fan-card" onClick={() => onFan?.('new')}>
+        <video src={FAN_CARD_VIDEO} poster={FAN_POSTER} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+        <span className="xcs-fan-card-body">
+          <b>{fc.name}</b>
+          <span>{fc.pitch}</span>
+          <span className="xcs-fan-card-foot"><span>{fc.from(money(fanQuote(MIN_OUTFITS).aboutCents))}</span><span className="is-go">{fc.use} →</span></span>
+        </span>
+      </button>
+    </div>}
+
     <div className="xcs-remake-form">
       <label className="xcs-remake-step" htmlFor="xcs-remake-link"><b aria-hidden="true">01</b>{c.linkLabel}</label>
       <div className="xcs-remake-paste">
@@ -832,17 +846,6 @@ export default function RemakeStudio({ signedIn, onSignIn, remakeId = null, onRe
             <UploadIcon /><span>{c.upload}</span>
           </button>
           <p className="xcs-remake-note">{c.orUpload}</p>
-          <div className="xcs-remake-try xcs-fan-section">
-            <p className="xcs-remake-try-head">{fc.section}<span>{fc.sectionNote}</span></p>
-            <button type="button" className="xcs-fan-card" onClick={() => onFan?.('new')}>
-              <video src={FAN_CARD_VIDEO} poster={FAN_POSTER} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
-              <span className="xcs-fan-card-body">
-                <b>{fc.name}</b>
-                <span>{fc.pitch}</span>
-                <span className="xcs-fan-card-foot"><span>{fc.from(money(fanQuote(MIN_OUTFITS).aboutCents))}</span><span className="is-go">{fc.use} →</span></span>
-              </span>
-            </button>
-          </div>
         </>}
       <input ref={fileRef} type="file" accept="video/mp4,video/quicktime,video/webm" hidden
         onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void uploadAndRead(f) }} />

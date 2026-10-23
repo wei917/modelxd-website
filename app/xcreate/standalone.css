@@ -498,6 +498,8 @@
 
 /* 範本 (Oct 18): the 風扇變裝 template's card in 同款's tab, under the
    popular videos, and its own page (FanTemplate.tsx) with the 同款 parts. */
+/* On top of 同款 since Oct 22, above step 01: a gap before the link. */
+.xcs-fan-top { margin: 0 0 28px; }
 .xcs-fan-section .xcs-remake-try-head { display: grid; gap: 2px; }
 .xcs-fan-section .xcs-remake-try-head span { font-size: 12.5px; font-weight: 400; color: var(--muted2); }
 .xcs-fan-card { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: stretch; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--xc-paper, #fff); color: var(--white); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }

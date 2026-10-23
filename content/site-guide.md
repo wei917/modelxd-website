@@ -167,7 +167,8 @@ preset rather than to an empty studio.
 ### XFilm — `/xfilm`
 Called X影音 in Chinese, X映像 in Japanese and X영상 in Korean. Everything
 that makes a film of several shots lives here, under one bar with four tabs:
-**Direct** (導演), **Edit** (剪輯), **Auto** (自動成片) and **Remake** (同款).
+**Remake** (同款), **Direct** (導演), **Edit** (剪輯) and **Auto** (自動成片).
+`/xfilm` itself opens on Direct.
 It brings together what used to be XDirect, XCut and XCreate's Film and 同款
 tabs (October); their old links all still open the right place. A single
 picture, clip or voice is XCreate's job; a film planned, made and cut
