@@ -1763,6 +1763,52 @@ sign-in for both, 30 days and a year, 觀音廟 only.
 - Words: `app/components/xoracle/wall-copy.ts`, five languages.
 - Tests: `scripts/test-xoracle-wall.ts` (in `test:xoracle`).
 
+## 3D 關帝廟 (prototype, admin only, Oct 22-23)
+
+`/xoracle/guandi-3d`: walk a hilltop temple like a game (phone first: a
+thumb stick walks, a drag looks). Admin only while it is a prototype
+(`lib/hidden-apps.ts` key `guandi3d`: page not found for anyone else, on
+every host but localhost). The 關帝廟 room's card starts with 到 3D 關帝廟參拜
+（原型） for those `/api/xoracle/temple3d` lets in (admins, localhost, or
+everyone once it leaves the hidden list).
+- **Files**: `app/xoracle/guandi-3d/` (page, `Temple3D.tsx` the UI and the
+  ritual, `scene.ts` three.js + Spark, `lines.ts` the words), the scene's
+  config `lib/xoracle-temple3d.ts` (`TEMPLE3D_SCENE`), assets in
+  `public/xoracle/temple3d/`, making them `scripts/guandi3d-*.ts`.
+- **The world**: a World Labs Marble 1.1 Plus world of an empty hilltop
+  plaza, scaled by its metric_scale_factor, tilted 1.74° level and lifted to
+  zero, so models stand in metres. Marble's 500k file smeared the trees
+  beside the pavilion; `hill-world.spz` (`scripts/guandi3d-splats.ts`, 1.5M
+  splats, 26 MB) keeps its full file in a ring 8-50 m out. `?q=500k|150k|100k`
+  picks Marble's lighter files for a weak phone. Past 6 m the floor gets
+  bricks drawn in code to match (`scripts/guandi3d-paving.ts`), masked to the
+  plaza by the collider; the models' shadows fall on a shadow-only plane.
+  Rendering: meshes, then the splats (no depth of their own), then paving
+  and shadows, then the ritual's props over everything.
+- **Walking**: the world's collider rasterised once into a grid of floor
+  heights and blocked cells; the pavilion is walked through on its own
+  floors (`walk: 'mesh'`), other models block their footprint.
+- **The ritual**: 參拜 at the 香爐 (kneeling there, his face is in view over
+  the pavilion's roof) → 搖籤筒 → 擲筊; a 聖筊 writes the stick and the
+  matter to sessionStorage (`writeStick`, read once by the 關帝廟 room, which
+  opens at that poem). Randomness is the browser's crypto, as in the room.
+  He says nothing (owner, Oct 23: "remove the voice. don't actively talk
+  please!"): no voice, no subtitles, the buttons lead.
+- **Inside him**: the small door in his pedestal → a lobby (上到頂部 / 離開)
+  → a deck on top of his hat (33.85 m): walk round it inside a low parapet,
+  his model below, a 360° panorama round it (`hill-view-hat.jpg`, Marble 1.1
+  from a GPT Image 2 picture). A splat world seen from 34 m up falls apart.
+  Told the view was from a statue's top, Marble put giant bronze hands
+  behind the viewer: its prompt never says statue.
+- **Gotchas**: a texture uploaded from an `<img>` came out upside down in
+  Chrome for whichever panorama reached the GPU second, whatever
+  UNPACK_FLIP_Y said; panoramas load as image bitmaps flipped while
+  decoding, the paving mask is a data texture. Tripo exports models facing
+  +X (a quarter turn) and keeps the turn of the picture it was made from.
+  Spark needs frames to finish its sort: a hidden browser tab shows black
+  splats unless the loop is stepped (`?debug=1`, `window.__temple.step()`).
+- No real temple: every picture was drawn as a generic one (owner's rule).
+
 ## 分享 (Share, Sep 28)
 
 One button beside a teacher's reply, a 籤, the 今日運勢 cards and the 黃曆

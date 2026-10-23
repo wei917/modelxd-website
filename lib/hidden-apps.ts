@@ -33,6 +33,9 @@ export const HIDDEN_APPS: readonly HiddenApp[] = [
   // or a saved link.
   { key: 'xworld', level: 'unlisted', why: 'owner: hidden for now', paths: ['/xworld'] },
   { key: 'xarch', level: 'unlisted', why: 'owner: hidden for now', paths: ['/xarch'] },
+  // Oct 22: X先知's 3D 關帝廟 is a prototype (app/xoracle/guandi-3d); only
+  // its own page, the rest of /xoracle stays open.
+  { key: 'guandi3d', level: 'admin', why: 'prototype', paths: ['/xoracle/guandi-3d'] },
 ]
 
 /** The hidden app a path belongs to (the path itself or anything under it). */

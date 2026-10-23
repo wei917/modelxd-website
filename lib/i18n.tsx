@@ -2837,6 +2837,7 @@ export const STRINGS: Record<string, Entry> = {
   'xoracle.qian.ask':      { en: 'What are you asking about? (optional)', 'zh-Hant': '所問之事（選填）', 'zh-Hans': '所问之事（选填）', ja: '尋ねること（任意）', ko: '묻는 일 (선택)' },
   'xoracle.qian.ask.ph':   { en: 'One matter per stick: career, marriage, a move, a lawsuit, an illness…', 'zh-Hant': '一事一籤：功名事業、婚姻、出行、訟事、疾病、家宅……', 'zh-Hans': '一事一签：功名事业、婚姻、出行、讼事、疾病、家宅……', ja: '一件につき一籤：仕事、結婚、旅行、訴訟、病気、家……', ko: '한 가지 일에 한 제비: 일, 결혼, 이동, 소송, 병, 집…' },
   'xoracle.qian.draw':     { en: 'Draw a stick', 'zh-Hant': '抽籤', 'zh-Hans': '抽签', ja: '籤を引く', ko: '제비 뽑기' },
+  'xoracle.qian.temple3d': { en: 'Pray in the 3D temple (prototype)', 'zh-Hant': '到 3D 關帝廟參拜（原型）', 'zh-Hans': '到 3D 关帝庙参拜（原型）', ja: '3D の関帝廟で参拝（試作）', ko: '3D 관제묘에서 참배 (프로토타입)' },
   'xoracle.qian.redraw':   { en: 'Draw again', 'zh-Hant': '重新抽籤', 'zh-Hans': '重新抽签', ja: 'もう一度引く', ko: '다시 뽑기' },
   'xoracle.qian.throw':    { en: 'Throw the blocks', 'zh-Hant': '擲筊', 'zh-Hans': '掷筊', ja: 'ポエを投げる', ko: '교배 던지기' },
   'xoracle.qian.stick':    { en: 'Stick', 'zh-Hant': '第', 'zh-Hans': '第', ja: '第', ko: '제' },
