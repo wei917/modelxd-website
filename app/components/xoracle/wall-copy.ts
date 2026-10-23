@@ -8,9 +8,14 @@ type Words = Record<L, string>
 
 const W = {
   section:      { en: 'Outside the temple', 'zh-Hant': '廟外', 'zh-Hans': '庙外', ja: 'お堂の外', ko: '절 마당' },
-  sectionNote:  { en: 'Sticks people tied and wishes they hung. No names, ever.', 'zh-Hant': '大家綁的籤、掛的心願。不會出現任何人的名字。', 'zh-Hans': '大家绑的签、挂的心愿。不会出现任何人的名字。', ja: 'みんなが結んだおみくじと、掛けた願い。名前は出ません。', ko: '사람들이 묶은 제비와 건 소원. 이름은 나오지 않아요.' },
-  counts:       { en: '{s} sticks and {w} wishes hang here now', 'zh-Hant': '現在掛著 {s} 支籤、{w} 個心願', 'zh-Hans': '现在挂着 {s} 支签、{w} 个心愿', ja: 'いま {s} 本のおみくじと {w} 枚の絵馬', ko: '지금 제비 {s}개, 소원 {w}개가 걸려 있어요' },
-  empty:        { en: 'Nothing hangs here yet.', 'zh-Hant': '這裡還沒有東西。', 'zh-Hans': '这里还没有东西。', ja: 'まだ何も掛かっていません。', ko: '아직 아무것도 없어요.' },
+  tieSection:   { en: 'Where sticks are tied', 'zh-Hant': '結籤處', 'zh-Hans': '结签处', ja: 'おみくじ結び所', ko: '제비 묶는 곳' },
+  tieCount:     { en: '{s} sticks are tied here now', 'zh-Hant': '現在綁著 {s} 支籤', 'zh-Hans': '现在绑着 {s} 支签', ja: 'いま {s} 本のおみくじが結ばれています', ko: '지금 제비 {s}개가 묶여 있어요' },
+  tieEmpty:     { en: 'No sticks tied yet.', 'zh-Hant': '還沒有人綁籤。', 'zh-Hans': '还没有人绑签。', ja: 'まだ結ばれていません。', ko: '아직 묶인 제비가 없어요.' },
+  tieHere:      { en: 'Drew a stick that worries you? Tie it here and leave the worry behind. Only its number and the date show, never your name or your question.', 'zh-Hant': '抽到不好的籤，可以綁在這裡，把不安留下。只掛籤號和日子，不會有你的名字或問的事。', 'zh-Hans': '抽到不好的签，可以绑在这里，把不安留下。只挂签号和日子，不会有你的名字或问的事。', ja: '気がかりなおみくじは、ここに結んで帰れます。結ばれるのは番号と日付だけ。お名前やお願いの内容は出ません。', ko: '마음에 걸리는 제비는 여기 묶어 두고 갈 수 있어요. 번호와 날짜만 걸리고, 이름이나 물은 일은 나오지 않아요.' },
+  drawFirst:    { en: 'Draw a stick first', 'zh-Hant': '先抽一支籤', 'zh-Hans': '先抽一支签', ja: 'まずおみくじを引く', ko: '먼저 제비 뽑기' },
+  wishCount:    { en: '{w} wishes hang here now', 'zh-Hant': '現在掛著 {w} 個心願', 'zh-Hans': '现在挂着 {w} 个心愿', ja: 'いま {w} 枚の絵馬', ko: '지금 소원 {w}개가 걸려 있어요' },
+  wishEmpty:    { en: 'No wishes yet.', 'zh-Hant': '還沒有許願牌。', 'zh-Hans': '还没有许愿牌。', ja: 'まだ絵馬はありません。', ko: '아직 소원패가 없어요.' },
+  wishHere:     { en: 'Write a wish on a plaque; it hangs here for a year. Your name never shows.', 'zh-Hant': '在許願牌寫下心願，掛在這裡一年。不會顯示你的名字。', 'zh-Hans': '在许愿牌写下心愿，挂在这里一年。不会显示你的名字。', ja: '絵馬に願いごとを書いて、ここに一年掛けておけます。お名前は出ません。', ko: '소원패에 소원을 적어 여기 1년 동안 걸어 둘 수 있어요. 이름은 나오지 않아요.' },
   nudge:        { en: 'Uneasy? You can tie this stick outside.', 'zh-Hant': '心裡不安嗎？可以把這支籤綁在廟外。', 'zh-Hans': '心里不安吗？可以把这支签绑在庙外。', ja: '気がかりなら、このおみくじをお堂の外に結んでいけます。', ko: '마음에 걸리나요? 이 제비를 절 마당에 묶어 두고 갈 수 있어요.' },
   nudgeBad:     { en: 'A stick like this is usually tied at the temple rather than taken home.', 'zh-Hant': '這樣的籤，習慣上會綁在廟裡，不帶回家。', 'zh-Hans': '这样的签，习惯上会绑在庙里，不带回家。', ja: '凶のおみくじは、結んで帰る習わしがあります。', ko: '이런 제비는 보통 집에 가져가지 않고 절에 묶어 둬요.' },
   tie:          { en: 'Tie it outside', 'zh-Hant': '綁在廟外', 'zh-Hans': '绑在庙外', ja: '結んでいく', ko: '묶어 두기' },

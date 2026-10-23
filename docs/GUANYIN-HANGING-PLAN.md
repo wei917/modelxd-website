@@ -403,6 +403,9 @@ stick number from the browser, so a token proves nothing; a stick drawn
 signed out is saved through the chart route after sign-in); no
 `?wall=1` address (the wall opens in place); the sealed editor types on the
 front.
+After a first look (owner, Oct 22): 廟外 sits above the visit history, as two
+cards, 結籤處 (the rope rack, 先抽一支籤) then 許願牌, because temples keep the
+tying place and the plaque rack apart.
 
 - The seal stays (owner, Oct 22: "ok").
 - The XTell → XOracle rename has landed on origin/dev (65cf9e84), so the build
