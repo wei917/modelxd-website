@@ -405,7 +405,9 @@ signed out is saved through the chart route after sign-in); no
 front.
 After a first look (owner, Oct 22): 廟外 sits above the visit history, as two
 cards, 結籤處 (the rope rack, 先抽一支籤) then 許願牌, because temples keep the
-tying place and the plaque rack apart.
+tying place and the plaque rack apart. Then 許願牌 became a 絵馬掛け rack (owner:
+"it should also be a wall or place to hang the 許願牌"): generated rack art,
+three bars of nine hooks, real plaques on the hooks, tap to read.
 
 - The seal stays (owner, Oct 22: "ok").
 - The XTell → XOracle rename has landed on origin/dev (65cf9e84), so the build

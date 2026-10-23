@@ -237,43 +237,88 @@ function ReportBox({ id, w, onDone }: { id: string; w: Words; onDone: (msg: stri
   )
 }
 
-function PlaqueGrid({ wishes, w, lang, signed, admin, fresh, onHidden }: { wishes: WallItem[]; w: Words; lang: string; signed: boolean | null; admin: boolean; fresh?: string | null; onHidden: (id: string) => void }) {
+// The plaque rack (絵馬掛け, public/xoracle/wall/plaque-rack.avif, 1200×800):
+// three bars of nine brass hooks, measured on the picture. Hooks at 17.6% to
+// 82.3% of the width, 8.1% apart; their bottoms at 33.3%, 52.0% and 70.6% of
+// the height. A plaque (480×464, its cord loop at the top) hangs by its loop.
+const HOOK_X = [17.6, 25.7, 33.8, 41.9, 50.0, 58.0, 66.0, 74.1, 82.3]
+const HOOK_Y = [33.3, 52.0, 70.6]
+const PLAQUE_W = 11            // % of the rack's width: neighbours overlap a little, as on a real rack
+const PER_RACK = HOOK_X.length * HOOK_Y.length
+
+/** A plaque on the rack, small: the wood, a few of its words as texture (the
+ *  writing reads at desktop size; on a phone it is a tap to read), or its back. */
+function MiniPlaque({ item }: { item: WallItem }) {
+  const back = item.text == null || item.text === ''
+  return (
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '480 / 464', background: `url(/xoracle/wall/${back ? 'plaque-back' : 'plaque'}.avif) center / contain no-repeat` }}>
+      {!back && (
+        <div style={{ position: 'absolute', left: '13%', right: '13%', top: '52%', bottom: '14%', overflow: 'hidden', textAlign: 'center',
+          fontFamily: 'var(--xoracle-serif, serif)', fontWeight: 600, color: '#3d2a17', fontSize: 'clamp(3px, 1.05cqw, 9px)', lineHeight: 1.25, overflowWrap: 'anywhere' }}>{item.text}</div>
+      )}
+      {item.fulfilled && <span aria-hidden="true" style={{ position: 'absolute', right: '8%', top: '44%', width: '14%', aspectRatio: '1', borderRadius: '50%', background: '#c8322a' }} />}
+    </div>
+  )
+}
+
+function PlaqueRack({ wishes, w, lang, signed, admin, fresh, more, onMore, onHidden }: { wishes: WallItem[]; w: Words; lang: string; signed: boolean | null; admin: boolean; fresh?: string | null; more: boolean; onMore: () => Promise<void>; onHidden: (id: string) => void }) {
+  const [page, setPage] = useState(0)
   const [open, setOpen] = useState<string | null>(null)
   const [reporting, setReporting] = useState(false)
   const [note, setNote] = useState('')
   const { show: showSignIn } = useAuthModal()
+  const hung = wishes.slice(page * PER_RACK, (page + 1) * PER_RACK)
+  const opened = wishes.find(x => x.id === open) ?? null
+  const hasOlder = wishes.length > (page + 1) * PER_RACK || more
+  const older = async () => { if (wishes.length <= (page + 1) * PER_RACK && more) await onMore(); setPage(p => p + 1); setOpen(null) }
+  const pick = (id: string) => { setOpen(o => o === id ? null : id); setReporting(false); setNote('') }
   const hide = async (id: string) => {
     const r = await fetch('/api/xoracle/wall/wish', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'hide' }) }).catch(() => null)
     if (r?.ok) { onHidden(id); setOpen(null) }
   }
-  if (!wishes.length) return null
+  // Plaque height in rack-height %: its width × the rack's 3:2 × the plaque's 464/480.
+  const h = PLAQUE_W * 1.5 * (464 / 480)
   return (
-    // Two a row on a phone (the section is ~295 px inside), five or six on a desktop.
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(128px, 1fr))', gap: '12px 10px' }}>
-      {wishes.map(item => {
-        const isOpen = open === item.id
-        return (
-          <div key={item.id} className={item.id === fresh ? 'xoracle-wall-hung' : undefined}
-            style={isOpen ? { gridColumn: '1 / -1', display: 'grid', justifyItems: 'center', gap: 6, padding: '6px 0 10px' } : { transform: `rotate(${tilt(item.id, 2.5).toFixed(1)}deg)`, transformOrigin: '50% 0' }}>
-            <button type="button" onClick={() => { setOpen(o => o === item.id ? null : item.id); setReporting(false); setNote('') }} aria-expanded={isOpen}
-              style={{ display: 'block', width: '100%', maxWidth: isOpen ? 420 : undefined, padding: 0, border: 'none', background: 'none', cursor: 'pointer',
-                filter: item.mine ? 'drop-shadow(0 0 4px #e0a100)' : undefined }}>
-              <PlaqueFace item={item} w={w} lang={lang} big={isOpen} />
-            </button>
-            {isOpen && (
-              <div style={{ width: '100%', maxWidth: 420, fontSize: 12.5, color: 'var(--muted)' }}>
-                <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {item.mine ? <span>{w.w('yours')}</span>
-                    : item.text ? <button type="button" style={{ ...linkBtn, color: 'var(--muted)', fontWeight: 600 }} onClick={() => { if (!signed) { showSignIn(); return } setReporting(r => !r) }}>{w.w('report')}</button> : null}
-                  {admin && !item.mine && <button type="button" style={{ ...linkBtn, color: 'var(--muted)', fontWeight: 600 }} onClick={() => hide(item.id)}>{w.w('hide')}</button>}
-                </div>
-                {note ? <p role="status" style={{ textAlign: 'center', margin: '8px 0 0' }}>{note}</p>
-                  : reporting && <ReportBox id={item.id} w={w} onDone={msg => { setNote(msg); setReporting(false) }} />}
-              </div>
-            )}
+    <div>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div className="xoracle-wall-plaques" style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', backgroundImage: 'url(/xoracle/wall/plaque-rack.avif)', backgroundSize: 'cover', borderRadius: 10, overflow: 'hidden', containerType: 'inline-size' }}>
+          {hung.map((item, i) => {
+            const bar = Math.floor(i / HOOK_X.length), hook = i % HOOK_X.length
+            return (
+              <button key={item.id} type="button" onClick={() => pick(item.id)} aria-expanded={open === item.id}
+                aria-label={[w.forWord(item.wishFor), item.text ?? w.w('sealedBack'), dateOf(item.at, lang)].filter(Boolean).join(' · ')}
+                className={item.id === fresh ? 'xoracle-wall-hung' : undefined}
+                style={{ position: 'absolute', left: `${HOOK_X[hook] - PLAQUE_W / 2}%`, top: `${HOOK_Y[bar] - 0.6}%`, width: `${PLAQUE_W}%`, height: `${h}%`, padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+                  transform: `rotate(${tilt(item.id, 5).toFixed(1)}deg)`, transformOrigin: '50% 2%',
+                  filter: item.mine ? 'drop-shadow(0 0 3px #e0a100) drop-shadow(0 0 1px #e0a100)' : open === item.id ? 'drop-shadow(0 0 3px var(--red))' : 'drop-shadow(0 1px 1px rgba(60,40,20,0.25))' }}>
+                <MiniPlaque item={item} />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      {(page > 0 || hasOlder) && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 22, marginTop: 8 }}>
+          {page > 0 && <button type="button" style={{ ...linkBtn, color: 'var(--muted)' }} onClick={() => { setPage(p => p - 1); setOpen(null) }}>‹ {w.w('newer')}</button>}
+          {hasOlder && <button type="button" style={{ ...linkBtn, color: 'var(--muted)' }} onClick={() => void older()}>{w.w('older')} ›</button>}
+        </div>
+      )}
+      {opened ? (
+        // Tap to read: the plaque, large, under the rack.
+        <div style={{ display: 'grid', justifyItems: 'center', gap: 6, padding: '12px 0 4px' }}>
+          <div style={{ width: '100%', maxWidth: 420, filter: opened.mine ? 'drop-shadow(0 0 4px #e0a100)' : undefined }}><PlaqueFace item={opened} w={w} lang={lang} big /></div>
+          <div style={{ width: '100%', maxWidth: 420, fontSize: 12.5, color: 'var(--muted)' }}>
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {opened.mine ? <span>{w.w('yours')}</span>
+                : opened.text ? <button type="button" style={{ ...linkBtn, color: 'var(--muted)', fontWeight: 600 }} onClick={() => { if (!signed) { showSignIn(); return } setReporting(r => !r) }}>{w.w('report')}</button> : null}
+              {admin && !opened.mine && <button type="button" style={{ ...linkBtn, color: 'var(--muted)', fontWeight: 600 }} onClick={() => hide(opened.id)}>{w.w('hide')}</button>}
+              <button type="button" style={{ ...linkBtn, color: 'var(--muted)', fontWeight: 600 }} onClick={() => setOpen(null)}>{w.w('hideWall')}</button>
+            </div>
+            {note ? <p role="status" style={{ textAlign: 'center', margin: '8px 0 0' }}>{note}</p>
+              : reporting && <ReportBox id={opened.id} w={w} onDone={msg => { setNote(msg); setReporting(false) }} />}
           </div>
-        )
-      })}
+        </div>
+      ) : hung.length > 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted2)', textAlign: 'center' }}>{w.w('tapToRead')}</p>}
     </div>
   )
 }
@@ -445,8 +490,7 @@ export default function TempleWall({ startWriting = false, fresh = null, embedde
         <p style={note}>{w.w('wishHere')}</p>
         {writing && <WishEditor w={w} lang={lang} onCancel={() => setWriting(false)} onHung={item => { put(item); setHungId(item.id); setWriting(false) }} />}
         {hungId && !writing && <p role="status" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--green, #2f7d4f)', textAlign: 'center' }}>{w.w('hung')}</p>}
-        <PlaqueGrid wishes={wishes} w={w} lang={lang} signed={signed} admin={admin} fresh={hungId} onHidden={id => setHiddenIds(h => [...h, id])} />
-        {wall?.more && <div style={{ textAlign: 'center', marginTop: 12 }}><button type="button" onClick={() => void loadMore()} style={{ ...linkBtn, color: 'var(--muted)' }}>{w.w('more')}</button></div>}
+        <PlaqueRack wishes={wishes} w={w} lang={lang} signed={signed} admin={admin} fresh={hungId} more={!!wall?.more} onMore={loadMore} onHidden={id => setHiddenIds(h => [...h, id])} />
         {signed && <MyWishes mine={mine} w={w} onChange={put} />}
         <p style={{ margin: '14px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{w.w('entertainment')}</p>
       </section>

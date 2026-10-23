@@ -217,7 +217,8 @@ async function routes() {
   check('room: two cards, 結籤處 (with 先抽一支籤 outside a drawn stick) then 許願牌', /xoracle-wall-sticks[\s\S]*drawFirst[\s\S]*xoracle-wall-wishes/.test(wallSrc) && /!embedded && <div[^\n]*drawFirst/.test(wallSrc))
   check('room: 廟外 above the visit history', client.indexOf("temple === 'guanyin' && <TempleWall />") < client.indexOf('<TempleHistory temple={temple}'))
   check('code: no real temple named in the wall\'s files', !/淺草寺|浅草寺|龍山寺|Sensoji|Senso-ji|Longshan/i.test(wallSrc + read('lib/xoracle-wall.ts') + read('lib/xoracle-wall-check.ts')))
-  for (const f of ['rack', 'slip', 'plaque', 'plaque-back']) check(`picture: public/xoracle/wall/${f}.avif is there`, fs.existsSync(path.join(__dirname, '..', 'public/xoracle/wall', `${f}.avif`)))
+  check('room: 許願牌 is a rack, plaques on its hooks, tap to read', /plaque-rack\.avif/.test(wallSrc) && /HOOK_X\[hook\]/.test(wallSrc) && /<PlaqueRack /.test(wallSrc) && !/<PlaqueGrid/.test(wallSrc))
+  for (const f of ['rack', 'slip', 'plaque', 'plaque-back', 'plaque-rack']) check(`picture: public/xoracle/wall/${f}.avif is there`, fs.existsSync(path.join(__dirname, '..', 'public/xoracle/wall', `${f}.avif`)))
   let missing: string[] = []
   for (const [table, keys] of Object.entries(WALL_COPY)) for (const [k, words] of Object.entries(keys)) for (const l of LANGS) if (!words[l]?.trim()) missing.push(`${table}.${k}.${l}`)
   check('words: every line in all five languages', missing.length === 0, missing.join(', '))

@@ -1743,7 +1743,9 @@ sign-in for both, 30 days and a year, 觀音廟 only.
 - **Two cards under the form, above the visit history** (owner, Oct 22; temples
   keep the two apart: a 凶 slip is tied at its own place near the draw, plaques
   hang on their own rack): **結籤處**, the rope rack, with 先抽一支籤 (scrolls
-  to 抽籤); then **許願牌**, the plaques and 掛許願牌.
+  to 抽籤); then **許願牌**, a 絵馬掛け rack (owner, Oct 22: plaques hang on a
+  rack like the 結籤處): three bars of nine hooks, 27 real plaques a rack,
+  newest first, 較新的 / 較早的 to page; tap one to read it large below.
 - **The wall** is public, signed out too (`GET /api/xoracle/wall`, cached
   20 s; the viewer's own rows come from `?mine=1` and are laid over it).
   Never a user id, name, @ID, avatar, country or question. Reports from a
@@ -1752,10 +1754,12 @@ sign-in for both, 30 days and a year, 觀音廟 only.
 - **Stored**: `xoracle_hangings`, `xoracle_hanging_reports` (migration 151,
   service key only, applied and checked live Oct 22).
 - **Pictures**: generated with GPT Image 2.5 Sunburst against the 觀音 art
-  (`scripts/guanyin-wall-art.ts`, $0.21 for ten drafts): the rope rack, a
-  knotted slip, the plaque and its back, in `public/xoracle/wall/`. The page
-  hangs real slips on the rack's two cords (32.3% and 52.9% of its height)
-  and writes on the plaques; it never draws an icon.
+  (`scripts/guanyin-wall-art.ts`, $0.27 for thirteen drafts): the rope rack, a
+  knotted slip, the plaque and its back, and the plaque rack, in
+  `public/xoracle/wall/`. The page hangs real slips on the rope rack's two
+  cords (32.3% and 52.9% of its height) and real plaques on the plaque rack's
+  hooks (x 17.6-82.3% every 8.1%, hook bottoms 33.3 / 52.0 / 70.6%), and
+  writes on the plaques; it never draws an icon.
 - Words: `app/components/xoracle/wall-copy.ts`, five languages.
 - Tests: `scripts/test-xoracle-wall.ts` (in `test:xoracle`).
 
