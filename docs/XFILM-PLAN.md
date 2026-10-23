@@ -204,7 +204,8 @@ the owner's word.
 
 1. Chinese name X影音; ja X映像, ko X영상.
 2. Tabs 導演 / 剪輯 / 自動成片 / 同款 (no Projects tab).
-3. `/xfilm` opens on 導演, which opens on your boards.
+3. `/xfilm` opens on 導演, which opens on your boards. (Oct 23: 同款 is the
+   first tab and `/xfilm` opens on it; a board or director link still goes to 導演.)
 4. /profile Library: one XFilm section.
 5. Phase 1 went ahead: the Film v2 work (`lib/film/engine/`, untouched
    since Oct 7) is outside `app/`, so the two do not collide.
