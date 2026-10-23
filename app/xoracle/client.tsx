@@ -1521,10 +1521,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             temple, not only on the account page), in their own card under
             the form (owner, Sep 27). Continue reopens the room in place with
             chart and conversation. */}
-        {onResume && <TempleHistory temple={temple} onResume={onResume} />}
         {/* 觀音廟's 廟外 (Oct 22): the sticks people tied and the wishes they
-            hung, and 掛許願牌 (docs/GUANYIN-HANGING-PLAN.md). */}
+            hung, and 掛許願牌 (docs/GUANYIN-HANGING-PLAN.md). Above the
+            visit history (owner, Oct 22). */}
         {temple === 'guanyin' && <TempleWall />}
+        {onResume && <TempleHistory temple={temple} onResume={onResume} />}
       </>) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* The way back to the form, first thing in the room, with what
