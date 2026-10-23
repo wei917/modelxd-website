@@ -5,7 +5,7 @@ import type { FanMusicStyle } from '@/lib/fan-template/recipe'
 import type { FanStatus } from '@/lib/fan-template/job'
 
 type Copy = {
-  /** The section in 同款's tab, beside the link and the popular videos. */
+  /** The section in 同款's tab under the link: 熱門範本 / Popular Templates (Oct 22). */
   section: string
   sectionNote: string
   name: string
@@ -59,7 +59,7 @@ type Copy = {
 }
 
 const en: Copy = {
-  section: 'Templates',
+  section: 'Popular Templates',
   sectionNote: 'A popular trend, ready to make with your photo.',
   name: 'Fan outfit change',
   pitch: 'Roll off the sofa, press the remote, and every pass of the ceiling fan changes your outfit.',
@@ -109,7 +109,7 @@ const en: Copy = {
 }
 
 const zhHant: Copy = {
-  section: '範本',
+  section: '熱門範本',
   sectionNote: '熱門玩法，放上你的照片就能做。',
   name: '風扇變裝',
   pitch: '從沙發翻下來、按下遙控器，吊扇每轉過一次就換一套衣服。',
@@ -160,7 +160,7 @@ const zhHant: Copy = {
 
 const zhHans: Copy = {
   ...zhHant,
-  section: '模板',
+  section: '热门模板',
   sectionNote: '热门玩法，放上你的照片就能做。',
   name: '风扇变装',
   pitch: '从沙发翻下来、按下遥控器，吊扇每转过一次就换一套衣服。',
@@ -204,7 +204,7 @@ const zhHans: Copy = {
 }
 
 const ja: Copy = {
-  section: 'テンプレート',
+  section: '人気のテンプレート',
   sectionNote: '人気の型を、あなたの写真でそのまま作れます。',
   name: '扇風機で着替え',
   pitch: 'ソファから転がって、リモコンを押すと、シーリングファンが回るたびに服が変わる。',
@@ -254,7 +254,7 @@ const ja: Copy = {
 }
 
 const ko: Copy = {
-  section: '템플릿',
+  section: '인기 템플릿',
   sectionNote: '인기 포맷을 내 사진으로 바로 만들어요.',
   name: '선풍기 코디 체인지',
   pitch: '소파에서 굴러 내려와 리모컨을 누르면, 실링팬이 지나갈 때마다 옷이 바뀝니다.',
