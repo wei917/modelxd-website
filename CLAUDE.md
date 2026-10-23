@@ -75,6 +75,14 @@ rating system (XDRating) surfaced on XBoard.
   dev is immediately live for production. Additive columns are safe;
   destructive ones are not.
 - Migrations are run **by hand** by the owner in the Supabase SQL editor.
+  `151_xoracle_hangings.sql` applied 2026-10-22 by the owner: 觀音廟's 廟外
+  (`xoracle_hangings`: tied sticks and wish plaques; `xoracle_hanging_reports`;
+  `xoracle_report_hanging()`, hide at 3; service role only; new tables are
+  named xoracle_, the older ones keep xtell_). Proven on PGlite (51/51).
+  Checked live: 42501 for the publishable key on both tables and the rpc;
+  61 characters, a stick without its number and temple 'guandi' 23514, a
+  made-up account 23503, a made-up plaque P0002; execute false for anon and
+  authenticated; nothing stored. docs/GUANYIN-HANGING-PLAN.md.
   `149_xgame_private_chat.sql` applied 2026-10-21 by the owner:
   `xgame_messages.private_to` (a player's private chat with the AI helper
   they hired; null = the table's public chat) and two indexes. Proven on

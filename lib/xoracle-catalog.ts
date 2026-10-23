@@ -19,7 +19,7 @@ import type { Temple } from './xoracle'
 import { XORACLE_TEMPLE_NAMES } from './xoracle-meta'
 
 /** Bumped with every change to this list or to content/xoracle-guide.md. */
-export const XORACLE_CATALOG_VERSION = '2026-10-07.1'
+export const XORACLE_CATALOG_VERSION = '2026-10-22.1'
 
 export type FeatureId =
   | 'bazi' | 'bazi.chenggu' | 'ziwei' | 'yuelao' | 'guandi' | 'mazu' | 'simianfo' | 'navagraha' | 'kyusei' | 'sukuyo'
@@ -86,7 +86,7 @@ export const XORACLE_FEATURES: readonly Feature[] = [
     about: 'Mazu sixty-stick oracle: the same draw and block ritual; strong on travel, safety, home and trade.' },
   { id: 'guanyin', status: 'live', temple: 'guanyin', people: 0, hour: null, place: false, inputs: [], optional: ['matter', 'name', 'birth'],
     free: ['draw'], paid: 'teacher', question: 'matter', label: [room('guanyin')],
-    about: 'Guanyin temple oracle stick (觀音靈籤; 觀音廟 is the general name, not any one real temple): draw one of a hundred sticks and read its poem. Chinese, Korean and English pages draw from the 觀音一百籤 used across Taiwan and confirm with one positive block throw; Japanese pages draw from Ganzan Daishi\'s hundred Kannon poems (元三大師 觀音百籤), the origin of Japanese omikuji, with no blocks. Never name a real temple. Gentle; good for any worry, family, peace of mind.' },
+    about: 'Guanyin temple oracle stick (觀音靈籤; 觀音廟 is the general name, not any one real temple): draw one of a hundred sticks and read its poem. Chinese, Korean and English pages draw from the 觀音一百籤 used across Taiwan and confirm with one positive block throw; Japanese pages draw from Ganzan Daishi\'s hundred Kannon poems (元三大師 觀音百籤), the origin of Japanese omikuji, with no blocks. Never name a real temple. Gentle; good for any worry, family, peace of mind. Outside the temple (廟外, signed in): any stick can be tied on the rope rack for free for 30 days (only its number, grade and date show, never a name or the question; a 凶 stick is offered it first, as Japanese temples do), and anyone can hang a wish plaque for $0.10 for a year (public, no names or contact details allowed; it can be sealed so only its back shows). Tying or wishing promises nothing.' },
   { id: 'tarot', status: 'live', temple: 'tarot', people: 0, hour: null, place: false, inputs: [], optional: ['matter'],
     free: ['draw'], paid: 'teacher', question: 'matter', label: [room('tarot')],
     about: 'Tarot (塔羅): write what you want to know, choose one card or three (past, present, future), and shuffle; the 1909 Waite–Smith cards are shown free, upright or reversed, with Waite\'s own meanings; the chosen teachers then read them. For love, choices, how things stand.' },
@@ -164,7 +164,7 @@ export const liveFeature = (id: unknown): Feature | null => {
 }
 
 /** The fee rule every live feature follows, for the guide's prompt. */
-export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight, the matching score, today\'s almanac and the daily fortune are free (the daily fortune needs no credit at all). Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. New Google accounts start with US$10 of credit.'
+export const FEE_RULE = 'Charts, stick draws, hexagram look-ups, the bone weight, the matching score, today\'s almanac and the daily fortune are free (the daily fortune needs no credit at all). Asking a teacher (an AI model the visitor picks) is charged per question at that model\'s listed price; the estimate is shown before sending, and nothing is sent without the visitor pressing send. At 觀音廟, tying a stick outside is free and hanging a wish plaque outside costs US$0.10 for a year. New Google accounts start with US$10 of credit.'
 
 /** The catalog as the guide's prompt reads it: one line per feature. */
 export function catalogForPrompt(): string {

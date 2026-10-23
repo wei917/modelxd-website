@@ -404,7 +404,14 @@ export async function POST(req: Request) {
   // it and only when they ticked the box (the client then sends it with the
   // visit). It is their own description of themselves, said so to the teacher.
   const typeFacts = !daily && offersPersonality(temple) ? personalityFacts(body?.mbti, temple === 'yuelao' ? body?.mbti2 : undefined) : ''
-  const facts = typeFacts ? `${chartFacts}\n\n${typeFacts}` : chartFacts
+  // 觀音廟 (Oct 22): a stick the visitor tied outside is a fact the 師姐 may
+  // acknowledge; it changes nothing in the reading (docs/GUANYIN-HANGING-PLAN.md).
+  let tiedFacts = ''
+  if (temple === 'guanyin' && savedId && admin) {
+    const { data: tie } = await admin.from('xoracle_hangings').select('id').eq('reading_id', savedId).eq('user_id', user.id).eq('kind', 'stick').maybeSingle()
+    if (tie) tiedFacts = '信眾已把這支籤綁在廟外的掛籤處（籤號與日子掛上，名字與所問之事不掛）。'
+  }
+  const facts = [chartFacts, typeFacts, tiedFacts].filter(Boolean).join('\n\n')
 
   // Reference passages (c4): picked for the conversation's opening question,
   // so they stay the same for the whole conversation. 易學堂's 問大師 keeps

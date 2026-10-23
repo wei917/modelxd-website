@@ -5415,3 +5415,12 @@ a.plib-row:hover .plib-card-title { color: var(--red); }
   .xb-c-price { grid-area: price; }
   .xb-amount, .xb-unit { min-width: 0; }
 }
+
+/* 觀音廟's 廟外 (Oct 22; app/components/xoracle/TempleWall.tsx): a stick just
+   tied rises onto the cord, a plaque just hung swings onto its hook. */
+@keyframes xoracle-wall-tie { from { transform: translateY(70%) scale(1.8); opacity: 0 } 70% { opacity: 1 } to { opacity: 1 } }
+@keyframes xoracle-wall-hang { from { transform: translateY(-28px) rotate(-7deg); opacity: 0 } 60% { transform: translateY(4px) rotate(2deg); opacity: 1 } to { opacity: 1 } }
+@keyframes xoracle-wall-fade { from { opacity: 0 } to { opacity: 1 } }
+.xoracle-wall-new { animation: xoracle-wall-tie 1s cubic-bezier(.2,.8,.2,1) both; z-index: 1 }
+.xoracle-wall-hung { animation: xoracle-wall-hang 1s ease-out both; transform-origin: 50% 0 }
+@media (prefers-reduced-motion: reduce) { .xoracle-wall-new, .xoracle-wall-hung { animation: xoracle-wall-fade .4s both } }

@@ -164,7 +164,7 @@ time for free. The models' job is the part with no right answer: the reading.
 | 易學堂 | 易經: 起卦 / 查卦 / 問老師 | `lib/yijing-core.ts` + `lib/yijing.ts` + `content/yijing/zhouyi.json` | A school, not a temple (Sep 26). Three coins thrown six times → 本卦, 動爻, 之卦, and 朱熹's rule for which passage to read; any of the 64 read in the original; or a learner's question with no cast. See "易學堂" below |
 | 占星塔 | 西洋占星 (tropical) | `lib/astrology.ts` on the same `astronomy-engine` | The one temple with ROOMS: 本命 / 星座配對 / 今日運勢 / 流年. Needs a birth place like 九曜廟. Placidus houses (equal above 66°, said on the board), ten planets through Pluto, mean nodes, Part of Fortune by sect, Ptolemaic five with wider orbs for the lights. 配對 = synastry + composite. 今日 = transits at a 1° orb with the exact date searched. 流年 = solar return + secondary progressions (Sun and Moon only). Added Sep 9 |
 | 解夢 | 周公解夢 | `lib/jiemeng.ts` + `lib/jiemeng-scan.ts` + `content/jiemeng/zhougong.json` | No birth. The dream as written (≤1,500 chars, any language) + an optional question. A quick house-paid model picks the lines of the book's 988 it points at, shown free; teachers (optional, paid) may quote only those lines. See "解夢" below. Added Sep 27 |
-| 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xoracle-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28 |
+| 觀音廟 | 觀音靈籤 (求籤; 擲筊 for the 一百籤 only) | `content/qian/guanyin-{yibai,gansan}.json` + `lib/xoracle-ritual.ts` | **觀音廟 is the general name: the site never names or claims a real temple (owner, Sep 28), in UI, prompts or guides.** Same 籤 machinery, two hundred-stick sets chosen by the page's language (`edition`, saved with the visit): the **觀音一百籤** common to Taiwan's 觀音 temples (seven-character, one 聖筊) for Chinese/Korean/English, and **元三大師 觀音百籤** (the origin of おみくじ) for Japanese, drawn with **no 筊** (`needsJiao`), graded to the published split. Poems, grades and 典故 only, cross-checked (scripts/fetch-guanyin-qian.ts names the transcriptions it checked against); 26 一百籤 slips print no grade and the teacher is told not to invent one. Added Sep 28. **廟外** (Oct 22): tie the stick outside, hang a wish plaque; see "廟外" below |
 | 塔羅館 | Tarot (1 or 3 cards) | `lib/tarot-draw.ts` + `lib/tarot.ts` + `content/tarot/cards.json` + `public/xoracle/tarot/` | The visitor's own ritual (Oct 1, `TarotRitual.tsx`): 洗牌 (the browser shuffles the 78, Fisher–Yates, crypto, each card lying upright or reversed at even odds; as often as they like), 切牌 (one of three piles to the top), then the whole deck face down in an arc to choose 1, 3 (past/present/future) or 5 (二擇一, 關係; Oct 2) from, then each chosen card turned over; only ids travel, after the last turn. Each laid card shows our own modern reading in the visitor's language (`content/tarot/modern.json`), Waite's text one tap away. The **1909 Waite–Smith cards** (Commons scans, PD) and **Waite's own meanings** from *The Pictorial Key to the Tarot* Part III (Wikisource, PD), verbatim, shown free; teachers read. Never called "Rider-Waite" (a trademark). Added Sep 28 |
 | 幸運餅乾 | Fortune cookie | `lib/xoracle-cookie.ts`, `lib/xoracle-cookie-fortunes.ts`, `content/cookie/fortunes.json` (+ `dailyText`, the almanac's calendar) | What was eaten + when (the phone's local time) + an optional question. Code: the meal (`mealOf`: breakfast/lunch/tea/dinner/late, a 01:00 snack belongs to the evening before), the 時辰, the day's 干支; the classical 五味→五行 table. **The slips are real fortune-cookie fortunes** (owner, Sep 28): 206 of the 254 in reggi/fortune-cookie (MIT, © 2022 Thomas Reggi, pinned; the license travels with the data in `content/cookie/LICENSE-fortune-cookie.txt`, and since Oct 2 the credit is no longer printed under each cookie (owner: "remove it"; MIT asks for the notice with copies, not on screen); `scripts/build-cookie-fortunes.mjs` drops duplicates, numbers, jokes, garbled lines and health/windfall/lawsuit predictions, fixes typos keeping `orig`), translated by ModelXD (`content/cookie/translations.json`; 简中 by OpenCC). A quick house model (Qwen 3.8 Flash via `dailyText`) sees the whole numbered list and names the **10 that fit best** plus the meal's taste; **one of the 10 is drawn at random** on the server, and the slip is returned at once; the note under it is written after, streamed by `/api/xoracle/cookie/note` (Sep 29), once per cookie (`notePending`, lowered in the same UPDATE that checks it; a second tab is told it is being written and asks again), in the slip's language (`noteLang`), and saved even if the reader leaves (optional: a slip without a note still shows). No digits anywhere. **Two cookies a meal free; from the third, 1¢ debited before the model runs, refunded if no slip**; counted from the visitor's own rows by `subject->>meal`; every crack its own row (`crack` id). Never re-cracked on a refresh. All five languages of the slip are saved, so a language switch reads right; the English original shows under it. Added Sep 28 |
 | 九星気学 | Nine Star Ki | `lib/kyusei.ts` (+ `lib/kyusei-words.ts`, lunar-typescript for 立春 and the 節) | Birth date (hour optional). Code: 本命星 by the 立春 year (11 − year mod 9), 月命星 by the 節月 (寅 month starts 八白 / 五黄 / 二黒 by the year's group), this year's and month's 洛書 boards (南 on top), 五黄殺 · 暗剣殺 · 破 · 本命殺 · 本命的殺, and lucky directions by 相生・比和 (五黄 never), with 最大吉 where the 月命星 also fits; 八方塞がり when one's own star is in the centre (no lucky direction, said as a time to hold, not an omen). A 立春 or 節入り-day birth with the hour unknown or close gets the other side's star too. The boards are as of the visitor's local date, saved with the visit (`today`, `asToday`). Icon: generated like 觀音's (GPT Image 2.5 Sunburst image edit against the object icons 八字 紫微 測字 占星, medium, $0.022 a draft), then the nine discs recoloured in code into the real 定位盤 (南 on top: 四緑 九紫 二黒 / 三碧 五黄 七赤 / 八白 一白 六白); in the street's share picture. Japan's menu puts it right after 四柱推命. Added Sep 29 |
@@ -1714,6 +1714,46 @@ edit, medium, 3 outputs each, $0.067 each) against style sheets cropped from
 `icons.avif` (deities: 媽祖, 九曜, 月老, 四面佛; objects: 八字, 紫微, 占星,
 測字), picked for reading at 40–48 px. `*-icon.avif` (300), `*-portrait.avif`
 (640), `*-icon-clear.avif` from `scripts/xoracle-clear-icons.mjs`.
+
+## 廟外 (觀音廟, Oct 22)
+
+Owner: 「一般廟裡如果抽到不好的簽 會讓用戶掛在廟外。有些廟則是可以讓用戶付錢許願，然後也是掛在廟外。」
+The design and the customs it was checked against are in
+`docs/GUANYIN-HANGING-PLAN.md`; the owner's choices: $0.10 a wish, public,
+sign-in for both, 30 days and a year, 觀音廟 only.
+
+- **Tie a stick** (`TieStrip` under the slip): free, one per saved visit,
+  30 days on the rope rack. Only the number, the edition and the grade as
+  printed go up (`/api/xoracle/wall/tie` reads them from the visit and the
+  corpus, never the body). A 凶 stick (元三大師's set) gets the offer opened,
+  as Japanese temples tie a 凶 slip; every other stick gets one quiet line,
+  because the 觀音一百籤 prints no bad grade. A visitor not signed in gets the
+  sign-in dialog; the stick waits in sessionStorage and, back signed in, the
+  visit is saved through the chart route, tied, and opened (`?reading=`).
+  The 師姐 is told a tied stick is a fact to mention kindly, never a cure.
+- **Hang a wish** (`TempleWall` under the form): $0.10 for a year,
+  60 characters, an optional stamp (平安 健康 學業 姻緣 事業 財運 其他). Public;
+  **sealed** shows only the back (stamp and date), like the Japanese privacy
+  stickers. Before any debit: contact details and addresses by pattern
+  (`wishProblem`), OpenAI's free moderation, and for an open plaque a quick
+  house check (GPT-6 Luna, $0.000037 a wish, measured; 10 of 10 sample
+  wishes judged right in four languages, Oct 22) for names, curses, ads and
+  personal facts (`lib/xoracle-wall-check.ts`). A failed write is refunded at once.
+  我的心願: seal/open (open re-checks), 還願 (a ribbon), 取下 (no refund).
+- **The wall** is public, signed out too (`GET /api/xoracle/wall`, cached
+  20 s; the viewer's own rows come from `?mine=1` and are laid over it).
+  Never a user id, name, @ID, avatar, country or question. Reports from a
+  fixed list; 3 reports hide a plaque from all but its writer
+  (`xoracle_report_hanging`); admins get 隱藏.
+- **Stored**: `xoracle_hangings`, `xoracle_hanging_reports` (migration 151,
+  service key only, applied and checked live Oct 22).
+- **Pictures**: generated with GPT Image 2.5 Sunburst against the 觀音 art
+  (`scripts/guanyin-wall-art.ts`, $0.21 for ten drafts): the rope rack, a
+  knotted slip, the plaque and its back, in `public/xoracle/wall/`. The page
+  hangs real slips on the rack's two cords (32.3% and 52.9% of its height)
+  and writes on the plaques; it never draws an icon.
+- Words: `app/components/xoracle/wall-copy.ts`, five languages.
+- Tests: `scripts/test-xoracle-wall.ts` (in `test:xoracle`).
 
 ## 分享 (Share, Sep 28)
 

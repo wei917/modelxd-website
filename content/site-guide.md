@@ -489,7 +489,9 @@ five grids 天格/人格/地格/外格/總格, the 81-number 吉凶 convention a
 **觀音廟** (Guanyin 籤, 觀音廟 being the general name, not a real temple:
 draw one of a hundred sticks; Chinese pages use the 觀音一百籤 and confirm
 it with a 聖筊, Japanese pages 元三大師's hundred poems, where Japanese
-omikuji come from, with no blocks),
+omikuji come from, with no blocks; outside the temple, signed in, a stick
+can be tied on the rope rack for free for 30 days and a wish plaque hung
+for $0.10 for a year, public with no names, or sealed),
 **幸運餅乾** (fortune cookie: say what you just ate and when, crack a cookie
 for a one-line slip tied to the meal's taste, the hour and the day; two a
 meal free, then one cent each; no lucky numbers),
