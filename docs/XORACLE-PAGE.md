@@ -1740,6 +1740,10 @@ sign-in for both, 30 days and a year, 觀音廟 only.
   wishes judged right in four languages, Oct 22) for names, curses, ads and
   personal facts (`lib/xoracle-wall-check.ts`). A failed write is refunded at once.
   我的心願: seal/open (open re-checks), 還願 (a ribbon), 取下 (no refund).
+- **Two cards under the form, above the visit history** (owner, Oct 22; temples
+  keep the two apart: a 凶 slip is tied at its own place near the draw, plaques
+  hang on their own rack): **結籤處**, the rope rack, with 先抽一支籤 (scrolls
+  to 抽籤); then **許願牌**, the plaques and 掛許願牌.
 - **The wall** is public, signed out too (`GET /api/xoracle/wall`, cached
   20 s; the viewer's own rows come from `?mine=1` and are laid over it).
   Never a user id, name, @ID, avatar, country or question. Reports from a

@@ -213,6 +213,10 @@ async function routes() {
 {
   const client = read('app/xoracle/client.tsx')
   check('room: 廟外 under 觀音廟\'s form, the tie offer under its stick, nowhere else', /temple === 'guanyin' && <TempleWall \/>/.test(client) && /temple === 'guanyin' && chart && !savedProblem && typeof chart\.n === 'number'/.test(client))
+  const wallSrc = read('app/components/xoracle/TempleWall.tsx')
+  check('room: two cards, 結籤處 (with 先抽一支籤 outside a drawn stick) then 許願牌', /xoracle-wall-sticks[\s\S]*drawFirst[\s\S]*xoracle-wall-wishes/.test(wallSrc) && /!embedded && <div[^\n]*drawFirst/.test(wallSrc))
+  check('room: 廟外 above the visit history', client.indexOf("temple === 'guanyin' && <TempleWall />") < client.indexOf('<TempleHistory temple={temple}'))
+  check('code: no real temple named in the wall\'s files', !/淺草寺|浅草寺|龍山寺|Sensoji|Senso-ji|Longshan/i.test(wallSrc + read('lib/xoracle-wall.ts') + read('lib/xoracle-wall-check.ts')))
   for (const f of ['rack', 'slip', 'plaque', 'plaque-back']) check(`picture: public/xoracle/wall/${f}.avif is there`, fs.existsSync(path.join(__dirname, '..', 'public/xoracle/wall', `${f}.avif`)))
   let missing: string[] = []
   for (const [table, keys] of Object.entries(WALL_COPY)) for (const [k, words] of Object.entries(keys)) for (const l of LANGS) if (!words[l]?.trim()) missing.push(`${table}.${k}.${l}`)

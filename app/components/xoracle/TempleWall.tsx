@@ -3,9 +3,9 @@
 // 「一般廟裡如果抽到不好的簽 會讓用戶掛在廟外。有些廟則是可以讓用戶付錢許願，然後也是掛在廟外。」).
 // docs/GUANYIN-HANGING-PLAN.md is the spec; lib/xoracle-wall.ts the rules.
 //
-//   <TempleWall />                  the section under the room's form: the
-//                                   rope rack with the sticks people tied, the
-//                                   wish plaques, 掛許願牌, and 我的心願.
+//   <TempleWall />                  two cards under the room's form: 結籤處,
+//                                   the rope rack with the sticks people tied,
+//                                   and 許願牌, the plaques, 掛許願牌, 我的心願.
 //   <TieStrip readingId n … />      under a drawn stick: the offer to tie it
 //                                   outside, then the rack with it on.
 //
@@ -389,7 +389,11 @@ function MyWishes({ mine, w, onChange }: { mine: MyItem[]; w: Words; onChange: (
 
 // ── The section ───────────────────────────────────────────────────────────
 
-/** The 廟外 section: under the room's form, or opened from a drawn stick. */
+/** 廟外: two cards, as temples keep them apart (owner, Oct 22, after how
+ *  Japanese temples do it: a 凶 slip is tied at its own place near the draw,
+ *  plaques hang on their own rack). 結籤處, the rope rack, comes first, next to the draw; 許願牌,
+ *  the plaque wall, second. Under the room's form, or opened from a drawn
+ *  stick (`embedded`: the stick is drawn, so no 先抽一支籤). */
 export default function TempleWall({ startWriting = false, fresh = null, embedded = false }: { startWriting?: boolean; fresh?: string | null; embedded?: boolean }) {
   const { lang } = useLang()
   const w = wallWords(lang)
@@ -403,29 +407,50 @@ export default function TempleWall({ startWriting = false, fresh = null, embedde
   const wishes = merged.wishes.filter(x => !hiddenIds.includes(x.id))
   const write = () => { if (signed === false) { showSignIn(); return } setWriting(true) }
   useEffect(() => { if (startWriting && signed === false) { setWriting(false) } }, [startWriting, signed])
+  // The draw is the room's form, just above: its last button is 抽籤 (centred,
+  // so the sticky top bars never cover it) and takes the focus.
+  const toDraw = () => {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('.xoracle-entry-form button')
+    const draw = buttons[buttons.length - 1]
+    draw?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    draw?.focus({ preventScroll: true })
+  }
   if (closed) return null
+  const box = embedded
+    ? { borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 14 }
+    : { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '16px 16px 14px', marginTop: 16 }
+  const h2 = { margin: 0, fontSize: 17, fontWeight: 800, fontFamily: 'var(--xoracle-serif, serif)' } as const
+  const count = { fontSize: 12.5, color: 'var(--muted)' } as const
+  const note = { margin: '4px 0 10px', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.6 } as const
   return (
-    <section className="xoracle-wall" aria-labelledby="xoracle-wall-h" style={embedded ? { marginTop: 12 } : { border: '1px solid var(--border2)', borderRadius: 12, background: 'var(--surface)', padding: '16px 16px 14px', marginTop: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-        <h2 id="xoracle-wall-h" style={{ margin: 0, fontSize: 17, fontWeight: 800, fontFamily: 'var(--xoracle-serif, serif)' }}>{w.w('section')}</h2>
-        {wall && <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{merged.counts.sticks + merged.counts.wishes ? w.w('counts', { s: merged.counts.sticks, w: merged.counts.wishes }) : w.w('empty')}</span>}
-      </div>
-      <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--muted2)' }}>{w.w('sectionNote')}</p>
-      {working && <p role="status" style={{ fontSize: 13, color: 'var(--muted)' }}>{w.w('tying')}</p>}
-      <Rack sticks={merged.sticks} w={w} lang={lang} fresh={fresh} />
+    <>
+      <section className="xoracle-wall xoracle-wall-sticks" aria-labelledby="xoracle-wall-sticks-h" style={box}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <h2 id="xoracle-wall-sticks-h" style={h2}>{w.w('tieSection')}</h2>
+          {wall && <span style={count}>{merged.counts.sticks ? w.w('tieCount', { s: merged.counts.sticks }) : w.w('tieEmpty')}</span>}
+        </div>
+        <p style={note}>{w.w('tieHere')}</p>
+        {working && <p role="status" style={{ fontSize: 13, color: 'var(--muted)' }}>{w.w('tying')}</p>}
+        <Rack sticks={merged.sticks} w={w} lang={lang} fresh={fresh} />
+        {!embedded && <div style={{ textAlign: 'center', marginTop: 4 }}><button type="button" onClick={toDraw} style={pill('var(--white)')}>{w.w('drawFirst')}</button></div>}
+      </section>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0 10px' }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>{w.w('wishes')}</h3>
-        <span style={{ flex: 1 }} />
-        {!writing && <button type="button" onClick={write} style={pill('var(--red)')}>{w.w('wishButton')}</button>}
-      </div>
-      {writing && <WishEditor w={w} lang={lang} onCancel={() => setWriting(false)} onHung={item => { put(item); setHungId(item.id); setWriting(false) }} />}
-      {hungId && !writing && <p role="status" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--green, #2f7d4f)', textAlign: 'center' }}>{w.w('hung')}</p>}
-      <PlaqueGrid wishes={wishes} w={w} lang={lang} signed={signed} admin={admin} fresh={hungId} onHidden={id => setHiddenIds(h => [...h, id])} />
-      {wall?.more && <div style={{ textAlign: 'center', marginTop: 12 }}><button type="button" onClick={() => void loadMore()} style={{ ...linkBtn, color: 'var(--muted)' }}>{w.w('more')}</button></div>}
-      {signed && <MyWishes mine={mine} w={w} onChange={put} />}
-      <p style={{ margin: '14px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{w.w('entertainment')}</p>
-    </section>
+      <section className="xoracle-wall xoracle-wall-wishes" aria-labelledby="xoracle-wall-wishes-h" style={box}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h2 id="xoracle-wall-wishes-h" style={h2}>{w.w('wishes')}</h2>
+          {wall && <span style={count}>{merged.counts.wishes ? w.w('wishCount', { w: merged.counts.wishes }) : w.w('wishEmpty')}</span>}
+          <span style={{ flex: 1 }} />
+          {!writing && <button type="button" onClick={write} style={pill('var(--red)')}>{w.w('wishButton')}</button>}
+        </div>
+        <p style={note}>{w.w('wishHere')}</p>
+        {writing && <WishEditor w={w} lang={lang} onCancel={() => setWriting(false)} onHung={item => { put(item); setHungId(item.id); setWriting(false) }} />}
+        {hungId && !writing && <p role="status" style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--green, #2f7d4f)', textAlign: 'center' }}>{w.w('hung')}</p>}
+        <PlaqueGrid wishes={wishes} w={w} lang={lang} signed={signed} admin={admin} fresh={hungId} onHidden={id => setHiddenIds(h => [...h, id])} />
+        {wall?.more && <div style={{ textAlign: 'center', marginTop: 12 }}><button type="button" onClick={() => void loadMore()} style={{ ...linkBtn, color: 'var(--muted)' }}>{w.w('more')}</button></div>}
+        {signed && <MyWishes mine={mine} w={w} onChange={put} />}
+        <p style={{ margin: '14px 0 0', fontSize: 11, color: 'var(--muted2)', lineHeight: 1.6 }}>{w.w('entertainment')}</p>
+      </section>
+    </>
   )
 }
 
