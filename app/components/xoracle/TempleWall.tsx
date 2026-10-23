@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-client'
 import { useAuthModal } from '@/lib/AuthModalContext'
 import { useLang } from '@/lib/i18n'
-import { WISH_FOR, REPORT_REASONS, WISH_MAX, charCount, cleanWish, wishProblem, badLuck, isUp, type WallItem, type MyItem } from '@/lib/xoracle-wall'
+import { WISH_FOR, REPORT_REASONS, WISH_MAX, charCount, cleanWish, wishProblem, badLuck, isUp, wallDate, type WallItem, type MyItem } from '@/lib/xoracle-wall'
 import { wallWords } from './wall-copy'
 
 const PENDING_TIE = 'xoracle.wall.pendingTie'
@@ -129,9 +129,7 @@ function usePendingTie(signed: boolean | null) {
   return working
 }
 
-const dateOf = (iso: string, lang: string) => {
-  try { return new Intl.DateTimeFormat(lang, { month: 'numeric', day: 'numeric' }).format(new Date(iso)) } catch { return iso.slice(5, 10) }
-}
+const dateOf = wallDate
 /** A small, steady tilt per item, from its id. */
 const tilt = (id: string, max: number) => { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0; return ((Math.abs(h) % 1000) / 1000 * 2 - 1) * max }
 const pill = (bg: string, fg = '#fff') => ({ padding: '9px 20px', borderRadius: 999, border: 'none', background: bg, color: fg, fontWeight: 700, fontSize: 13.5, cursor: 'pointer', font: 'inherit' } as const)

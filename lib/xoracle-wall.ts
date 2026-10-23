@@ -121,5 +121,20 @@ export function myItem(r: any): MyItem {
   return { ...item, mine: true, readingId: r.reading_id ?? null, downAt: String(r.down_at), takenDown: !!r.taken_down_at, hidden: !!r.hidden_at }
 }
 
+/** The date on a plaque or a tied slip, never baked into a picture: written
+ *  out for whoever reads it, in their language's own order, with the year
+ *  (owner, Oct 22: 10/22 alone is unclear, and month/day order differs by
+ *  country). One temple for everyone; only the way the date is written
+ *  follows the reader. The day is the reader's own calendar day.
+ *    en  2026/10/22 (the owner's choice)   zh / ja  2026年10月22日   ko  2026년 10월 22일 */
+export function wallDate(iso: string, lang: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate()
+  if (lang === 'ko') return `${y}년 ${m}월 ${day}일`
+  if (lang === 'en') return `${y}/${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}`
+  return `${y}年${m}月${day}日`
+}
+
 /** Still on the wall: not taken down, not hidden, not past its time. */
 export const isUp = (m: MyItem, now = Date.now()) => !m.takenDown && !m.hidden && Date.parse(m.downAt) > now
