@@ -15,8 +15,15 @@
 // Marble's own frame. Splats in the ring that show nothing are left out:
 // about a quarter of them are all but transparent (alpha under 0.04) or have
 // no size. (Not outside it: the sky is made of faint splats.)
+//
+// It reads and writes with Spark 2.1's SpzReader and SpzWriter. Spark 2.4
+// (what a fresh install gets: the repo keeps no lockfile) no longer exports
+// them, so they are looked up untyped and the build does not depend on them;
+// to run this again, `npm i --no-save @sparkjsdev/spark@2.1.0` first.
 
 import fs from 'node:fs'
+
+const spark = async () => (await import('@sparkjsdev/spark')) as any
 
 const [smallFile, fullFile, outFile, r0Arg, r1Arg] = process.argv.slice(2)
 const R0 = Number(r0Arg ?? 8), R1 = Number(r1Arg ?? 50)
@@ -31,16 +38,17 @@ const inRing = (x: number, y: number, z: number) => {
 type Splat = { c: number[]; a: number; rgb: number[]; s: number[]; q: number[] }
 
 async function read(file: string, keep: (x: number, y: number, z: number) => boolean, prune: boolean) {
-  const { SpzReader } = await import('@sparkjsdev/spark')
+  const { SpzReader } = await spark()
+  if (!SpzReader) throw new Error('this Spark has no SpzReader: npm i --no-save @sparkjsdev/spark@2.1.0')
   const r = new SpzReader({ fileBytes: fs.readFileSync(file) })
   await r.parseHeader()
   const all: Splat[] = []
   await r.parseSplats(
-    (i, x, y, z) => { all[i] = { c: [x, y, z], a: 0, rgb: [0, 0, 0], s: [0, 0, 0], q: [0, 0, 0, 1] } },
-    (i, a) => { all[i].a = a },
-    (i, cr, cg, cb) => { all[i].rgb = [cr, cg, cb] },
-    (i, sx, sy, sz) => { all[i].s = [sx, sy, sz] },
-    (i, qx, qy, qz, qw) => { all[i].q = [qx, qy, qz, qw] },
+    (i: number, x: number, y: number, z: number) => { all[i] = { c: [x, y, z], a: 0, rgb: [0, 0, 0], s: [0, 0, 0], q: [0, 0, 0, 1] } },
+    (i: number, a: number) => { all[i].a = a },
+    (i: number, cr: number, cg: number, cb: number) => { all[i].rgb = [cr, cg, cb] },
+    (i: number, sx: number, sy: number, sz: number) => { all[i].s = [sx, sy, sz] },
+    (i: number, qx: number, qy: number, qz: number, qw: number) => { all[i].q = [qx, qy, qz, qw] },
   )
   const kept = all.filter(p => keep(p.c[0], p.c[1], p.c[2]) && (!prune || (p.a >= 0.04 && Math.max(...p.s) * S >= 0.002)))
   console.log(`${file}: ${r.numSplats} splats (sh ${r.shDegree}, ${r.fractionalBits} fractional bits), ${kept.length} kept`)
@@ -51,7 +59,7 @@ async function main() {
   const small = await read(smallFile, (x, y, z) => !inRing(x, y, z), false)
   const full = await read(fullFile, inRing, true)
   const splats = [...small.kept, ...full.kept]
-  const { SpzWriter } = await import('@sparkjsdev/spark')
+  const { SpzWriter } = await spark()
   const w = new SpzWriter({ numSplats: splats.length, shDegree: 0, fractionalBits: Math.max(small.fractionalBits, full.fractionalBits) })
   splats.forEach((p, i) => {
     w.setCenter(i, p.c[0], p.c[1], p.c[2])
