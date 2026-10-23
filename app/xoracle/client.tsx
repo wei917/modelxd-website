@@ -72,6 +72,7 @@ import { partialFields, readNdjson } from '../../lib/partial-json'
 import { shareExcerpt } from '../../lib/xoracle-share'
 import { liveFeature, type FeatureId } from '../../lib/xoracle-catalog'
 import { cleanQuestion, clearHandoff, readHandoff, sessionStore, writeHandoff, type Handoff } from '../../lib/xoracle-handoff'
+import { takeStick } from '../../lib/xoracle-temple3d'
 import { chengguTheme, CHENGGU_MIN, CHENGGU_MAX } from '../../lib/xoracle-chenggu-reading'
 import { weightText, monthZh, dayZh, ZHI_SPAN, type Chenggu, type ChengguLunar } from '../../lib/xoracle-chenggu'
 import { asPersonalityType, offersPersonality } from '../../lib/xoracle-personality'
@@ -1006,6 +1007,37 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
     if (j !== '聖筊') setRitualBoth('rejected')
     else if (next.throws.length >= CONFIRM_THROWS) { setRitualBoth('confirmed'); void enter(next.n) }
   }
+  // A stick drawn and confirmed in the 3D temple (app/xoracle/guandi-3d,
+  // lib/xoracle-temple3d.ts): the room opens at its poem with the matter
+  // written there. Read once; entered after `ask` has been set, since the
+  // request is built from it.
+  const [carriedStick, setCarriedStick] = useState<number | null>(null)
+  // The way into the 3D temple, shown only to those who may open it (an
+  // admin-only prototype for now; /api/xoracle/temple3d decides).
+  const [temple3d, setTemple3d] = useState(false)
+  useEffect(() => {
+    if (temple !== 'guandi') return
+    let live = true
+    fetch('/api/xoracle/temple3d').then(r => r.json()).then(j => { if (live) setTemple3d(j?.open === true) }).catch(() => {})
+    return () => { live = false }
+  }, [temple])
+  useEffect(() => {
+    if (temple !== 'guandi' || initial) return
+    const c = takeStick(sessionStore())
+    if (!c) return
+    const s = { n: c.n, throws: ['聖筊'] as Jiao[] }
+    stickRef.current = s; setStick(s)
+    if (c.ask) setAsk(c.ask)
+    setRitualBoth('confirmed')
+    setCarriedStick(c.n)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (carriedStick === null) return
+    setCarriedStick(null)
+    void enter(carriedStick)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carriedStick])
 
   // 修改資料 (audit, product): back to the filled form. Casting again makes a
   // new visit (the old one stays in history). A 籤 is drawn again, because
@@ -1425,7 +1457,8 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
               extra={<PersonalityAttach saved={savedType} on={withType} setOn={setWithType} />} />
           ) : isQian(temple) ? (
             <RitualPanel ask={ask} setAsk={setAsk} stick={stick} ritual={ritual} onDraw={draw} onThrow={throwBlocks} jiao={jiao}
-              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} onFillBirth={canFill ? fillBirth(setBirth, true) : undefined} />
+              bing={bing} setBing={setBing} birth={birth} setBirth={setBirth} sel={sel} onFillBirth={canFill ? fillBirth(setBirth, true) : undefined}
+              temple3d={temple === 'guandi' && temple3d} />
           ) : temple === 'xingming' ? (
             <NameForm surname={surname} given={given} gender={birth.gender}
               onSurname={setSurname} onGiven={setGiven} onGender={g => setBirth(b => ({ ...b, gender: g }))} sel={sel}
@@ -2451,7 +2484,7 @@ function BirthRow({ label, value, onChange, sel, allowUnknown = true, aria, onFi
 // ── 關帝廟 ─────────────────────────────────────────────────────────────────
 
 /** 稟明事由, then the tube and the blocks. */
-function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel, jiao = true, onFillBirth }: {
+function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBing, birth, setBirth, sel, jiao = true, onFillBirth, temple3d = false }: {
   ask: string; setAsk: (s: string) => void
   stick: { n: number; throws: Jiao[] } | null
   ritual: 'idle' | 'drawn' | 'rejected' | 'confirmed'
@@ -2462,6 +2495,8 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   jiao?: boolean
   /** 「填入我的生日」, for a signed-in visitor (false: nothing saved). */
   onFillBirth?: () => boolean
+  /** Offer the 3D 關帝廟 (app/xoracle/guandi-3d) instead of drawing here. */
+  temple3d?: boolean
 }) {
   const t = useT()
   const [bingOpen, setBingOpen] = useState(false)
@@ -2474,6 +2509,12 @@ function RitualPanel({ ask, setAsk, stick, ritual, onDraw, onThrow, bing, setBin
   const jiaoKey: Record<Jiao, string> = { 聖筊: 'sheng', 笑筊: 'xiao', 陰筊: 'yin' }
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {temple3d && ritual === 'idle' && (
+        <a href="/xoracle/guandi-3d" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 44, padding: '10px 16px', borderRadius: 999,
+          border: '1.5px solid var(--red)', color: 'var(--red)', fontWeight: 700, fontSize: 14, textDecoration: 'none' }}>
+          {t('xoracle.qian.temple3d')}
+        </a>
+      )}
       <div>
         <div style={{ ...mono, color: 'var(--muted2)', marginBottom: 6 }}>{t('xoracle.qian.ask')}</div>
         <input value={ask} onChange={e => setAsk(e.target.value.slice(0, 300))} placeholder={t('xoracle.qian.ask.ph')} aria-label={t('xoracle.qian.ask')}

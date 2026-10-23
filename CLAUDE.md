@@ -1184,7 +1184,8 @@ the site password; it reads the sign-in from cookies and keeps a session
 refreshed on the way (Supabase rotates refresh tokens). **XSports is
 admin only** since Oct 16: its MLB Stats API / NBA live feed / ESPN data is
 licensed for personal, non-commercial use only; it reopens on licensed
-data. Checks: `npx tsx scripts/hidden-apps-check.ts`.
+data. X先知's 3D 關帝廟 (`/xoracle/guandi-3d`, Oct 23) is admin only too,
+a prototype (docs/XORACLE-PAGE.md "3D 關帝廟"). Checks: `npx tsx scripts/hidden-apps-check.ts`.
 
 **2. Per-surface model blocks** (`lib/model-features.ts`) — see the ai_models
 section above. Data-driven, no deploy.
