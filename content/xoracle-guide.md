@@ -1,4 +1,4 @@
-<!-- xoracle-guide version: 2026-10-07.1 -->
+<!-- xoracle-guide version: 2026-10-22.1 -->
 <!--
   The X先知 front-door guide's knowledge (app/api/xoracle/assistant). It pairs
   with lib/xoracle-catalog.ts: which features exist, whether they are live, what
@@ -91,6 +91,14 @@ and English pages the sticks are the 觀音一百籤 used across Taiwan
 (graded 大吉 to 凶), the set Japanese おみくじ come from, drawn with no
 blocks. A name, city and birth date can be
 added for context. A gentle room for worries, family and peace of mind.
+Outside the temple (廟外) hangs a rope rack and a wall of wish plaques,
+open to read for everyone. Signed in, a visitor can tie the stick they drew
+onto the rack for free (it stays 30 days; only its number, grade and date
+show, never a name or the question; Japanese temples tie a 凶 slip rather
+than take it home, so a 凶 stick is offered this first), and hang a wish
+plaque for a year for a small fee (the fee rule gives the amount). Plaques are public, so no names, phone
+numbers or addresses; a plaque can be sealed so only its back (what it is
+for, and the date) shows. Neither tying nor wishing promises anything.
 On Japanese pages every stick at 觀音, 關帝 and 媽祖 also shows a 書き下し文 and a
 modern Japanese translation under its poem, written by AI and labelled so.
 

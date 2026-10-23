@@ -26,6 +26,7 @@ import { useAuthModal } from '../../lib/AuthModalContext'
 import { SIGN_IN_FIRST } from '../../lib/xoracle-guest'
 import { TEMPLES, PURPOSES } from '../components/xoracle/TempleStreet'
 import { TempleArtwork } from '../components/xoracle/TempleArtwork'
+import TempleWall, { TieStrip } from '../components/xoracle/TempleWall'
 import XOracleNav, { XOracleFooter } from '../components/xoracle/XOracleNav'
 import { XOracleBaseProvider } from '../components/xoracle/XOracleBase'
 import { XiangForm, XiangBoard, XiangPrivacy, type XiangPhotos, type XiangPhoto, type XiangCheck } from '../components/xoracle/Xiang'
@@ -1521,6 +1522,9 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
             the form (owner, Sep 27). Continue reopens the room in place with
             chart and conversation. */}
         {onResume && <TempleHistory temple={temple} onResume={onResume} />}
+        {/* 觀音廟's 廟外 (Oct 22): the sticks people tied and the wishes they
+            hung, and 掛許願牌 (docs/GUANYIN-HANGING-PLAN.md). */}
+        {temple === 'guanyin' && <TempleWall />}
       </>) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {/* The way back to the form, first thing in the room, with what
@@ -1744,6 +1748,11 @@ function TempleRoom({ temple, onBack, standalone = false, initial = null, daily 
                   </div>
                 )}
             </div>
+          )}
+
+          {/* 觀音廟 (Oct 22): the offer to tie this stick outside the temple. */}
+          {temple === 'guanyin' && chart && !savedProblem && typeof chart.n === 'number' && (
+            <TieStrip readingId={readingId} n={chart.n} edition={asQianEdition(chart.edition)} luck={typeof chart.luck === 'string' ? chart.luck : ''} ask={ask} />
           )}
 
           {/* Conversation. Empty and without an intro line (解夢 before its
