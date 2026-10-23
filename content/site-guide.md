@@ -121,7 +121,10 @@ model's thinking depth and switch web search on. Costs real credits.
 
 **Music (音樂).** Describe the song you want (genre, mood, instruments or
 lyrics) and pick Lyria 3.5 (US$0.08 a song) or ElevenLabs Music 2.5
-(US$0.15 a minute), or both to compare.
+(US$0.15 a minute), or both to compare. The ⚙ settings under each model set
+the length (Lyria 1 to 3 minutes; ElevenLabs 15 seconds to 5 minutes, priced
+by the length), vocals or instrumental only, and the file (MP3 or WAV;
+ElevenLabs also MP3 320k, and an AI label (C2PA) written into the MP3).
 
 **Audio delivery.** In Speech, the Gemini, GPT-4o mini and Qwen TTS Instruct
 voices take a delivery instruction (the ⚙ settings under the model: accent,

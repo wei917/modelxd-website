@@ -9,13 +9,18 @@ import type { ReactNode } from 'react'
 
 export const SLOT_COLORS = ['#4a9eff', '#e8453c', '#a78bfa', '#34d399']
 
-export function OptPill({ color, active, onClick, children, narrow }: {
+export function OptPill({ color, active, onClick, children, narrow, nowrap }: {
   color: string; active: boolean; onClick: () => void; children: ReactNode; narrow?: boolean
+  /** Keep the label on one line: a full row then wraps to a second row of
+   *  pills instead of breaking "1 分鐘" inside a squeezed pill (CJK can
+   *  break between any two characters, so the pills shrank to fit). */
+  nowrap?: boolean
 }) {
   return (
     <button onClick={onClick}
       style={{
         flex: 1, padding: narrow ? '6px 4px' : '7px 6px',
+        ...(nowrap ? { whiteSpace: 'nowrap' as const } : {}),
         borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
         background: active ? color + '22' : 'transparent',
         border: `1px solid ${active ? color + '66' : 'var(--border2)'}`,

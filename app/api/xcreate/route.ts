@@ -108,8 +108,12 @@ type SlotOpts = {
   style?:          string | null
   /** MiniMax: language_boost hint. */
   language?:       string | null
-  /** Music: song length in seconds (ElevenLabs). */
+  /** Music: song length in seconds (ElevenLabs a field, Lyria in words). */
   seconds?:        number | null
+  /** Music: no vocals. */
+  instrumental?:   boolean | null
+  /** Music: Content Credentials on the MP3 (ElevenLabs). */
+  c2pa?:           boolean | null
   /** Wan 3.0: reproducible take, [0, 2147483647]. */
   seed?:           number | null
   mode?:           string
@@ -303,7 +307,7 @@ async function runSlot(
       const callAt = Date.now()
       const result = await providers.generateSpeech(
         model, prompt,
-        { voice: mine ? mine.voice_id : voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null, seconds: options.seconds ?? null },
+        { voice: mine ? mine.voice_id : voice, format, speed: options.speed ?? null, style: typeof options.style === 'string' && options.style.trim() ? options.style.trim().slice(0, 300) : null, language: options.language ?? null, seconds: options.seconds ?? null, instrumental: options.instrumental === true, c2pa: options.c2pa === true },
         callContext,
       )
       const callEnd = Date.now()

@@ -219,10 +219,13 @@ export interface OutputModalityConfig {
   /** Audio output only: speaking-rate bounds the provider accepts. */
   speed_range?:  { min: number; max: number }
   /** Audio output only: song lengths in SECONDS the row offers, first =
-   *  default. Only music models that take a length have this — Lyria has no
-   *  duration parameter at all, so its row leaves it unset and its card
-   *  shows no length control. */
+   *  default (the panel shows them shortest first). ElevenLabs takes the
+   *  length as a field, Lyria 3.5 as words (lib/music-options.ts). */
   durations?:    number[]
+  /** Music only: can be asked for no vocals. */
+  instrumental?: boolean
+  /** Music only: can sign its MP3 with Content Credentials (C2PA). */
+  c2pa?:         boolean
 }
 
 export interface OutputConfig {
